@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 2,
+  "appName": "3rdparty",
+  "buildPot": {
+    "node": "22"
+  }
+}
