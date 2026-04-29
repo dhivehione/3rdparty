@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Policies — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <a href="/" class="text-gray-400 hover:text-party-accent transition text-sm">
+                ← Back to Home
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        
+        <div class="text-center mb-12">
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-6">
+                <span class="text-party-accent text-sm">🔍 Transparency</span>
+            </div>
+            <h1 class="text-4xl font-bold mb-4">Policies & Voting</h1>
+            <p class="text-xl text-gray-400">
+                Every policy. Every law. Every regulation. Voted by the people.
+            </p>
+        </div>
+
+        <!-- Main Philosophy -->
+        <div class="bg-party-card rounded-xl p-8 mb-8 border border-party-accent/30">
+            <div class="flex items-start space-x-4 mb-6">
+                <div class="text-4xl">🔓</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-party-accent mb-3">No Hidden Agendas</h2>
+                    <p class="text-gray-300 leading-relaxed">
+                        When we come to power, you will know exactly what policies will be enacted. 
+                        Everything is public. Everything is voted on. Nothing is decided in backroom meetings 
+                        that you never hear about until it's already law.
+                    </p>
+                </div>
+            </div>
+            <p class="text-gray-400">
+                Think of it as the opposite of traditional politics. You won't wake up one day to find 
+                a new law you never knew existed. You'll have voted on it.
+            </p>
+        </div>
+
+        <!-- How It Works -->
+        <div class="space-y-6 mb-12">
+            <h2 class="text-2xl font-bold text-center mb-6">How It Works</h2>
+            
+            <!-- Step 1 -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-party-accent/20 rounded-full flex items-center justify-center text-party-accent font-bold flex-shrink-0">1</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-2">Anyone Can Propose</h3>
+                        <p class="text-gray-400">
+                            Any member can draft a policy proposal. New laws. Changes to existing laws. 
+                            Repealing outdated regulations. You're the architect of the nation's future.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-party-accent/20 rounded-full flex items-center justify-center text-party-accent font-bold flex-shrink-0">2</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-2">Public Debate & Refinement</h3>
+                        <p class="text-gray-400">
+                            Proposals are discussed openly. Members can suggest amendments. 
+                            Bridge-builders help find common ground. The best ideas win.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-party-accent/20 rounded-full flex items-center justify-center text-party-accent font-bold flex-shrink-0">3</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-2">Member Vote</h3>
+                        <p class="text-gray-400">
+                            Every member votes. Your Merit Score amplifies your vote — but everyone participates. 
+                            Vote early in the 7-day window for full weight, or catch up later at reduced weight.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-party-accent/20 rounded-full flex items-center justify-center text-party-accent font-bold flex-shrink-0">4</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-2">Passed = Enacted</h3>
+                        <p class="text-gray-400">
+                            If it passes, it becomes policy. No parliamentary tricks. No "we'll consider it." 
+                            The people's vote is the final word.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voting Methods -->
+        <div class="bg-party-card rounded-xl p-8 mb-8 border border-gray-700">
+            <h2 class="text-2xl font-bold mb-6">Different Votes for Different Decisions</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-party-dark rounded-lg p-5">
+                    <div class="text-2xl mb-3">✅</div>
+                    <h3 class="font-bold text-white mb-2">Weighted Majority</h3>
+                    <p class="text-gray-400 text-sm">
+                        For yes/no decisions. The "yes" votes win when they have more Merit Score weight than "no." 
+                        Threshold varies by impact (50%+ for routine, 60-75% for policy, 80-90% for constitutional).
+                    </p>
+                </div>
+                
+                <div class="bg-party-dark rounded-lg p-5">
+                    <div class="text-2xl mb-3">🏆</div>
+                    <h3 class="font-bold text-white mb-2">Ranked-Choice Voting</h3>
+                    <p class="text-gray-400 text-sm">
+                        For elections and multiple options. Rank your preferences. If your top choice loses, 
+                        your vote transfers to your second choice. No more "wasted votes."
+                    </p>
+                </div>
+                
+                <div class="bg-party-dark rounded-lg p-5">
+                    <div class="text-2xl mb-3">⚖️</div>
+                    <h3 class="font-bold text-white mb-2">Living Legal Code</h3>
+                    <p class="text-gray-400 text-sm">
+                        Existing laws are always open for re-vote. A law that passed 5 years ago 
+                        can be amended or repealed if the people change their mind.
+                    </p>
+                </div>
+                
+                <div class="bg-party-dark rounded-lg p-5">
+                    <div class="text-2xl mb-3">⏰</div>
+                    <h3 class="font-bold text-white mb-2">Voting Windows</h3>
+                    <p class="text-gray-400 text-sm">
+                        Primary window (days 1-7): 100% vote weight. Extended window (days 8-10): 50% weight. 
+                        Vote early for maximum impact.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Future: AI Agent Voting -->
+        <div class="bg-party-card rounded-xl p-8 mb-8 border border-party-accent/20">
+            <div class="flex items-start space-x-4">
+                <div class="text-4xl">🤖</div>
+                <div>
+                    <h2 class="text-2xl font-bold mb-3">Future: Your AI Voting Assistant</h2>
+                    <p class="text-gray-300 leading-relaxed mb-4">
+                        Too busy to read every proposal? We get it. In the future, you'll be able to train 
+                        your personal AI agent on your preferences. It will vote on your behalf when you 
+                        don't have time — matching your known positions.
+                    </p>
+                    <p class="text-gray-400 text-sm">
+                        <span class="text-party-accent">Coming later:</span> You always retain full control. 
+                        Override any vote your AI agent makes. Or turn it off entirely. Your choice.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="bg-party-card rounded-xl p-8 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Where Are We Now?</h2>
+            <p class="text-gray-400 mb-4">
+                This is the plan. The full voting platform is being built. For now, we're building the membership 
+                and proving the movement can grow.
+            </p>
+            <div class="flex flex-wrap gap-4">
+                <a href="/proposals" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                    Try Demo Voting →
+                </a>
+                <a href="/join" class="border border-party-accent text-party-accent px-6 py-3 rounded-lg font-bold hover:bg-party-accent/10 transition">
+                    Join as Member
+                </a>
+                <a href="/wall" class="text-party-accent px-6 py-3 hover:underline transition">
+                    Join the Discussion
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer Note -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-800">
+            <p class="text-gray-600 text-sm">
+                This is what transparent governance looks like. No mystery. No surprises. Just democracy.
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>

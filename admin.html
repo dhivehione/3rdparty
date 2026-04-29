@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3d Party Admin</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: {
+                            dark: '#0f0f1a',
+                            card: '#1a1a2e',
+                            accent: '#FFD700',
+                            secondary: '#4A90E2'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
+        <div class="bg-party-card p-8 rounded-xl border border-gray-700 max-w-md w-full">
+            <div class="text-center mb-8">
+                <div class="text-5xl mb-4">🎉</div>
+                <h1 class="text-2xl font-bold">3d Party Admin</h1>
+                <p class="text-gray-400 text-sm mt-2">Insurance agents: please use the back button</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Admin Password</label>
+                    <input type="password" id="password" required 
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+                </div>
+                <button type="submit" 
+                        class="w-full bg-party-accent text-party-dark py-3 rounded-lg font-bold hover:scale-[1.02] transform transition">
+                    Enter Dashboard
+                </button>
+            </form>
+            <p id="loginError" class="text-red-400 text-sm mt-4 hidden text-center"></p>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <nav class="border-b border-gray-800 bg-party-card sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Admin Panel</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="refreshData()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button onclick="logout()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Stats Cards -->
+            <div class="grid md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                    <div class="text-gray-400 text-sm mb-2">Total Members</div>
+                    <div class="text-3xl font-bold text-party-accent" id="totalCount">0</div>
+                </div>
+                <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                    <div class="text-gray-400 text-sm mb-2">Live Treasury</div>
+                    <div class="text-3xl font-bold text-green-400" id="totalTreasury">MVR 0</div>
+                </div>
+                <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                    <div class="text-gray-400 text-sm mb-2">Today</div>
+                    <div class="text-3xl font-bold text-party-accent" id="todayCount">0</div>
+                </div>
+                <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                    <div class="text-gray-400 text-sm mb-2">Donors</div>
+                    <div class="text-3xl font-bold text-green-400" id="donorCount">0</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-4 mb-8">
+                <button onclick="exportToCSV()" 
+                        class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition inline-flex items-center space-x-2">
+                    <i class="fas fa-download"></i>
+                    <span>Export CSV</span>
+                </button>
+                <select id="filterType" onchange="applyFilter()" 
+                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+                    <option value="all">All Types</option>
+                    <option value="skills">Skills & Expertise</option>
+                    <option value="action">On-the-Ground Action</option>
+                    <option value="ideas">Ideas & Proposals</option>
+                    <option value="donation">Support & Donations</option>
+                </select>
+                <input type="text" id="searchInput" oninput="applyFilter()" 
+                       class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent flex-1 min-w-[200px]"
+                       placeholder="Search by name, phone, or NID...">
+                <button onclick="clearDatabase()" 
+                        class="bg-red-600/20 text-red-400 border border-red-600/30 px-6 py-3 rounded-lg font-bold hover:bg-red-600/30 transition inline-flex items-center space-x-2">
+                    <i class="fas fa-trash"></i>
+                    <span>Clear All</span>
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-party-card rounded-xl border border-gray-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-party-dark">
+                            <tr class="text-left text-sm text-gray-400">
+                                <th class="px-6 py-4">ID</th>
+                                <th class="px-6 py-4">Phone</th>
+                                <th class="px-6 py-4">NID</th>
+                                <th class="px-6 py-4">Name</th>
+                                <th class="px-6 py-4">Contribution</th>
+                                <th class="px-6 py-4">Donation</th>
+                                <th class="px-6 py-4">Merit</th>
+                                <th class="px-6 py-4">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signupsTableBody" class="divide-y divide-gray-700">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noData" class="text-center py-12 text-gray-500 hidden">
+                    <div class="text-4xl mb-4">📭</div>
+                    <p>No signups yet. The party is empty!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('3dparty_admin_token');
+        let allSignups = [];
+
+        if (authToken) {
+            showDashboard();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    authToken = result.token;
+                    localStorage.setItem('3dparty_admin_token', authToken);
+                    showDashboard();
+                } else {
+                    document.getElementById('loginError').classList.remove('hidden');
+                    document.getElementById('loginError').textContent = result.error;
+                }
+            } catch (error) {
+                document.getElementById('loginError').classList.remove('hidden');
+                document.getElementById('loginError').textContent = 'Connection error';
+            }
+        });
+
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            refreshData();
+        }
+
+        function logout() {
+            localStorage.removeItem('3dparty_admin_token');
+            authToken = null;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('password').value = '';
+        }
+
+        async function refreshData() {
+            try {
+                const response = await fetch('/api/signups', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    allSignups = result.signups;
+                    updateStats(result);
+                    applyFilter();
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function updateStats(result) {
+            document.getElementById('totalCount').textContent = result.total;
+            document.getElementById('totalTreasury').textContent = `MVR ${result.total_treasury.toLocaleString()}`;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todaySignups = result.signups.filter(s => s.timestamp.startsWith(today));
+            document.getElementById('todayCount').textContent = todaySignups.length;
+            
+            const donors = result.signups.filter(s => s.donation_amount > 0);
+            document.getElementById('donorCount').textContent = donors.length;
+        }
+
+        function applyFilter() {
+            const filterType = document.getElementById('filterType').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            let filtered = allSignups;
+            
+            if (filterType !== 'all') {
+                filtered = filtered.filter(s => s.contribution_type === filterType);
+            }
+            
+            if (searchTerm) {
+                filtered = filtered.filter(s => 
+                    (s.name && s.name.toLowerCase().includes(searchTerm)) ||
+                    s.phone.includes(searchTerm) ||
+                    s.nid.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            renderTable(filtered);
+        }
+
+        const typeLabels = {
+            'skills': '🧠 Skills',
+            'action': '🏃 Action',
+            'ideas': '💡 Ideas',
+            'donation': '💰 Donation'
+        };
+
+        function renderTable(signups) {
+            const tbody = document.getElementById('signupsTableBody');
+            const noData = document.getElementById('noData');
+            
+            if (signups.length === 0) {
+                tbody.innerHTML = '';
+                noData.classList.remove('hidden');
+                return;
+            }
+            
+            noData.classList.add('hidden');
+            
+            tbody.innerHTML = signups.map(s => `
+                <tr class="hover:bg-gray-800/50 text-sm">
+                    <td class="px-6 py-4 text-gray-500">#${s.id}</td>
+                    <td class="px-6 py-4">+960 ${s.phone}</td>
+                    <td class="px-6 py-4 font-mono">${s.nid}</td>
+                    <td class="px-6 py-4">${s.name || '<span class="text-gray-600">—</span>'}</td>
+                    <td class="px-6 py-4">
+                        <span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs">
+                            ${typeLabels[s.contribution_type] || s.contribution_type}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${s.donation_amount > 0 ? `<span class="text-green-400">MVR ${s.donation_amount}</span>` : '<span class="text-gray-600">—</span>'}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-party-accent font-bold">${s.initial_merit_estimate}</span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-xs">
+                        ${new Date(s.timestamp).toLocaleString()}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function exportToCSV() {
+            let csv = 'ID,Phone,NID,Name,Email,Island,Contribution Type,Donation Amount,Initial Merit,Timestamp\n';
+            
+            allSignups.forEach(s => {
+                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.contribution_type},${s.donation_amount},${s.initial_merit_estimate},"${s.timestamp}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `3dparty-signups-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        async function clearDatabase() {
+            if (!confirm('Delete ALL signups? This cannot be undone.')) return;
+            if (!confirm('Final warning: This will permanently delete everything. Continue?')) return;
+            
+            try {
+                const response = await fetch('/api/signups', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    refreshData();
+                }
+            } catch (error) {
+                alert('Error clearing database');
+            }
+        }
+
+        // Keyboard shortcut: Ctrl+R to refresh
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                refreshData();
+            }
+        });
+    </script>
+</body>
+</html>

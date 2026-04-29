@@ -1,0 +1,8 @@
+node_modules/
+data/signups.db
+.env
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

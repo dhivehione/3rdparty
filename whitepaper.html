@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitepaper — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .prose-whitepaper { white-space: pre-wrap; line-height: 1.8; }
+    </style>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <a href="/" class="text-gray-400 hover:text-party-accent transition text-sm">
+                ← Back to Home
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-3xl mx-auto px-4 py-12">
+        
+        <div class="text-center mb-10">
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-6">
+                <span class="text-party-accent text-sm">📄 Deep Dive</span>
+            </div>
+            <h1 class="text-4xl font-bold mb-4">The Whitepaper</h1>
+            <p class="text-gray-400">
+                Everything you need to know about how the 3d Party works. 
+                <br class="hidden md:block">Fair warning: it's a bit of a read.
+            </p>
+        </div>
+
+        <div class="bg-party-card rounded-xl p-8 border border-gray-700">
+            <div class="prose-whitepaper text-gray-300 text-sm" id="whitepaperContent">
+                <div class="text-center py-12 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Loading whitepaper...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-10">
+            <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
+        </div>
+
+    </div>
+
+    <script>
+        // Load whitepaper content
+        fetch('/whitepaper.txt')
+            .then(response => response.text())
+            .then(text => {
+                // Clean up the text - remove placeholder notes
+                let cleaned = text
+                    .replace(/Here is the next section\./g, '')
+                    .replace(/○/g, '•')
+                    .replace(/■/g, '▪')
+                    .replace(/●/g, '•')
+                    .trim();
+                
+                document.getElementById('whitepaperContent').textContent = cleaned;
+            })
+            .catch(err => {
+                document.getElementById('whitepaperContent').textContent = 'Could not load whitepaper. Please try again later.';
+            });
+    </script>
+</body>
+</html>

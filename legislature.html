@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legislature — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280', green: '#10B981', purple: '#8B5CF6' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <span class="text-party-accent">Legislature</span>
+                <a href="/" class="text-gray-400 hover:text-party-accent transition">← Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Intro -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-3">The Legislature</h1>
+            <p class="text-gray-400">
+                All active proposals, ranked-choice elections, and passed laws.
+                <br><span class="text-gray-500 text-sm">Everything is transparent. Everything is voted on.</span>
+            </p>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-party-accent" id="activeCount">—</div>
+                <div class="text-gray-500 text-sm">Active Proposals</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-party-purple" id="rankedCount">—</div>
+                <div class="text-gray-500 text-sm">Ranked Elections</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-party-green" id="passedCount">—</div>
+                <div class="text-gray-500 text-sm">Passed Laws</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-party-accent" id="votesCount">—</div>
+                <div class="text-gray-500 text-sm">Total Votes</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-700 mb-6">
+            <button onclick="showTab('active')" id="tab-active" class="px-6 py-3 text-party-accent border-b-2 border-party-accent font-bold">
+                Active Proposals
+            </button>
+            <button onclick="showTab('ranked')" id="tab-ranked" class="px-6 py-3 text-gray-400 hover:text-white transition">
+                Ranked Elections
+            </button>
+            <button onclick="showTab('passed')" id="tab-passed" class="px-6 py-3 text-gray-400 hover:text-white transition">
+                Passed Laws
+            </button>
+        </div>
+
+        <!-- Active Proposals Tab -->
+        <div id="tab-active-content" class="space-y-4">
+            <div id="activeList">
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ranked Elections Tab -->
+        <div id="tab-ranked-content" class="hidden space-y-4">
+            <div id="rankedList">
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Passed Laws Tab -->
+        <div id="tab-passed-content" class="hidden">
+            <div id="passedList" class="text-center py-12 text-gray-500">
+                <div class="text-6xl mb-4">📜</div>
+                <p>No laws have been passed yet.</p>
+                <p class="text-gray-600 text-sm mt-2">This happens when we come to power.</p>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-800">
+            <p class="text-gray-400 mb-4">Want to participate?</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="/proposals" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                    Vote Now
+                </a>
+                <a href="/policies" class="border border-party-accent text-party-accent px-6 py-3 rounded-lg font-bold hover:bg-party-accent/10 transition">
+                    How It Works
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentTab = 'active';
+        
+        // Tab switching
+        function showTab(tab) {
+            currentTab = tab;
+            
+            // Update tab styles
+            ['active', 'ranked', 'passed'].forEach(t => {
+                const btn = document.getElementById('tab-' + t);
+                const content = document.getElementById('tab-' + t + '-content');
+                if (t === tab) {
+                    btn.className = 'px-6 py-3 text-party-accent border-b-2 border-party-accent font-bold';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-6 py-3 text-gray-400 hover:text-white transition';
+                    content.classList.add('hidden');
+                }
+            });
+            
+            if (tab === 'active') loadActiveProposals();
+            if (tab === 'ranked') loadRankedProposals();
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/legislation-stats');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('activeCount').textContent = data.activeProposals;
+                    document.getElementById('rankedCount').textContent = data.rankedProposals;
+                    document.getElementById('passedCount').textContent = data.passedLaws;
+                    document.getElementById('votesCount').textContent = data.totalVotes;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // Load active proposals
+        async function loadActiveProposals() {
+            try {
+                const response = await fetch('/api/proposals');
+                const data = await response.json();
+                const container = document.getElementById('activeList');
+                
+                if (!data.proposals || data.proposals.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500">No active proposals</div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                data.proposals.forEach(p => {
+                    const total = p.yes_votes + p.no_votes + p.abstain_votes;
+                    const yesPct = total > 0 ? Math.round((p.yes_votes / total) * 100) : 0;
+                    
+                    const el = document.createElement('div');
+                    el.className = 'bg-party-card rounded-xl p-5 border border-gray-700';
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-xs text-gray-500 uppercase">${p.category}</span>
+                                <h3 class="text-lg font-bold text-white mt-1">${escapeHtml(p.title)}</h3>
+                            </div>
+                            <span class="text-xl font-bold ${yesPct >= 50 ? 'text-party-green' : 'text-gray-500'}">${yesPct}%</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-3 line-clamp-2">${escapeHtml(p.description)}</p>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-500">${total} votes</span>
+                            <a href="/proposals" class="text-party-accent hover:underline">Vote →</a>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // Load ranked proposals
+        async function loadRankedProposals() {
+            try {
+                const response = await fetch('/api/ranked-proposals');
+                const data = await response.json();
+                const container = document.getElementById('rankedList');
+                
+                if (!data.proposals || data.proposals.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500">No ranked elections</div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                data.proposals.forEach(p => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-party-card rounded-xl p-5 border border-party-purple/30';
+                    
+                    let optionsHtml = p.options.map(opt => `
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-white">${escapeHtml(opt)}</span>
+                            ${p.results && p.results.winner === opt ? '<span class="text-party-green font-bold">★ Winner</span>' : ''}
+                        </div>
+                    `).join('');
+                    
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-xs text-party-purple uppercase">🏆 Ranked Election</span>
+                                <h3 class="text-lg font-bold text-white mt-1">${escapeHtml(p.title)}</h3>
+                            </div>
+                            <span class="text-gray-500 text-sm">${p.results?.totalVotes || 0} votes</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-4">${escapeHtml(p.description)}</p>
+                        <div class="bg-party-dark rounded-lg p-4 mb-3">
+                            <p class="text-gray-500 text-xs mb-2">OPTIONS</p>
+                            ${optionsHtml}
+                        </div>
+                        <div class="text-center">
+                            <a href="/proposals" class="text-party-accent hover:underline">Vote →</a>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // Helpers
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Init
+        loadStats();
+        loadActiveProposals();
+    </script>
+</body>
+</html>

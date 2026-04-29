@@ -1,0 +1,14 @@
+{
+  "name": "3d-party-website",
+  "version": "2.0.0",
+  "description": "3d Party - The Actual Third Political Option Maldives Never Had",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "express": "^4.18.2"
+  }
+}

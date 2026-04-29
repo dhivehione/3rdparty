@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Wall — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <span class="text-gray-500">The Wall</span>
+                <a href="/" class="text-gray-400 hover:text-party-accent transition">← Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Public Stats Bar -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <div class="flex flex-wrap justify-center gap-8 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-party-accent" id="memberCount">—</div>
+                    <div class="text-gray-500 text-sm">Members</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-party-accent" id="wallCount">—</div>
+                    <div class="text-gray-500 text-sm">Wall Posts</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-400" id="treasuryCount">—</div>
+                    <div class="text-gray-500 text-sm">Treasury (MVR)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Intro -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-3">The Wall</h1>
+            <p class="text-gray-400">
+                Anyone can post. No signup required. Just a nickname and your message.
+            </p>
+        </div>
+
+        <!-- Post Form -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <form id="postForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Your Nickname</label>
+                    <input type="text" id="nickname" required 
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                           placeholder="Pick any name" maxlength="50">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Your Message</label>
+                    <textarea id="message" required rows="3"
+                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                              placeholder="Say something. Support the movement. Share an idea. Or just say hi."
+                              maxlength="500"></textarea>
+                    <p class="text-gray-600 text-xs mt-1 text-right"><span id="charCount">0</span>/500</p>
+                </div>
+                <button type="submit" 
+                        class="w-full bg-party-accent text-party-dark py-3 rounded-lg font-bold hover:scale-[1.02] transform transition">
+                    Post to the Wall
+                </button>
+            </form>
+            <p id="postError" class="text-red-400 text-sm mt-4 text-center hidden"></p>
+            <p id="postSuccess" class="text-green-400 text-sm mt-4 text-center hidden"></p>
+        </div>
+
+        <!-- Posts -->
+        <div class="space-y-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Recent Posts</h2>
+                <button onclick="loadPosts()" class="text-gray-500 hover:text-party-accent text-sm">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh
+                </button>
+            </div>
+            <div id="postsContainer" class="space-y-4">
+                <!-- Posts loaded here -->
+            </div>
+            <div id="noPosts" class="text-center py-12 text-gray-500 hidden">
+                <div class="text-4xl mb-4">💬</div>
+                <p>No posts yet. Be the first!</p>
+            </div>
+            <div id="loadingPosts" class="text-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i> Loading posts...
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-800">
+            <p class="text-gray-400 mb-4">Want to do more?</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="/join" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                    Join the Party
+                </a>
+                <a href="/how" class="border border-party-accent text-party-accent px-6 py-3 rounded-lg font-bold hover:bg-party-accent/10 transition">
+                    Learn More
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/wall-stats');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('memberCount').textContent = data.members;
+                    document.getElementById('wallCount').textContent = data.wallPosts;
+                    document.getElementById('treasuryCount').textContent = data.treasury.toLocaleString();
+                }
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        // Load posts
+        async function loadPosts() {
+            document.getElementById('loadingPosts').classList.remove('hidden');
+            document.getElementById('postsContainer').innerHTML = '';
+            document.getElementById('noPosts').classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/wall');
+                const data = await response.json();
+                
+                document.getElementById('loadingPosts').classList.add('hidden');
+                
+                if (data.posts && data.posts.length > 0) {
+                    data.posts.forEach(post => {
+                        const postEl = document.createElement('div');
+                        postEl.className = 'bg-party-card rounded-xl p-5 border border-gray-700';
+                        postEl.innerHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="font-bold text-party-accent">${escapeHtml(post.nickname)}</span>
+                                <span class="text-gray-600 text-sm">${formatTime(post.timestamp)}</span>
+                            </div>
+                            <p class="text-gray-300">${escapeHtml(post.message)}</p>
+                        `;
+                        document.getElementById('postsContainer').appendChild(postEl);
+                    });
+                } else {
+                    document.getElementById('noPosts').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('loadingPosts').classList.add('hidden');
+                document.getElementById('noPosts').classList.remove('hidden');
+            }
+        }
+
+        // Post a message
+        document.getElementById('postForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nickname = document.getElementById('nickname').value.trim();
+            const message = document.getElementById('message').value.trim();
+            
+            document.getElementById('postError').classList.add('hidden');
+            document.getElementById('postSuccess').classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/wall', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, message })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('postSuccess').textContent = result.message;
+                    document.getElementById('postSuccess').classList.remove('hidden');
+                    document.getElementById('nickname').value = '';
+                    document.getElementById('message').value = '';
+                    document.getElementById('charCount').textContent = '0';
+                    loadPosts();
+                    loadStats();
+                } else {
+                    document.getElementById('postError').textContent = result.error;
+                    document.getElementById('postError').classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('postError').textContent = 'Connection error. Try again.';
+                document.getElementById('postError').classList.remove('hidden');
+            }
+        });
+
+        // Character count
+        document.getElementById('message').addEventListener('input', function() {
+            document.getElementById('charCount').textContent = this.value.length;
+        });
+
+        // Helpers
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+            
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        // Init
+        loadStats();
+        loadPosts();
+    </script>
+</body>
+</html>

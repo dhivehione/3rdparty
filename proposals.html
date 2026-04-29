@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposals — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280', green: '#10B981', red: '#EF4444', purple: '#8B5CF6' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <a href="/legislature" class="text-gray-400 hover:text-party-accent transition">Legislature</a>
+                <span class="text-party-accent">Proposals</span>
+                <a href="/" class="text-gray-400 hover:text-party-accent transition">← Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Intro -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-3">Proposals & Voting</h1>
+            <p class="text-gray-400">
+                See what policies we're voting on. Make your voice heard.
+                <br><span class="text-gray-500 text-sm">(Demo: Anyone can propose and vote — no signup needed)</span>
+            </p>
+        </div>
+
+        <!-- Tabs for proposal types -->
+        <div class="flex border-b border-gray-700 mb-6">
+            <button onclick="showTab('binary')" id="tab-binary" class="px-6 py-3 text-party-accent border-b-2 border-party-accent font-bold">
+                Yes/No Proposals
+            </button>
+            <button onclick="showTab('ranked')" id="tab-ranked" class="px-6 py-3 text-gray-400 hover:text-white transition">
+                Ranked Choice
+            </button>
+        </div>
+
+        <!-- Binary Yes/No Section -->
+        <div id="binary-section">
+            <button onclick="toggleCreateBinary()" id="createBinaryBtn" 
+                    class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition mb-6">
+                <i class="fas fa-plus mr-2"></i>Create Yes/No Proposal
+            </button>
+
+            <!-- Binary Create Form -->
+            <div id="binaryForm" class="hidden bg-party-card rounded-xl p-6 mb-8 border border-party-accent/30">
+                <h2 class="text-xl font-bold mb-4">Create a Yes/No Proposal</h2>
+                <form id="binaryProposalForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Your Nickname (optional)</label>
+                        <input type="text" id="binaryNickname" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                               placeholder="How should we credit you?">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Proposal Title *</label>
+                        <input type="text" id="binaryTitle" required 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                               placeholder="e.g., 'Implement Digital ID for All Citizens'"
+                               maxlength="200">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Description *</label>
+                        <textarea id="binaryDesc" required rows="4"
+                                  class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                                  placeholder="Explain your proposal in detail. Why is it needed?"
+                                  maxlength="2000"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                            Submit Proposal
+                        </button>
+                        <button type="button" onclick="toggleCreateBinary()" class="text-gray-400 px-6 py-3 hover:text-white transition">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+                <p id="binaryError" class="text-red-400 text-sm mt-4 hidden"></p>
+                <p id="binarySuccess" class="text-green-400 text-sm mt-4 hidden"></p>
+            </div>
+
+            <!-- Binary Proposals List -->
+            <div id="binaryList" class="space-y-4">
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Loading proposals...</p>
+                </div>
+            </div>
+            <div id="noBinary" class="hidden text-center py-12">
+                <div class="text-6xl mb-4">📋</div>
+                <h3 class="text-xl font-bold text-gray-400 mb-2">No Active Proposals</h3>
+                <button onclick="toggleCreateBinary()" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                    Create One
+                </button>
+            </div>
+        </div>
+
+        <!-- Ranked Choice Section -->
+        <div id="ranked-section" class="hidden">
+            <button onclick="toggleCreateRanked()" id="createRankedBtn" 
+                    class="bg-party-purple text-white px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition mb-6">
+                <i class="fas fa-plus mr-2"></i>Create Ranked Choice Election
+            </button>
+
+            <!-- Ranked Create Form -->
+            <div id="rankedForm" class="hidden bg-party-card rounded-xl p-6 mb-8 border border-party-purple/30">
+                <h2 class="text-xl font-bold mb-4">Create a Ranked Choice Election</h2>
+                <form id="rankedProposalForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Your Nickname (optional)</label>
+                        <input type="text" id="rankedNickname" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-purple"
+                               placeholder="How should we credit you?">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Question/Title *</label>
+                        <input type="text" id="rankedTitle" required 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-purple"
+                               placeholder="e.g., 'Who should be our first candidate?'"
+                               maxlength="200">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Description *</label>
+                        <textarea id="rankedDesc" required rows="3"
+                                  class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-purple"
+                                  placeholder="Explain the election context"
+                                  maxlength="2000"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Options (one per line, at least 2) *</label>
+                        <textarea id="rankedOptions" required rows="4"
+                                  class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-purple"
+                                  placeholder="Option A&#10;Option B&#10;Option C"
+                                  maxlength="500"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="bg-party-purple text-white px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                            Create Election
+                        </button>
+                        <button type="button" onclick="toggleCreateRanked()" class="text-gray-400 px-6 py-3 hover:text-white transition">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+                <p id="rankedError" class="text-red-400 text-sm mt-4 hidden"></p>
+                <p id="rankedSuccess" class="text-green-400 text-sm mt-4 hidden"></p>
+            </div>
+
+            <!-- Ranked Proposals List -->
+            <div id="rankedList" class="space-y-4">
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Loading elections...</p>
+                </div>
+            </div>
+            <div id="noRanked" class="hidden text-center py-12">
+                <div class="text-6xl mb-4">🏆</div>
+                <h3 class="text-xl font-bold text-gray-400 mb-2">No Active Elections</h3>
+                <button onclick="toggleCreateRanked()" class="bg-party-purple text-white px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                    Create One
+                </button>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-800">
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="/legislature" class="border border-party-accent text-party-accent px-6 py-3 rounded-lg font-bold hover:bg-party-accent/10 transition">
+                    View Legislature
+                </a>
+                <a href="/policies" class="text-gray-400 hover:text-party-accent transition">
+                    How Voting Works →
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tab) {
+            const binaryTab = document.getElementById('tab-binary');
+            const rankedTab = document.getElementById('tab-ranked');
+            const binarySection = document.getElementById('binary-section');
+            const rankedSection = document.getElementById('ranked-section');
+            
+            if (tab === 'binary') {
+                binaryTab.className = 'px-6 py-3 text-party-accent border-b-2 border-party-accent font-bold';
+                rankedTab.className = 'px-6 py-3 text-gray-400 hover:text-white transition';
+                binarySection.classList.remove('hidden');
+                rankedSection.classList.add('hidden');
+            } else {
+                binaryTab.className = 'px-6 py-3 text-gray-400 hover:text-white transition';
+                rankedTab.className = 'px-6 py-3 text-party-purple border-b-2 border-party-purple font-bold';
+                binarySection.classList.add('hidden');
+                rankedSection.classList.remove('hidden');
+            }
+        }
+
+        // Toggle forms
+        function toggleCreateBinary() {
+            document.getElementById('binaryForm').classList.toggle('hidden');
+            document.getElementById('createBinaryBtn').classList.toggle('hidden');
+        }
+
+        function toggleCreateRanked() {
+            document.getElementById('rankedForm').classList.toggle('hidden');
+            document.getElementById('createRankedBtn').classList.toggle('hidden');
+        }
+
+        // Load binary proposals
+        async function loadBinaryProposals() {
+            try {
+                const response = await fetch('/api/proposals');
+                const data = await response.json();
+                const container = document.getElementById('binaryList');
+                const noData = document.getElementById('noBinary');
+                
+                if (!data.proposals || data.proposals.length === 0) {
+                    container.innerHTML = '';
+                    noData.classList.remove('hidden');
+                    return;
+                }
+                
+                noData.classList.add('hidden');
+                container.innerHTML = '';
+                
+                data.proposals.forEach(p => {
+                    const total = p.yes_votes + p.no_votes + p.abstain_votes;
+                    const yesPct = total > 0 ? Math.round((p.yes_votes / total) * 100) : 0;
+                    
+                    const el = document.createElement('div');
+                    el.className = 'bg-party-card rounded-xl p-6 border border-gray-700';
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="text-xs text-gray-500 uppercase tracking-wide">${p.category}</span>
+                                <h3 class="text-xl font-bold text-white mt-1">${escapeHtml(p.title)}</h3>
+                                <p class="text-gray-500 text-sm mt-1">by ${escapeHtml(p.created_by_nickname || 'Anonymous')} • ${formatDate(p.created_at)}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-2xl font-bold ${yesPct >= 50 ? 'text-party-green' : 'text-gray-500'}">${yesPct}%</span>
+                                <span class="text-gray-500 text-sm block">passing</span>
+                            </div>
+                        </div>
+                        <p class="text-gray-300 mb-6">${escapeHtml(p.description)}</p>
+                        <div class="bg-party-dark rounded-lg p-4 mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-party-green">✓ Yes: ${p.yes_votes}</span>
+                                <span class="text-party-red">✗ No: ${p.no_votes}</span>
+                                <span class="text-gray-500">⊘ Abstain: ${p.abstain_votes}</span>
+                            </div>
+                            <div class="h-2 bg-gray-700 rounded-full overflow-hidden flex">
+                                <div class="bg-party-green" style="width: ${yesPct}%"></div>
+                                <div class="bg-party-red" style="width: ${total > 0 ? Math.round((p.no_votes / total) * 100) : 0}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="vote(${p.id}, 'yes')" class="flex-1 py-3 px-4 rounded-lg font-bold transition ${p.userVote === 'yes' ? 'bg-party-green text-party-dark' : 'bg-party-green/20 text-party-green hover:bg-party-green/30'}">
+                                ✓ Yes
+                            </button>
+                            <button onclick="vote(${p.id}, 'no')" class="flex-1 py-3 px-4 rounded-lg font-bold transition ${p.userVote === 'no' ? 'bg-party-red text-white' : 'bg-party-red/20 text-party-red hover:bg-party-red/30'}">
+                                ✗ No
+                            </button>
+                            <button onclick="vote(${p.id}, 'abstain')" class="flex-1 py-3 px-4 rounded-lg font-bold transition ${p.userVote === 'abstain' ? 'bg-gray-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}">
+                                ⊘ Abstain
+                            </button>
+                        </div>
+                        <p class="text-gray-600 text-xs mt-3">${p.userVote ? 'You voted: ' + p.userVote.toUpperCase() : 'Click to cast your vote'}</p>
+                    `;
+                    container.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // Load ranked proposals
+        async function loadRankedProposals() {
+            try {
+                const response = await fetch('/api/ranked-proposals');
+                const data = await response.json();
+                const container = document.getElementById('rankedList');
+                const noData = document.getElementById('noRanked');
+                
+                if (!data.proposals || data.proposals.length === 0) {
+                    container.innerHTML = '';
+                    noData.classList.remove('hidden');
+                    return;
+                }
+                
+                noData.classList.add('hidden');
+                container.innerHTML = '';
+                
+                data.proposals.forEach(p => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-party-card rounded-xl p-6 border border-party-purple/30';
+                    
+                    // Render options with drag-drop for ranking
+                    let optionsHtml = p.options.map((opt, idx) => `
+                        <div class="flex items-center justify-between py-2 px-3 bg-party-dark rounded mb-2">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-gray-500 w-6">${p.userRanking ? p.userRanking.indexOf(opt) + 1 : '-'}</span>
+                                <span class="text-white">${escapeHtml(opt)}</span>
+                            </div>
+                            ${p.results && p.results.winner === opt ? '<span class="text-party-green text-sm">★ Winner</span>' : ''}
+                        </div>
+                    `).join('');
+                    
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="text-xs text-party-purple uppercase tracking-wide">🏆 Ranked Choice</span>
+                                <h3 class="text-xl font-bold text-white mt-1">${escapeHtml(p.title)}</h3>
+                                <p class="text-gray-500 text-sm mt-1">by ${escapeHtml(p.created_by_nickname || 'Anonymous')} • ${formatDate(p.created_at)}</p>
+                            </div>
+                            <span class="text-gray-500 text-sm">${p.results?.totalVotes || 0} votes</span>
+                        </div>
+                        <p class="text-gray-300 mb-4">${escapeHtml(p.description)}</p>
+                        
+                        <div class="bg-party-dark rounded-lg p-4 mb-4">
+                            <p class="text-gray-500 text-xs mb-3">YOUR RANKING (drag to reorder)</p>
+                            <div id="ranking-${p.id}" class="space-y-2">
+                                ${p.options.map((opt, idx) => `
+                                    <div class="flex items-center space-x-2">
+                                        <select onchange="updateRanking(${p.id}, ${idx}, this.value)" 
+                                                class="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm w-12">
+                                            ${p.options.map((_, oi) => `<option value="${oi+1}" ${p.userRanking && p.userRanking[idx] === opt ? 'selected' : ''}>${oi+1}</option>`).join('')}
+                                        </select>
+                                        <span class="text-white">${escapeHtml(opt)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button onclick="submitRanking(${p.id})" class="mt-4 w-full bg-party-purple text-white py-2 rounded-lg font-bold hover:bg-party-purple/80 transition">
+                                Submit Ranking
+                            </button>
+                        </div>
+                        
+                        ${p.results && p.results.winner ? `
+                            <div class="bg-party-green/10 border border-party-green/30 rounded-lg p-4 text-center">
+                                <span class="text-party-green font-bold">🏆 Winner: ${escapeHtml(p.results.winner)}</span>
+                            </div>
+                        ` : ''}
+                    `;
+                    container.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // Update ranking in memory
+        function updateRanking(proposalId, optionIndex, newRank) {
+            // This is a simplified version - in a real app you'd use drag-drop
+            console.log('Update ranking:', proposalId, optionIndex, newRank);
+        }
+
+        // Submit ranking
+        async function submitRanking(proposalId) {
+            const selectEls = document.querySelectorAll(`#ranking-${proposalId} select`);
+            const ranking = [];
+            const used = new Set();
+            
+            selectEls.forEach(sel => {
+                const optIdx = Array.from(sel.closest('.flex')).indexOf(sel.parentElement);
+                const rank = parseInt(sel.value);
+                // Get the corresponding option text
+                const allOptions = Array.from(document.querySelectorAll(`#ranking-${proposalId} .flex span:last-child`));
+                const optionText = allOptions[optIdx].textContent;
+                ranking[rank - 1] = optionText;
+            });
+            
+            // Fill any empty spots
+            const fullOptions = JSON.parse(document.querySelector(`[id^="ranking-${proposalId}"]`).closest('.bg-party-dark').dataset?.options || '[]');
+            
+            try {
+                const response = await fetch('/api/ranked-vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ proposal_id: proposalId, ranking })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadRankedProposals();
+                } else {
+                    alert(data.error || 'Error submitting vote');
+                }
+            } catch (e) {
+                alert('Error. Please try again.');
+            }
+        }
+
+        // Binary vote
+        async function vote(proposalId, choice) {
+            try {
+                const response = await fetch('/api/vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ proposal_id: proposalId, choice })
+                });
+                const data = await response.json();
+                if (data.success) loadBinaryProposals();
+                else alert(data.error || 'Could not record vote');
+            } catch (e) { alert('Error. Please try again.'); }
+        }
+
+        // Binary create
+        document.getElementById('binaryProposalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nickname = document.getElementById('binaryNickname').value.trim();
+            const title = document.getElementById('binaryTitle').value.trim();
+            const description = document.getElementById('binaryDesc').value.trim();
+            
+            try {
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, title, description })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('binarySuccess').textContent = data.message;
+                    document.getElementById('binarySuccess').classList.remove('hidden');
+                    setTimeout(() => { toggleCreateBinary(); loadBinaryProposals(); }, 1500);
+                } else {
+                    document.getElementById('binaryError').textContent = data.error;
+                    document.getElementById('binaryError').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('binaryError').textContent = 'Error. Please try again.';
+                document.getElementById('binaryError').classList.remove('hidden');
+            }
+        });
+
+        // Ranked create
+        document.getElementById('rankedProposalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nickname = document.getElementById('rankedNickname').value.trim();
+            const title = document.getElementById('rankedTitle').value.trim();
+            const description = document.getElementById('rankedDesc').value.trim();
+            const optionsText = document.getElementById('rankedOptions').value;
+            const options = optionsText.split('\n').map(o => o.trim()).filter(o => o);
+            
+            if (options.length < 2) {
+                document.getElementById('rankedError').textContent = 'At least 2 options required';
+                document.getElementById('rankedError').classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ranked-proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, title, description, options })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('rankedSuccess').textContent = data.message;
+                    document.getElementById('rankedSuccess').classList.remove('hidden');
+                    setTimeout(() => { toggleCreateRanked(); loadRankedProposals(); }, 1500);
+                } else {
+                    document.getElementById('rankedError').textContent = data.error;
+                    document.getElementById('rankedError').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('rankedError').textContent = 'Error. Please try again.';
+                document.getElementById('rankedError').classList.remove('hidden');
+            }
+        });
+
+        // Helpers
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(timestamp) {
+            return new Date(timestamp).toLocaleDateString();
+        }
+
+        // Init
+        loadBinaryProposals();
+    </script>
+</body>
+</html>

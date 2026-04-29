@@ -1,0 +1,855 @@
+Dhivehi Youth Movement: A Blueprint for Next-Generation Digital
+Democracy (V13 Final)
+Executive Summary
+The Dhivehi Youth Movement redefines governance for the digital age by merging direct
+democracy with advanced incentive design, dynamic governance, and robust safeguards
+against division. This updated whitepaper integrates innovative mechanisms—such as
+bridge-building incentives, schism penalties, and a multi-faceted Merit Score—to create a
+resilient, self-sustaining system where community unity and effective decision-making are
+prioritized. The system values diverse contributions, from intellectual capital to resource support,
+all under a model of diminishing returns to ensure power remains with the people.
+Acknowledging political realities and technical challenges, the movement will adopt a phased
+rollout, starting with core democratic functions and progressively layering in advanced features
+to ensure stability, inclusivity, and long-term success.
+Here is the next section.
+I. Vision: A Digital Republic for the Maldives
+Imagine a political system where:
+●​
+●​
+●​
+●​
+Every citizen directly shapes laws via a secure, transparent platform.
+Leaders are facilitators, not rulers, selected through rigorous merit-based processes.
+Division is disincentivized, and compromise is rewarded.
+Governance adapts in real-time to societal needs, backed by a "Living Constitution."
+This is the Dhivehi Youth Movement 2.0: a hybrid of technology, civic innovation, and
+community-driven power.
+Here is the next section, covering the first part of the Core Principles.
+II. Core Principles (Version 2.0)
+A. Empowered Participation●​ Universal & Inclusive Access: Every verified citizen has the absolute right to vote,
+propose policies, and participate in governance. The system is designed to be
+accessible through both digital and offline channels, including SMS-based voting and
+local Community Hubs, to bridge the digital divide.
+●​ Dynamic Engagement: Influence grows through active, constructive contributions, not
+status or wealth.
+B. Policy Proposals and Public Referendum: The Engine of Governance
+The Dhivehi Youth Movement 2.0 empowers every verified citizen to be an active architect of
+their nation's future through a direct policy proposal and public referendum system. This
+mechanism is the primary engine for driving legislative change and shaping the direction of
+governance.
+The journey from a citizen's idea to national policy is the lifeblood of this movement. It begins
+with a single member identifying a problem or an opportunity and drafting a solution. This
+section outlines the transparent, rigorous, and fair pathway a proposal takes—from submission
+and debate to becoming the enacted will of the people.
+●​ The Power of Citizen-Led Proposals: Any verified member can initiate change by
+creating and submitting policy proposals. These proposals can address a wide range of
+issues, including:
+○​ Introducing New Policies: To meet evolving societal needs or establish new rights
+and responsibilities.
+○​ Amending Existing Legislation: To modernize laws, rectify inefficiencies, or adapt
+to contemporary challenges.
+○​ Repealing Outdated Laws: To remove ineffective or unjust regulations that
+impede progress.
+●​ Journey from Proposal to Mandate:
+○​ Submission, Queuing, and Staking: To ensure quality and prevent low-effort
+spam, the platform uses two core mechanisms. First, a member must "stake" a
+small, dynamic portion of their Merit Score to submit a policy, creating
+accountability (detailed in Section II.C). Second, an 8-hour universal cooldown
+period applies after a proposal is processed. This ensures a steady, manageable
+flow of new policies. To keep members motivated, a user can continue to write
+and submit new proposals during their cooldown period; these proposals are
+simply held in a personal queue and are processed automatically in sequence as
+each 8-hour cooldown expires.
+○​ Public Referendum: Once criteria are met, proposals proceed to a public
+referendum, utilizing contextual voting mechanisms (Section III.B) and tiered
+approval thresholds (Section II.D) appropriate to the proposal's impact.
+○​ Navigating Legal Realities and the Public Mandate:
+■​ The Legal Disclaimer: We acknowledge that, at present, the laws and
+regulations of the Maldives are binding on all citizens. This platform
+operates within current legal frameworks.■​ The Power of Public Mandate: When the movement attains significant
+public mandate and political influence, proposals that have successfully
+passed through the platform's rigorous public referendum process will
+constitute the direct will of the people.
+■​ Enactment by the People's Will: Upon the movement achieving
+governmental power, these publicly mandated policies will be enacted,
+superseding or amending existing legislation according to the outcomes
+of the referendums, integrated through the "Living Legal Code" (Section
+III.D). The platform can exist and function as an advocacy and public-will
+barometer even without formal legal status.
+Here is the next section. This is the highly detailed breakdown of the Merit Score, now properly
+formatted for readability.
+C. Merit-Based Influence
+●​ Foundational Equality: While influence is variable, the right to participate is universal.
+●​ A Merit Score System transparently rewards actions that strengthen the community.
+The formula is open-source and can only be modified by a constitutional vote.
+The specific values below are not merely theoretical; they are the final, recommended
+parameters derived from a rigorous process of agent-based simulation designed to stress-test
+the system against adversarial behavior and ensure fairness.
+●​ The score is calculated from:
+○​ Impactful Participation: Score is weighted based on the outcome of
+participation. Voting on a successful proposal yields more points than on a failed
+one.
+○​ Successful Proposals: Authoring or co-authoring policies that are successfully
+passed by the community.
+○​ Bridge-Building: A significant, fixed-point "Compromise Bonus" is awarded for
+successfully amending a divisive proposal so that it achieves consensus and
+passes.
+○​ Community Trust (Peer Endorsements): Endorsements from fellow members
+you have interacted with. This system has diminishing returns to prevent
+"endorsement-ring" manipulation.
+○​ Resource Contribution: Contributing funds or assets to the movement. This has
+steeply diminishing returns, ensuring wealth cannot buy disproportionate
+influence.○​ Network Growth (Recruitment): Earning points for inviting new, verified
+members. A larger bonus is awarded when those new members become active
+participants, creating an incentive for both reach and quality onboarding.
+○​ Skill-Based Contributions (Bounty System): To engage members with diverse
+talents, the platform will feature a "Bounty Board." Tasks such as legal research,
+data analysis, graphic design, or translation can be posted with a fixed Merit
+Score reward, creating pathways for non-policy experts to build influence.
+○​ Dynamic Decay & Loyalty: To ensure influence reflects current and relevant
+engagement, all Merit Score points are subject to a Decay Factor, meaning older
+contributions gradually lose weight over time. This system is moderated by a
+Loyalty Coefficient, a permanent benefit tied to a member's join date. This model
+guarantees that sustained activity is always the primary driver of influence,
+allowing highly active new members to easily surpass inactive early adopters.
+○​ Future-Proofing & Fairness Mechanisms: To ensure long-term fairness and
+prevent stagnation, the community may, through a future constitutional vote,
+consider introducing adaptive mechanisms. These could include periodic
+recalibration of parameters based on system-wide engagement data or founder
+sunset clauses where the initial Loyalty Coefficient gradually normalizes over
+several years. Such changes would only be possible through the platform's
+highest-tier voting process, preserving the stability of the initial system.
+This section provides the concrete mathematical model for the Merit Score (MS). These
+parameters are designed to be transparent, auditable, and implemented by the platform's
+"Parametric Governance Engine." The specific values serve as a robust baseline, which can be
+modified in the future only through a constitutional vote by the membership.
+The Master Formula​
+The Merit Score is a dynamic value calculated as the sum of all contribution points, with each
+point's value subject to a time-based decay moderated by a member's Loyalty Coefficient.
+MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
+●​
+●​
+●​
+●​
+Point_event_i: The initial point value for a specific action i.
+λ_base: The base decay constant, set to achieve a half-life of 18 months.
+Lc: The member's Loyalty Coefficient.
+t_i: The time in days since the action i occurred.
+Below is the specific breakdown of how each Point_event is determined.
+1.​ Impactful Participation (Voting):
+a.​ Voting on a proposal that fails: 1.0 point
+b.​ Voting on a proposal that succeeds: 2.5 points
+2.​ Successful Proposals (Authoring):a.​ 200 points / number of co-authors
+3.​ Bridge-Building (Compromise Bonus):
+a.​ 400 points. This is a fixed, high-value bonus awarded to a user who successfully
+amends a failing proposal, causing it to pass.
+4.​ Community Trust (Peer Endorsements):
+a.​ Endorsements 1–10: 2.0 points each
+b.​ Endorsements 11–50: 1.0 point each
+c.​ Endorsements 51–200: 0.5 points each
+d.​ Endorsements 201+: 0.1 points each
+e.​ Constraint: Max of 20 unique endorsements per 30-day period.
+5.​ Resource Contribution:
+a.​ 35 * log5(Donation_Value_USD + 1)
+6.​ Skill-Based Contributions (Bounty System):
+a.​ Tier 1 (Simple Task): 20 points
+b.​ Tier 2 (Involved Task): 75 points
+c.​ Tier 3 (Expert Task): 250 points
+7.​ Network Growth (Recruitment)
+a.​ Purpose: To reward members for contributing to the growth of the movement,
+with a strong emphasis on recruiting active, engaged participants over passive
+signups.
+b.​ Two-Tiered Reward Mechanism: The system separates the reward into two
+parts: an initial reward for a successful signup, and a larger bonus when the new
+member demonstrates engagement.
+■​ Base Reward (Successful Verification): A small, immediate point
+reward is given to the inviter as soon as the new member successfully
+verifies their account (National ID + SMS).
+■​ Engagement Bonus (First Action): A significantly larger point bonus is
+awarded to the inviter only after the new member completes their first
+Merit Score-generating action (e.g., casting their first vote).
+c.​ Points (with diminishing returns on the total potential reward):
+■​ For successful invites 1–5:
+■​ Base Reward: 2 points
+■​ Engagement Bonus: 8 points
+■​ (Total potential: 10 points per invite)
+■​ For successful invites 6–20:
+■​ Base Reward: 1 point
+■​ Engagement Bonus: 4 points
+■​ (Total potential: 5 points per invite)
+■​ For successful invites 21 and over:
+■​ Base Reward: 0.5 points
+■​ Engagement Bonus: 0.5 points
+■​ (Total potential: 1 point per invite)
+d.​ Rationale: This model effectively incentivizes both expanding the movement's
+reach and ensuring its health. It rewards members for the initial effort of bringingsomeone to the platform, but reserves the largest reward for those who take the
+extra step to onboard their friends properly and encourage them to become
+contributing members of the community.
+8.​ Governance Participation (Role-Based Rewards):
+○​ Purpose: To formally reward the sustained effort and responsibility required to
+run the movement. This functions as a Merit Score "stipend" for holding an
+official, elected, or appointed role.
+○​ Mechanism: Points are awarded on a recurring basis (e.g., monthly) but are
+strictly conditional upon meeting pre-defined activity requirements for that role,
+which are tracked by the Parametric Governance Engine. This ensures that
+rewards are for active work, not just holding a title.
+○​ Governing Council (Shadow Minister):
+■​ Reward: 150 points per month.
+■​ Condition: Must attend >80% of scheduled council meetings and vote on
+>90% of council-level decisions in that period.
+○​ Standing Committee Member (e.g., Integrity Committee, Verification
+Subcommittee):
+■​ Reward: 75 points per month.
+■​ Condition: Must meet the specific activity quorum for that committee (e.g.,
+reviewing a minimum number of cases, attending meetings).
+○​ Advisory Expert Panelist:
+■​ Reward: 50 points per completed "Feasibility Report."
+■​ Condition: The report must be submitted on time and meet the quality
+standards set by the Governing Council.
+○​ Performance Bonuses: The Governing Council will have a discretionary pool of
+1,000 points per quarter that it can award, via a public "Decision Statement," to
+committees or individuals who have demonstrated exceptional performance or
+successfully managed a crisis.
+9.​ Dynamic Decay & Loyalty:
+a.​ Decay Factor: Base half-life of 18 months.
+b.​ Loyalty Coefficient (Lc):
+■​ Founding Members: Lc = 1.5 (Effective half-life of 27 months)
+■​ Early Adopters: Lc = 1.2 (Effective half-life of 21.6 months)
+■​ Standard Members: Lc = 1.0 (Effective half-life of 18 months)
+10.​The Cost of Frivolity & Risk of Intervention (Stakes & Penalties): This system is
+designed to discourage spam while rewarding high-stakes, unifying actions.
+a.​ Proposal Stake Amount: max(10, Current_Merit_Score * 0.005)
+b.​ Reputation Penalty Trigger: A proposal failing with less than 10% support is
+deemed frivolous and incurs a penalty.
+c.​ Penalty Formula: If triggered, the penalty is Base_Stake * Quality_Ratio, where
+the Quality_Ratio = (1 + Total_Failed_Proposals) / (1 +
+Total_Successful_Proposals). This directly punishes users with a poor track
+record.d.​ Bridge-Building Stake: To attempt a "Bridge-Building" intervention, a user must
+stake a fixed amount of their own points (e.g., 20 points), which are forfeited if
+their amendment fails. This introduces real risk to a high-reward action.
+Conceptual Example: Aisha, a Founding Member
+Let's illustrate how the Merit Score for "Aisha," a Founding Member (Lc = 1.5), evolves. The
+base decay constant λ_base is 0.001267.
+●​ Day 1: Aisha votes on 5 proposals (3 pass, 2 fail), earning 9.5 points.
+●​ Day 10: Aisha co-authors a successful policy with one other, earning 100 points (200 /
+2).
+●​ Day 20: Aisha completes a "Tier 1" bounty, earning 20 points.
+●​ Day 30: Calculating Her Merit Score​
+The engine calculates her score by summing the decayed value of each event:
+○​ Value from Day 1 (30 days ago): 9.5 * e^(-(0.001267 / 1.5) * 30) ≈ 9.26 points
+○​ Value from Day 10 (20 days ago): 100 * e^(-(0.001267 / 1.5) * 20) ≈ 98.32 points
+○​ Value from Day 20 (10 days ago): 20 * e^(-(0.001267 / 1.5) * 10) ≈ 19.83 points
+●​ Aisha's Merit Score on Day 30 = 9.26 + 98.32 + 19.83 = 127.41
+"Meet the Members: How the System Shapes Behavior"
+To understand how these rules work in practice, consider these user personas derived from our
+simulations:
+●​ Aisha, the Founder: An idealistic early adopter (Lc=1.5) focused on high-quality
+policies. The system rewards her successful proposals with a high score (200 points)
+and her loyalty coefficient ensures her foundational work retains value longer, honoring
+her early commitment without making her position unassailable.
+●​ Bader, the Engagement Farmer: A user trying to game the system with high-volume,
+low-quality proposals. Bader’s strategy is immediately neutralized by the Reputation
+Penalty. His proposals consistently fail with <10% support, and as his ratio of
+failures-to-successes climbs, the penalty for each new failure becomes prohibitively
+expensive, forcing him to either improve his quality or cease his spam.
+●​ Dania, the Proxy-Backed Donor: A wealthy individual supporting the movement
+financially. The logarithmic formula 35 * log5(Donation_USD + 1) allows her to gain
+meaningful influence from a donation, but with steeply diminishing returns. She cannot
+buy overwhelming power and must participate constructively on the platform to remain a
+top influencer.
+●​ Chandra, the Bridge-Builder: A skilled negotiator who sees a divisive but important
+proposal failing. She stakes her own points to propose an amendment. When her
+compromise succeeds and the proposal passes, she earns the massive 400-pointBridge-Building Bonus, demonstrating that the system explicitly rewards the difficult work
+of creating unity.
+●​ Bilal, the Late & Active Joiner: A motivated newcomer joining 18 months after launch.
+Due to the 18-month score half-life, the points of early, inactive members have decayed
+significantly. By authoring successful proposals and participating actively, Bilal can
+quickly surpass inactive founders, ensuring the system remains a true meritocracy that
+values current contributions.
+Here is the next section, which completes the "Core Principles."
+D. Dynamic Governance
+●​ Contextual Voting Mechanisms: The system uses the most appropriate voting method
+for the decision at hand.
+○​ Weighted Majority (For Binary Decisions): Used for proposals with a clear
+"Yes/No" outcome. Results are determined by the sum of Merit-weighted votes.
+○​ Ranked-Choice Voting (For Multiple-Choice Selections): Used for elections
+(e.g., selecting Shadow Ministers) or when choosing one option from multiple
+competing proposals. This method prevents vote-splitting and elects candidates
+with the broadest consensus.
+●​ Tiered Approval Thresholds: For binary decisions, the required majority is tiered based
+on impact. The categorization of a proposal follows a clear process:
+○​ Proposer Declaration: The author declares the category (Routine, Policy, or
+Constitutional).
+○​ Council Review: The Governing Council reviews the categorization.
+○​ Community Challenge: If there is a disagreement, a simple "Categorization
+Vote" is triggered to let the community decide the correct threshold before the
+main vote.
+○​ Thresholds:
+■​ Routine decisions: 50% + 1 weighted majority.
+■​ Policy shifts: 60–75% approval.
+■​ Constitutional amendments: 80–90% approval.
+E. Absolute Transparency & Resilience
+●​ Verifiable Anonymity: All decisions, financial transactions (Live Treasury), and
+aggregate voting results are publicly auditable. However, how an individual citizen votes
+remains private, visible only to them, to prevent coercion.
+●​ Checks Against Division: The system has built-in mechanisms to flag and mitigate
+divisive behavior (see Section IV).●​ Open Source: The platform's code will be open-source to ensure transparency. Data will
+be centralized and cloud-based for efficiency, deployed on secure infrastructure like
+Cloudflare CDN, with plans for decentralized backups to ensure long-term resilience.
+Here is the next section, detailing the platform architecture.
+III. The Platform: Architecture of Trust
+A. Member Journey
+●​ Verification: National ID-linked accounts, verified via SMS OTP, ensure one person, one
+vote and mitigate duplicate accounts.
+●​ Dashboard: Real-time tracking of proposals, voting deadlines, and personal Merit Score
+progress.
+●​ Git-Inspired Constitution: The constitution is a living document. Members can propose
+changes via a "Merge Proposal" system. An edit is "forked," modified, and submitted for
+a constitutional vote, ensuring a clear, trackable, and stable amendment process.
+B. Voting & Proposals
+●​ Weighted Voting: Merit Scores amplify votes, preventing trolling and rewarding
+constructive engagement.
+●​ Voting Windows: To encourage timely participation, the weight of a vote is reduced
+after the primary voting period ends.
+○​ Primary Voting Window (e.g., Days 1-7): Votes cast have 100% of their
+Merit-weighted value.
+○​ Extended Voting Window (e.g., Days 8-10): Votes cast have 50% of their
+Merit-weighted value.
+C. Leadership & Governance
+●​ Shadow Ministers: Selection is a rigorous four-stage process:
+1.​ Minimum Merit Score eligibility to apply.
+2.​ Public applications.
+3.​ Live-streamed interviews by nonpartisan expert panels.
+4.​ Final confirmation vote by all members using Ranked-Choice Voting.
+●​ Function: The elected Shadow Ministers form the Governing Council.
+●​ Term Limits: Maximum 2-year terms with mandatory annual performance reviews.
+D. The Living Legal Code: A Continuous Public AuditTo ensure governance remains perpetually aligned with the will of the people, the platform will
+host a dynamic repository of all existing national laws and regulations, subject to a continuous,
+real-time public audit.
+●​ Concept: Every law will be listed on the platform. Members can cast a persistent
+"Approve" or "Disapprove" vote on each one, weighted by Merit Scores.
+●​ The Public Review Mandate: When a law's weighted approval rating falls below a
+predefined threshold (e.g., 40% for a sustained period), it is automatically placed on the
+"Mandatory Review Agenda," legally obligating the Governing Council to conduct a
+formal analysis and submit a "Decision Statement" proposing an action (e.g.,
+amendment, repeal, replacement).
+E. Policy Incubation Hubs: Forging Comprehensive Solutions
+While the citizen-led proposal system is ideal for reactive and specific legislation,
+the movement must also be capable of proactive, long-term strategic planning. To
+address complex, systemic issues (e.g., healthcare reform, a 20-year energy plan),
+the platform will support Policy Incubation Hubs.
+1.​ Purpose and Formation: A Hub is a dedicated, long-term working group
+chartered to perform deep research and develop a comprehensive policy
+solution for a major national issue. Any group of members can apply to the
+Governing Council to form a Hub, submitting a public charter that outlines its
+goals, research methodology, and timeline.
+2.​ Mechanism:
+○​ Dedicated Workspace: Approved Hubs are given a private,
+collaborative workspace on the platform to organize research, draft
+documents, and consult with Advisory Expert Panels.
+○​ Sustained Effort Reward: To recognize the significant time
+investment required, active members of a chartered Hub will receive
+a recurring monthly Merit Score "stipend" for the duration of their
+work, conditional on meeting activity targets set in their charter.
+○​ Comprehensive Whitepaper Proposal: The final output of a Hub is
+not a simple proposal, but a detailed "Whitepaper." This Whitepaper,
+which may contain multiple interconnected pieces of legislation, is
+then submitted to the community for a single, high-threshold vote
+(e.g., Policy or Constitutional level) to be approved as a unified
+package.
+This dual-track system allows the movement to be both nimble and responsive
+through individual proposals, while also developing the serious, evidence-based,
+and coherent long-term platforms required of a government-in-waiting.F. The Parametric Governance Engine
+To ensure the platform's integrity, scalability, and operational efficiency, we will implement a
+Parametric Governance Engine. This engine translates the nuanced rules of our democracy into
+explicit, machine-readable parameters, allowing for automated tracking, enforcement, and
+adaptation.
+●​ Deconstructing Governance into Parameters: Every rule, condition, or threshold is
+broken down into discrete, quantifiable parameters.
+●​ The Rule Engine: Automating Compliance and Action: This event-driven system
+constantly monitors the platform and evaluates actions against predefined parameters,
+enforcing rules like quorum requirements, staking conditions, and tiered approval
+thresholds automatically.
+●​ Conflict Resolution Process: When the Rule Engine flags a conflict (e.g., a proposed
+amendment violates a constitutional meta-rule), it triggers a structured resolution
+process:
+○​ Automated Flag & Pause: The proposal is automatically paused, and the
+conflict is explained to the proposer and the Governing Council.
+○​ Resolution Pathways: The proposer can either amend the proposal to resolve
+the conflict or, if the conflict is intentional, must first submit a separate
+"Dependency Proposal" to change the foundational rule causing the conflict.
+○​ Sequential Voting: The original proposal remains paused until the Dependency
+Proposal is passed by its required (and often higher) majority.
+G. Interim Governance: The Temporary Committee
+●​ Purpose: To bootstrap the system before the Merit Score activates.
+●​ Composition: 5–9 members with roles (Technical, Outreach, etc.) selected by "Early
+Contributors."
+●​ "Early Contributors" are a verifiable group who made foundational contributions
+(content, technical, or resource-based) before the MVP Launch date. Their identities will
+be published for review prior to the selection.
+●​ Accountability: All actions and finances publicly logged (Live Treasury prototype).
+Members earn Merit Scores like any participant; no special privileges.
+●​ Transition: Automatically dissolves when the Governing Council is elected.
+●​ Advisory Expert Panels: For technically complex proposals, a panel of verified,
+credentialed volunteers from within the movement is invited to produce a short, impartial
+"Feasibility Report."
+○​ Verification Process: Volunteers can submit credentials (degrees, licenses) to a
+secure portal. A "Verification Subcommittee" confirms the authenticity of these
+credentials, which are then tagged non-publicly to the member's profile for the
+purpose of panel invitations.
+H. Limits on Leadership Authority●​ Decision Statements: The Governing Council (or any leader) must draft a "Decision
+Statement" for any new policy, project, rule, or financial expenditure beyond routine
+costs.
+●​ Public Vote Required: The Statement is valid only if approved by:
+○​ A weighted majority vote (threshold varies by impact; see Section II.D).
+○​ A minimum quorum of 10% of active members.
+●​ "Active Member" Definition: A verified member who has performed at least one Merit
+Score-generating action within the preceding 30 days.
+●​ Exemptions: Routine administrative tasks (e.g., scheduling meetings) and minor budget
+adjustments require transparency but no vote.
+●​ "Minor budget adjustment" Definition: Any single expenditure that is less than or
+equal to 1% of the Movement's approved monthly operational budget.
+IV. Innovation: Bridging Divides & Preventing Schism
+A. Scoring for Bridge-Building
+●​ Compromise Bonus: When a user proposes an amendment to a failing proposal (<50%
+support) that subsequently causes it to pass, the system automatically awards the
+amender a significant, fixed-point Merit Score bonus.
+●​ Purpose: Directly incentivize collaboration over polarization.
+B. The Cost of Schism
+●​ Unity Warning System: The Governing Council may flag divisive proposals with a
+"Unity Warning." If such a proposal passes by a narrow margin, a 30-day mandatory
+reconciliation period precedes implementation.
+●​ "Narrow Margin" Definition: A proposal passes with a support level that is less than
+5% greater than its required approval threshold (e.g., ≤55% for a routine decision, <65%
+for a 60%-threshold policy).
+●​ Implementation Lock-In: High-cost or high-impact policies require supermajorities
+(80–90%) to repeal, preventing chaotic reversals.
+C. The Cost of Frivolity
+●​ Proposal Staking: To ensure quality, members must "stake" a small, refundable portion
+of their Merit Score to submit a major policy.
+●​ Reputation Dynamics: The stake is refunded if the proposal achieves a minimum
+support threshold (e.g., 20%), but forfeited if it is overwhelmingly rejected (e.g., <10%
+support).D. Governing Council Powers
+●​ The Governing Council can vote to delay a proposal once for up to 6 months to facilitate
+further public debate. This action requires a simple majority within the Council and a
+public justification. It does not override the requirement for a public vote on Decision
+Statements.
+E. The Signal Horn Protocol: Unified Crisis Response
+In a fast-moving political crisis or a national emergency, decentralized debate can
+create an impression of chaos that opponents can exploit. To ensure the movement
+can respond with clarity, unity, and strategic discipline, the Governing Council can
+activate this limited-use emergency protocol.
+1.​ Activation: The Governing Council may, with a publicly logged 75%
+supermajority vote, activate the "Signal Horn" in response to a specific,
+named crisis. This is a transparent, high-threshold action, not a routine
+power.
+2.​ Message Lock-In: For a strictly limited duration (e.g., 12 hours), an official
+"Crisis Statement" drafted by the Council is pinned to the top of every
+member’s dashboard. During this period, all other new platform discussions
+on that specific topic are temporarily archived to allow the official message
+to be clearly heard.
+3.​ Unified Action: The Crisis Statement can include a direct call to action,
+such as a Merit Score Bounty for members who share the official, unified
+response through their social media channels, enabling a rapid and
+coordinated counter-narrative.
+This protocol gives the movement the message discipline of a traditional political
+party during critical moments, without sacrificing transparency or resorting to
+opaque backroom directives. It is a vital tool for defending the movement’s integrity
+under attack.
+Here is the next section.
+V. The Movement: From Digital Platform to Real-World Power
+A. Shadow GovernmentElected leaders draft policies, manage implementation plans, and prepare to govern, acting as a
+ready and credible alternative.
+B. Democratic Funding
+●​ Verified Donations & Live Treasury: Members contribute by submitting proof of a
+donation. After verification, the donation is logged in the public Live Treasury.
+●​ Diminishing Returns on Donations: A $10 donation might yield ~26 points, but a
+$10,000 donation yields only ~184 points, making grassroots funding far more valuable.
+C. Real-World Impact
+●​ Victories Tracker: Publicly highlight when the incumbent government adopts
+movement-initiated policies.
+●​ Community Building: Offline events (town halls, volunteer projects) and unified
+branding to foster loyalty and a shared identity.
+D. Empowered Community Hubs (The Círculos Protocol)
+To bridge the digital divide and translate online activity into tangible community power, the
+movement will foster a network of officially recognized, semi-autonomous local assemblies, or
+Círculos. This protocol ensures the movement has a deep and resilient grassroots presence.
+1.​ Formation and Recognition: Any group of verified members (e.g., 15 or more) within a
+specific geographic area (such as an atoll or island) can apply to form an officially
+recognized Círculo. Upon approval by the Governing Council, they are granted a
+dedicated space on the platform.
+2.​ Empowerment and Function: Official Círculos are empowered to:
+○​ Organize Local Bounties: Post and manage activities on the Skill-Based Bounty
+Board that are specific to their community's needs (e.g., voter registration drives,
+local environmental cleanups, town halls), with Merit Score rewards funded from
+a central pool.
+○​ Propose Local Budgets: Propose and vote on the allocation of a small,
+dedicated portion of the movement's "Live Treasury" for local projects, giving
+members tangible control over their immediate environment.
+○​ Act as Verification Points: Serve as physical hubs where new members can get
+help with the digital verification process, ensuring inclusivity for less tech-savvy
+citizens.
+E. The DYM Media Collective: Controlling the Narrative
+To combat disinformation and ensure the movement's message is communicated to
+members and the public without distortion, an independent, member-funded media
+wing is essential. This will be built as a fully integrated, platform-native news andinformation hub, not a separate website, to create a unified ecosystem and serve as
+the movement's single source of truth.
+1.​ Structure and Funding: The DYM Media Collective will operate as a formal
+wing of the movement, appearing as a dedicated "Media" tab within the
+platform. Its budget will be allocated transparently from the Live Treasury via
+a standard public vote, and it will be staffed by members with relevant
+expertise (journalism, video production, graphic design) through the
+Skill-Based Bounty System.
+2.​ Core Functions: The Collective will be responsible for:
+○​ Rapid Response: A dedicated team will monitor external media and
+is tasked with producing immediate, evidence-based rebuttals to
+false or misleading reports.
+○​ Policy Explainers: Creating clear, engaging content (articles,
+infographics, videos) that breaks down complex policies for the
+entire membership.
+○​ Content Creation: Producing high-quality content (podcasts, short
+documentaries) that promotes the movement's vision and highlights
+issues ignored by traditional media.
+3.​ Incentivizing Informed Engagement: To prevent low-effort "engagement
+farming," Merit Score rewards will be tied to actions that demonstrate
+comprehension and add value:
+○​ Knowledge Check Bounty: Members can earn a small point reward
+for correctly answering a short quiz at the end of key articles, proving
+they have understood the material.
+○​ Informed Comment Reward: Points are awarded to members
+whose comments on articles are endorsed by the community as
+"insightful" or "constructive," fostering high-quality dialogue.
+○​ Amplification Bounty: In critical moments, the platform can offer a
+bounty for members who share an official, unified message through
+their social media channels using a trackable link.
+By owning its own narrative and intelligently incentivizing engagement, the
+movement inoculates itself against external media attacks and builds a direct,
+trusted, and deeply informed relationship with its members and the public.VI. The Bridge: From Digital Mandate to Electoral Victory
+The ultimate purpose of the Dhivehi Youth Movement is to translate the democratically
+expressed will of its members into binding national policy. This is achieved by contesting and
+winning public elections. The platform is not merely an advocacy group; it is an end-to-end
+engine for identifying, funding, electing, and directing political leaders who serve as delegates of
+the movement's membership.
+This section outlines the four-stage process for converting network power into real-world political
+authority.
+A. Stage 1: The Leadership Academy (Forging Capable Leaders)
+The movement’s legitimacy rests on the competence of its leaders. To ensure that
+members elevated to leadership positions possess not only the community's trust
+(as measured by their Merit Score) but also the practical skills required for effective
+governance, a formal training and vetting process is essential. This stage precedes
+candidacy for any major internal or external role.
+1.​ Structure and Prerequisite: The Leadership Academy is a formalized
+educational track hosted on the platform. Successful graduation from the
+Academy is a mandatory prerequisite for any member wishing to apply for a
+position as a Shadow Minister or to seek the movement's official nomination
+for public office.
+2.​ Mechanism:
+○​ Curriculum Modules: The Academy will consist of a series of digital
+modules covering core competencies essential for governance.
+These will include, but are not limited to: Public Finance &
+Budgeting, Legislative Drafting and Analysis, Media Training,
+Strategic Communication, and Parliamentary Procedure.
+○​ Merit-Based Graduation: To complete a module, a member must
+pass a standardized test or a peer-reviewed practical project. Upon
+graduating from the entire Academy program, the member is
+awarded a significant, fixed Merit Score reward, classified as a Tier 3
+Bounty, to recognize their commitment and expertise.
+○​ Mentorship Cycle: Graduates of the Academy are eligible to
+become certified mentors for new cohorts. Mentors earn a recurring
+Merit Score reward for their guidance, creating a self-sustaining
+cycle of knowledge transfer and fostering a culture of political
+development.This protocol professionalizes the movement's leadership pipeline, ensuring our
+candidates are not just popular but are demonstrably prepared to govern effectively
+from day one.
+A. Stage 2: Candidate Selection (The "Primary by Merit")
+Our candidates will not be chosen in backroom deals. They will be forged through the same
+meritocratic, transparent process that governs the entire movement.
+1.​ Merit-Based Eligibility: To declare candidacy for a public office under the DYM banner,
+a member must first achieve a significant, pre-defined Merit Score (e.g., top 1% of all
+members). This ensures all potential candidates have a deep, proven history of
+constructive engagement, community trust, and dedication to the movement's principles.
+2.​ Public Application & Vetting: Eligible members submit a public application, similar to
+the process for Shadow Ministers. This is reviewed by non-partisan Advisory Expert
+Panels who vet real-world credentials and qualifications, providing a "Feasibility Report"
+to the community.
+3.​ The Primary Vote: All vetted candidates participate in a primary election held directly on
+the platform. To ensure the winner has the broadest possible support, the vote will be
+conducted using Ranked-Choice Voting. The winner of this primary becomes the
+official DYM candidate for that office.
+B. Stage 3: Crafting "The People's Manifesto"
+Our candidates will not run on personal ambition or a platform drafted by a small committee.
+They will run on a manifesto created, debated, and ratified by the entire movement.
+1.​ A Living Manifesto: The core of the campaign platform will be the set of high-impact
+policies that have already been passed on the platform with a supermajority (e.g., >75%
+approval). These represent the undeniable, core priorities of the membership.
+2.​ The "Mandate Lock-In": Before an election cycle, the Governing Council will present
+the "Draft Manifesto," composed of these high-approval policies. Members will cast a
+final ratification vote. Once ratified, this becomes the official platform. The candidate is
+honor-bound to this manifesto, and it is publicly visible to all voters.
+C. Stage : The Campaign Engine (Grassroots Power Unleashed)
+Campaigns are powered by two things: funding and volunteers. The DYM platform is designed
+to revolutionize both.
+1.​ Democratic Funding: The Live Treasury will feature dedicated, publicly auditable
+"Campaign Funds" for each official candidate. The logarithmic donation formula (35 *log5(Donation_USD + 1)) becomes our greatest strength, demonstrating that our
+candidates are funded by the people, not by a few wealthy donors. This transparency is
+a core part of the campaign's messaging.
+2.​ Gamified Volunteering (The "Bounty Board" in Action): The Skill-Based Bounty
+System will be expanded to include campaign activities.
+○​ Digital Bounties: Members can earn Merit Score points for tasks like social
+media amplification, graphic design for campaign materials, or hosting digital
+town halls.
+○​ Real-World Bounties: Crucially, this will extend to the "ground game." Local
+event organizers can post bounties for canvassing, distributing flyers, or
+organizing voter registration drives. Volunteer participation can be verified on-site
+(e.g., via QR code scans) to award the Merit Score points, effectively mobilizing a
+highly motivated, rewarded volunteer army.
+D. Stage 5: Post-Victory Accountability (The "Digital Leash")
+Winning an election is not the end goal; it is the beginning of accountable governance. Our
+elected officials are delegates, not rulers, and the platform will ensure they remain tethered to
+the public will.
+1.​ Mandatory Policy Review: Before an elected DYM official introduces any major piece
+of legislation in parliament, they are required to first submit that policy to the movement's
+platform for a standard referendum vote. The result of this vote (pass or fail) serves as
+their direct mandate from the people who elected them.
+2.​ The Recall Trigger: If an elected official consistently votes against the expressed will of
+the platform's referendums or violates the core principles of the "People's Manifesto," the
+Governing Council can initiate a "Recall Vote" on the platform. If this vote passes with a
+supermajority (e.g., 80%), the movement officially withdraws its endorsement and
+resources, and will field a primary challenger against the incumbent in the next election
+cycle. This mechanism makes accountability a constant, tangible reality.
+E. Stage 6: The Coalition Governance Protocol
+In the reality of parliamentary politics, governing may require forming a coalition
+with other political parties. To ensure this is done without violating the movement's
+core principles of transparency and member sovereignty, any potential
+power-sharing agreement must follow this mandatory, multi-stage protocol.
+1.​ Mandate to Negotiate: The Governing Council cannot independently enter
+into coalition talks. It must first submit a "Negotiation Mandate Proposal" to
+the entire membership. This proposal must name the potential partner party
+and outline the non-negotiable policy red lines from "The People's
+Manifesto." Only if this proposal passes with a supermajority vote can talks
+begin.2.​ Transparent Negotiation: During negotiations, the DYM team is required to
+post regular, substantive (non-identifying) updates to a dedicated, publicly
+viewable channel on the platform, ensuring members are aware of the
+direction of the talks.
+3.​ Final Ratification Vote: Any final coalition agreement, detailing all
+compromises and cabinet positions, must be submitted to the entire
+membership as a final, high-stakes "Decision Statement." The coalition is
+only formed if the membership ratifies the deal with a supermajority vote. If
+the members vote no, the deal is rejected, and the leadership must walk
+away.
+This protocol makes forming a government the ultimate act of direct democracy,
+protecting the movement from accusations of "selling out" and ensuring that power
+is only ever accepted on the terms of the people who built the movement.
+Here is the next section, renumbered correctly from "VI" to "VII".
+VII. Safeguarding Unity: Why We Endure
+1.​ Shared History: The Living Constitution and Merit Scores embody collective
+work—irreproducible by splinter groups.
+2.​ Non-Transferable Trust: Leaving the movement resets an individual's Merit Score to
+zero, incentivizing internal resolution of conflicts.
+3.​ Unifying Brand: The Dhivehi Youth Movement symbolizes a shared future for the
+Maldives.
+4. The Emeritus Council: Preserving Institutional Memory
+The "Dynamic Decay" feature is essential for ensuring the movement remains a
+meritocracy that values current contributions. However, this creates a risk of losing
+the invaluable institutional memory held by dedicated long-term members. The
+Emeritus Council is a formal mechanism to retain this experience without granting
+undue power.
+●​ Structure and Invitation: The Emeritus Council is a purely advisory body
+with no formal governing power. Invitation is automatic for any member who
+has either: a) served a full term on the Governing Council, or b) maintained
+a Merit Score within the top 1% of all members for a continuous period of
+three or more years.
+●​ Function:○​ Keepers of the Archive: The primary role of the Council is to act as
+curators of a "Knowledge Archive"—a detailed, searchable history
+documenting the context, debate, and rationale behind major past
+decisions, constitutional changes, and policy outcomes.
+○​ Advisory Resource: The Governing Council, Standing Committees,
+or Policy Incubation Hubs can formally request an "Advisory Opinion"
+from the Emeritus Council to provide historical context on a current
+issue. Their input is public but non-binding.
+This council ensures that while influence remains dynamic, wisdom is preserved. It
+provides stability and prevents the movement from re-litigating old debates,
+allowing it to learn from its own history.
+4.​
+Here is the next section, the Phased Rollout plan.
+VIII. Roadmap: Building the Future (Phased Rollout Strategy)
+The movement will follow a phased and iterative rollout to manage complexity, incorporate user
+feedback, and ensure long-term stability. The primary metric for initial success will be
+membership growth, as in politics, quantity builds legitimacy. The core Merit Score system as
+defined in this document will be established from the start, but its more complex features will be
+activated progressively.
+Phase 1: MVP Launch - Core Democracy & Merit Score Foundation
+●​ Goal: Launch a stable web and mobile app and recruit the first 3,000 "Founding
+Members."
+●​ Features:
+○​ Secure user verification (National ID + SMS OTP).
+○​ Direct democracy: One person, one vote system for proposals.
+○​ Basic proposal submission and voting system.
+○​ Merit Score Foundation: The full Merit Score formula (including decay and
+loyalty) will be running in the background from day one to collect data and ensure
+continuity. However, for initial simplicity, votes will not be weighted by score.
+●​ Metric: Number of verified members joined.
+Phase 2: Activating Weighted Influence
+●​ Goal: Introduce weighted voting and enhance governance tools.
+●​ Features:○​ Activation of Merit-Weighted Voting: The Merit Scores accumulated in Phase 1
+now begin to influence voting power.
+○​ Implementation of Ranked-Choice Voting for elections.
+○​ Launch of the Git-Inspired Constitution feature and Live Treasury prototype.
+Phase 3: Building a National Presence
+●​ Goal: Bridge the digital divide and establish a physical footprint.
+●​ Features:
+○​ First Shadow Minister elections and formation of the Governing Council.
+○​ Launch of the first offline Community Hubs.
+○​ Integration of SMS-based voting for non-smartphone users.
+Phase 4: Full Incentive Design Activation
+●​ Goal: Roll out the full suite of game-theoretic mechanisms to encourage quality and
+unity.
+●​ Features:
+○​ Activation of Proposal Staking.
+○​ Activation of the Bridge-Building Bonus.
+○​ Launch of the Unity Warning System.
+Phase 5: Full Automation & Scaling
+●​ Goal: Achieve a fully autonomous and intelligent governance platform.
+●​ Features:
+○​ Full rollout of the Parametric Governance Engine.
+○​ Introduction of AI-assisted moderation and automated dispute resolution tools.
+Phase 6: Constitutional Integration
+●​ Goal: Achieve formal political influence and ratify the movement's innovations into
+national law. This phase is triggered by meeting sustained KPIs related to membership
+and policy adoption.
+IX. Upholding Integrity: Code of Conduct and Disciplinary Framework
+A. Philosophy of Enforcement
+The Dhivehi Youth Movement is founded on trust, constructive dialogue, and a shared
+commitment to democratic principles. To protect the integrity and purpose of the movement, a
+transparent and just disciplinary framework is essential. Our enforcement philosophy is guided
+by four key principles:1.​ Proportionality: The consequences of a violation must be proportional to the severity of
+the offense.
+2.​ Transparency: The rules are public, and the disciplinary process is clear and
+understandable. While the identities of those involved may be kept confidential to protect
+privacy, the final non-identifying decision and rationale for serious cases will be logged.
+3.​ Due Process: Every member has the right to be informed of accusations against them
+and to present their case before a decision is made.
+4.​ Community Safety: The primary goal of this framework is to protect the community from
+harm, disruption, and behavior that undermines the movement's core values.
+B. The Code of Conduct: Tiers of Violations
+Violations are categorized into three tiers to ensure proportional response.
+●​ Tier 1: Minor Infractions
+○​ Definition: Actions that disrupt the flow of dialogue but do not cause significant
+harm.
+○​ Examples: Submitting off-topic or low-effort proposals (spam), minor breaches of
+civility, misuse of platform channels for personal promotion.
+○​ Note: The "Cost of Frivolity" system (Section IV.C) automates the penalty for
+low-quality proposals.
+●​ Tier 2: Serious Violations
+○​ Definition: Actions that actively undermine the platform's integrity, trust, or the
+safety of its members.
+○​ Examples:
+■​ Disinformation/Misinformation: Knowingly spreading false information
+to manipulate a vote.
+■​ Harassment: Targeting another member with abusive or insulting
+language.
+■​ Gaming the System: Creating "endorsement rings" or using bots to
+artificially inflate a Merit Score.
+■​ Impersonation: Creating a profile to impersonate another individual.
+●​ Tier 3: Severe Offenses
+○​ Definition: Actions that are illegal, pose an existential threat to the movement, or
+cause severe harm to members. This is a zero-tolerance category.
+○​ Examples:
+■​ Hate Speech: Promoting violence or discrimination against individuals
+based on race, religion, ethnicity, gender, or other protected
+characteristics.
+■​ Threats of Violence & Doxxing: Making credible threats against any
+individual or publishing their private information without consent.
+■​ Organizing Illegal Activities: Using the platform to coordinate criminal
+acts.
+■​ Subversion: Actively working to destroy the platform or steal its assets
+(data, funds).■​ Violation of the Felony Clause (see section E).
+C. The Disciplinary Process: A Fair and Transparent Path
+1.​ Reporting: Any member can report a violation through a dedicated, confidential
+reporting tool on the platform. The report must include evidence (e.g., links to posts,
+screenshots).
+2.​ Initial Review (Integrity Committee): Reports are reviewed by a standing "Integrity
+Committee," a subcommittee of the Governing Council. They perform a triage to:
+○​ Dismiss frivolous or unsubstantiated claims.
+○​ Categorize the alleged violation into one of the three tiers.
+3.​ Investigation: For Tier 2 and Tier 3 violations, the Integrity Committee conducts a
+formal investigation. The accused member is notified of the specific allegation and
+provided with the evidence against them. They are given a fixed period (e.g., 72 hours)
+to submit a formal response.
+4.​ Adjudication: The Integrity Committee reviews all evidence and the member's
+response. They vote to determine if the Code of Conduct was violated and decide on the
+appropriate sanction based on the framework below. The decision and its justification are
+recorded.
+5.​ Enforcement: Sanctions are executed by the platform's Parametric Governance Engine,
+ensuring immediate and impartial implementation.
+D. Sanctions Framework: Proportional Consequences
+●​ For Tier 1 Violations:
+○​ First Offense: A formal written warning.
+○​ Repeated Offenses: A temporary suspension of certain privileges (e.g., ability to
+propose new policies for 30 days) and a minor, fixed-point Merit Score penalty.
+●​ For Tier 2 Violations:
+○​ A significant Merit Score penalty.
+○​ Temporary suspension of the account for a period of 30-180 days.
+○​ Forfeiture of any Merit Score points gained through the violating action.
+●​ For Tier 3 Violations:
+○​ Permanent termination of the member's account.
+○​ Forfeiture of the entire Merit Score.
+○​ A permanent ban from re-joining the movement.
+○​ In cases involving illegal acts, the movement will cooperate fully with law
+enforcement agencies.
+E. Integration with External Legal Systems (The Felony Clause)
+The movement respects the legal system of the Maldives. While the platform is not a court of
+law, the real-world actions of its members can impact their standing within the community.●​ Principle: The movement cannot function if it harbors individuals convicted of serious
+crimes that run contrary to its values of transparency, peace, and public trust.
+●​ The Felony Clause: Any member who receives a final, non-appealable conviction for a
+serious crime (e.g., treason, bribery, embezzlement, violent crimes, major drug
+trafficking) while being a member of the movement will have their membership
+automatically subject to a Tier 3 review.
+●​ Process:
+1.​ Upon verifiable public news or legal documentation of such a conviction, the
+Integrity Committee is obligated to open a case.
+2.​ The conviction serves as irrefutable evidence of a violation of the movement's
+core principles.
+3.​ The sanction is a mandatory and permanent termination of membership, as per
+the Tier 3 protocol.
+●​ Distinction: An arrest or charge is not a conviction. The principle of "innocent until
+proven guilty" is respected. Disciplinary action will not be taken based on accusations
+alone, unless the underlying on-platform behavior itself constitutes a separate violation
+of the Code of Conduct.
+F. The Appeals Process
+A member who has been sanctioned has the right to appeal.
+1.​ Appeal to the Governing Council: The member can appeal the Integrity Committee's
+decision to the full Governing Council (excluding members of the committee). The
+Council will review the case for procedural fairness and correctness, but will not conduct
+a new investigation. The Council can uphold, overturn, or reduce the sanction.
+2.​ Constitutional Challenge: If a member believes the rule they violated is itself unjust,
+their only recourse is to re-join the movement after their suspension (if not permanently
+banned) and launch a formal proposal to amend the Code of Conduct via the platform's
+standard constitutional amendment process. This ensures that the ultimate authority on
+the rules remains with the community itself.
+G. The Mediation Process for Principled Disagreements
+While the Integrity Committee handles violations of rules, many internal conflicts
+arise from passionate, good-faith disagreements on strategy or policy. To prevent
+these disagreements from festering and causing schisms, a formal, voluntary
+mediation process is established.
+1.​ The Council of Mediators: This body is independent of the Governing
+Council and is composed of elected members known for their impartiality
+and temperament. Their role is not to adjudicate, but to de-escalate.
+2.​ Voluntary Process: Any group of members engaged in a significant public
+dispute can voluntarily request mediation from the Council. This process is
+confidential.3.​ Function: The mediators will facilitate a structured, respectful dialogue
+between the differing parties with the goal of finding common ground or a
+deeper understanding. If a compromise is reached, it can be celebrated with
+a "Compromise Bonus." If not, the Council can, with the consent of all
+parties, issue a neutral summary of the core arguments to the wider
+community to inform a subsequent vote.
+This process provides a constructive "off-ramp" for internal conflict, reinforcing a
+culture that values reconciliation and making the movement more resilient to the
+internal divisions that have fractured other political organizations.
+Join Us: Be an Architect of Tomorrow
+This is more than a movement—it's a revolution in governance. By combining direct democracy
+with cutting-edge incentives, we create a system where:
+●​ Division is costly; unity is rewarded.
+●​ Power flows from contribution, not wealth or privilege.
+●​ The Maldives becomes a global model for 21st-century democracy.
+The future is direct, dynamic, and digital. The future is the Dhivehi Youth Movement 2.0.●​

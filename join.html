@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join the 3d Party</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: {
+                            dark: '#0f0f1a',
+                            card: '#1a1a2e',
+                            accent: '#FFD700',
+                            secondary: '#4A90E2'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <div class="max-w-2xl mx-auto px-4 py-16">
+        <!-- Back Link -->
+        <a href="/" class="text-gray-400 hover:text-party-accent transition mb-8 inline-flex items-center space-x-2">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to home</span>
+        </a>
+        
+        <h1 class="text-4xl font-bold mb-2">Join the 3d Party</h1>
+        <p class="text-gray-400 mb-8">45 seconds. That's all it takes. (We timed it.)</p>
+        
+        <!-- Contribution Summary -->
+        <div id="contributionSummary" class="bg-party-accent/10 border border-party-accent/30 rounded-xl p-6 mb-8">
+            <!-- Filled by JavaScript -->
+        </div>
+        
+        <form id="signupForm" class="space-y-6">
+            <!-- Phone -->
+            <div>
+                <label class="block text-sm font-medium mb-2">
+                    Phone Number <span class="text-red-400">*</span>
+                </label>
+                <div class="flex">
+                    <span class="bg-gray-800 px-4 py-3 rounded-l-lg border border-gray-600 border-r-0 text-gray-400">
+                        +960
+                    </span>
+                    <input type="tel" id="phone" required 
+                           class="flex-1 bg-gray-800 border border-gray-600 rounded-r-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                           placeholder="7-digit number" maxlength="7">
+                </div>
+            </div>
+
+            <!-- NID -->
+            <div>
+                <label class="block text-sm font-medium mb-2">
+                    National ID (NID) <span class="text-red-400">*</span>
+                </label>
+                <input type="text" id="nid" required 
+                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                       placeholder="A123456" maxlength="10">
+            </div>
+
+            <!-- Optional Fields -->
+            <div class="border-t border-gray-700 pt-6">
+                <p class="text-sm text-gray-500 mb-4">Optional — Only if you want to</p>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Name</label>
+                        <input type="text" id="name" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                               placeholder="Your name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email</label>
+                        <input type="email" id="email" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                               placeholder="email@example.com">
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <label class="block text-sm font-medium mb-2">Island / Atoll</label>
+                    <input type="text" id="island" 
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                           placeholder="Male', Kaafu">
+                </div>
+            </div>
+
+            <!-- Donation Section (Only shows if donation type selected) -->
+            <div id="donationSection" class="hidden border-t border-gray-700 pt-6">
+                <div class="bg-party-accent/5 border border-party-accent/20 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-party-accent mb-2">Live Treasury Contribution</h3>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Donations count toward your Merit Score with diminishing returns — 
+                        so big money can't buy influence.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <button type="button" onclick="selectDonation(100)" 
+                                class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
+                            MVR 100
+                        </button>
+                        <button type="button" onclick="selectDonation(500)" 
+                                class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
+                            MVR 500
+                        </button>
+                        <button type="button" onclick="selectDonation(1000)" 
+                                class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
+                            MVR 1,000
+                        </button>
+                        <div class="col-span-2 md:col-span-1">
+                            <input type="number" id="customDonation" 
+                                   class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                                   placeholder="Custom amount" min="1">
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500">
+                        All donations go to the public Live Treasury. No hidden accounts.
+                    </p>
+                </div>
+            </div>
+
+            <input type="hidden" id="contributionType" value="">
+            <input type="hidden" id="donationAmount" value="0">
+
+            <!-- Submit -->
+            <button type="submit" 
+                    class="w-full bg-party-accent text-party-dark py-4 rounded-xl font-bold text-lg hover:scale-[1.02] transform transition">
+                COMPLETE SIGNUP
+            </button>
+        </form>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-bold mb-4">Welcome to the 3d Party!</h2>
+            <p id="successDetails" class="text-gray-400 mb-6"></p>
+            <a href="/" class="inline-flex items-center space-x-2 text-party-accent hover:underline font-bold">
+                <span>Back to home</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const contributionType = urlParams.get('type') || sessionStorage.getItem('contribution_type');
+        
+        let selectedDonationAmount = 0;
+        
+        // Contribution type mapping
+        const typeLabels = {
+            'skills': 'Skills & Professional Expertise',
+            'action': 'On-the-Ground Action',
+            'ideas': 'Ideas & Proposals',
+            'donation': 'Support & Donations'
+        };
+        
+        const typeIcons = {
+            'skills': '🧠',
+            'action': '🏃',
+            'ideas': '💡',
+            'donation': '💰'
+        };
+        
+        // Display contribution summary
+        if (contributionType) {
+            document.getElementById('contributionType').value = contributionType;
+            document.getElementById('contributionSummary').innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">${typeIcons[contributionType]}</span>
+                    <div>
+                        <p class="text-sm text-gray-400">You're joining as a</p>
+                        <p class="font-bold text-party-accent">${typeLabels[contributionType]}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Show donation section if donation type
+            if (contributionType === 'donation') {
+                document.getElementById('donationSection').classList.remove('hidden');
+            }
+        }
+        
+        function selectDonation(amount) {
+            selectedDonationAmount = amount;
+            document.getElementById('donationAmount').value = amount;
+            
+            // Highlight selected button
+            document.querySelectorAll('.donation-btn').forEach(btn => {
+                btn.classList.remove('border-party-accent', 'bg-party-accent/10');
+            });
+            event.target.classList.add('border-party-accent', 'bg-party-accent/10');
+        }
+        
+        // Custom donation handler
+        document.getElementById('customDonation').addEventListener('input', function() {
+            selectedDonationAmount = parseFloat(this.value) || 0;
+            document.getElementById('donationAmount').value = selectedDonationAmount;
+        });
+        
+        // Form submission
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phone = document.getElementById('phone').value.replace(/\D/g, '');
+            const nid = document.getElementById('nid').value.trim();
+            
+            if (phone.length !== 7) {
+                alert('Please enter a valid 7-digit phone number.');
+                return;
+            }
+            
+            if (!nid) {
+                alert('NID is required.');
+                return;
+            }
+            
+            const data = {
+                phone: phone,
+                nid: nid.toUpperCase(),
+                name: document.getElementById('name').value.trim() || undefined,
+                email: document.getElementById('email').value.trim() || undefined,
+                island: document.getElementById('island').value.trim() || undefined,
+                contribution_type: contributionType,
+                donation_amount: contributionType === 'donation' ? selectedDonationAmount : 0
+            };
+            
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('signupForm').classList.add('hidden');
+                    document.getElementById('successMessage').classList.remove('hidden');
+                    
+                    let detailsText = `Your initial Merit Score: ${result.initial_merit} points.`;
+                    if (contributionType === 'donation' && selectedDonationAmount > 0) {
+                        detailsText += `<br>Donation of MVR ${selectedDonationAmount} added to Live Treasury.`;
+                    }
+                    document.getElementById('successDetails').innerHTML = detailsText;
+                    
+                    // Clear session storage
+                    sessionStorage.clear();
+                } else {
+                    alert(result.error || 'Signup failed. Please try again.');
+                }
+            } catch (error) {
+                alert('Connection error. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

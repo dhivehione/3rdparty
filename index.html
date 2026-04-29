@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3d Party — The Actual Third Option</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: {
+                            dark: '#0f0f1a',
+                            card: '#1a1a2e',
+                            accent: '#FFD700',
+                            secondary: '#4A90E2',
+                            muted: '#6B7280'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-bold text-party-accent">3d</span>
+                <span class="text-sm text-gray-400">Party</span>
+            </div>
+            <div class="hidden md:flex space-x-6 text-sm">
+                <a href="how.html" class="hover:text-party-accent transition">The Movement</a>
+                <a href="policies.html" class="hover:text-party-accent transition">Policies</a>
+                <a href="legislature.html" class="hover:text-party-accent transition">Legislature</a>
+                <a href="proposals.html" class="hover:text-party-accent transition">Vote</a>
+                <a href="wall.html" class="hover:text-party-accent transition">The Wall</a>
+                <a href="join.html" class="hover:text-party-accent transition">Join</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative py-16 md:py-24 px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-party-accent/5 to-transparent"></div>
+        <div class="max-w-4xl mx-auto text-center relative">
+            
+            <!-- Insurance Joke Badge -->
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-8">
+                <span class="text-party-accent text-sm">🚫 Not an insurance company</span>
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-black mb-4 leading-tight">
+                No, we are not doing <br class="hidden md:block">
+                <span class="bg-gradient-to-r from-party-accent to-yellow-300 bg-clip-text text-transparent">
+                    3rd party insurance.
+                </span>
+            </h1>
+            
+            <p class="text-xl md:text-2xl text-gray-300 mb-4">
+                We're the actual third political option Maldives never had.
+            </p>
+            
+            <p class="text-gray-500 mb-10 text-lg">
+                Phone + NID only • Takes 45 seconds • Already <span id="memberCount" class="text-party-accent font-bold">0</span> members 
+                <br class="hidden md:block"><span class="text-sm">(none of them insurance agents, we checked)</span>
+            </p>
+            
+            <button onclick="document.getElementById('contribution').scrollIntoView({behavior:'smooth'})" 
+                    class="bg-party-accent text-party-dark px-10 py-5 rounded-xl font-bold text-lg hover:scale-105 transform transition inline-flex items-center space-x-3 shadow-2xl shadow-party-accent/20">
+                <span>JOIN THE 3D PARTY</span>
+                <i class="fas fa-arrow-down"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- Contribution Selection Section -->
+    <section id="contribution" class="py-20 px-4 bg-party-card">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">
+                How do you want to contribute<br class="hidden md:block"> 
+                <span class="text-party-accent">to the 3d Party?</span>
+            </h2>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Skills Card -->
+                <div onclick="selectContribution('skills')" 
+                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                    <div class="text-4xl mb-4">🧠</div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Skills & Expertise</h3>
+                    <p class="text-gray-400 text-sm">Lawyers, designers, teachers, engineers — we need brains.</p>
+                </div>
+                
+                <!-- Action Card -->
+                <div onclick="selectContribution('action')" 
+                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                    <div class="text-4xl mb-4">🏃</div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">On-the-Ground Action</h3>
+                    <p class="text-gray-400 text-sm">Events, cleanups, organizing. Less talking, more doing.</p>
+                </div>
+                
+                <!-- Ideas Card -->
+                <div onclick="selectContribution('ideas')" 
+                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                    <div class="text-4xl mb-4">💡</div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Ideas & Proposals</h3>
+                    <p class="text-gray-400 text-sm">Policy suggestions. Actual bridge-building (not metaphors).</p>
+                </div>
+                
+                <!-- Donation Card -->
+                <div onclick="selectContribution('donation')" 
+                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                    <div class="text-4xl mb-4">💰</div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Support & Donations</h3>
+                    <p class="text-gray-400 text-sm">Treasury help. Your contribution counts.</p>
+                </div>
+            </div>
+
+            <!-- Merit Score Explanation (Hidden until user selects) -->
+            <div id="meritExplanation" class="hidden mt-12 max-w-3xl mx-auto">
+                <div class="bg-party-accent/5 border-2 border-party-accent/30 rounded-xl p-8">
+                    <div class="flex items-start space-x-4">
+                        <div class="text-3xl">🎯</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-party-accent mb-3">How Participation Works</h3>
+                            <p class="text-gray-300 leading-relaxed mb-3">
+                                We don't do insider connections or party bosses deciding who rises. Your participation determines your standing — not who you know.
+                            </p>
+                            <p class="text-gray-300 leading-relaxed mb-3">
+                                The more you contribute — skills, effort, ideas, action — the higher you rank. Think of it like a reputation bank. 
+                                Your balance grows with real work. It stays private until you choose to check.
+                            </p>
+                            <p class="text-gray-400 text-sm italic">
+                                No secret handshakes. Just contribute more, matter more.
+                            </p>
+                            
+                            <button onclick="proceedToSignup()" 
+                                    class="mt-6 w-full bg-party-accent text-party-dark py-4 rounded-xl font-bold text-lg hover:scale-[1.02] transform transition">
+                                Continue to Signup →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-12 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="text-2xl font-bold text-party-accent mb-4">3d Party</div>
+            <p class="text-gray-500 text-sm mb-4">The actual third option. Still not insurance.</p>
+<div class="flex justify-center gap-6 text-sm">
+                <a href="/legislature" class="text-gray-400 hover:text-party-accent">Legislature</a>
+                <a href="/proposals" class="text-gray-400 hover:text-party-accent">Vote</a>
+                <a href="/policies" class="text-gray-400 hover:text-party-accent">Policies</a>
+                <a href="/wall" class="text-gray-400 hover:text-party-accent">The Wall</a>
+                <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
+            </div>
+            <p class="text-gray-600 text-xs mt-6">© 2024 3d Party Maldives</p>
+        </div>
+    </footer>
+
+    <script>
+        let selectedContribution = null;
+        
+        // Fetch member count on load
+        async function fetchMemberCount() {
+            try {
+                const response = await fetch('/api/signups', {
+                    headers: { 'Authorization': 'Bearer guest' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('memberCount').textContent = data.total || 0;
+                }
+            } catch (e) {
+                // Silently fail — just show 0
+            }
+        }
+        
+        fetchMemberCount();
+        
+        function selectContribution(type) {
+            // Remove previous selections
+            document.querySelectorAll('.contribution-card').forEach(card => {
+                card.classList.remove('border-party-accent', 'bg-party-accent/5');
+            });
+            
+            // Highlight selected
+            event.currentTarget.classList.add('border-party-accent', 'bg-party-accent/5');
+            
+            // Set contribution type
+            selectedContribution = type;
+            
+            // Show explanation
+            document.getElementById('meritExplanation').classList.remove('hidden');
+            document.getElementById('meritExplanation').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function proceedToSignup() {
+            if (!selectedContribution) return;
+            
+            // Store selection in sessionStorage
+            sessionStorage.setItem('contribution_type', selectedContribution);
+            
+            // Redirect to signup page
+            window.location.href = `/join?type=${selectedContribution}`;
+        }
+    </script>
+</body>
+</html>
