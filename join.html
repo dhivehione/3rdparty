@@ -41,22 +41,22 @@
         <div id="contributionSelection" class="mb-8">
             <p class="text-gray-400 mb-4">First, how do you want to contribute?</p>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button onclick="selectContribution('skills')" 
+                <button onclick="selectContribution('skills', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">🧠</div>
                     <div class="text-sm font-bold">Skills</div>
                 </button>
-                <button onclick="selectContribution('action')" 
+                <button onclick="selectContribution('action', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">🏃</div>
                     <div class="text-sm font-bold">Action</div>
                 </button>
-                <button onclick="selectContribution('ideas')" 
+                <button onclick="selectContribution('ideas', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">💡</div>
                     <div class="text-sm font-bold">Ideas</div>
                 </button>
-                <button onclick="selectContribution('donation')" 
+                <button onclick="selectContribution('donation', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">💰</div>
                     <div class="text-sm font-bold">Donation</div>
@@ -132,15 +132,15 @@
                     </p>
                     
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <button type="button" onclick="selectDonation(100)" 
+                        <button type="button" onclick="selectDonation(100, event)" 
                                 class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
                             MVR 100
                         </button>
-                        <button type="button" onclick="selectDonation(500)" 
+                        <button type="button" onclick="selectDonation(500, event)" 
                                 class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
                             MVR 500
                         </button>
-                        <button type="button" onclick="selectDonation(1000)" 
+                        <button type="button" onclick="selectDonation(1000, event)" 
                                 class="donation-btn bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition">
                             MVR 1,000
                         </button>
@@ -205,7 +205,7 @@
             'donation': '💰'
         };
         
-        function selectContribution(type) {
+        function selectContribution(type, e) {
             contributionType = type;
             sessionStorage.setItem('contribution_type', type);
             
@@ -213,7 +213,14 @@
             document.querySelectorAll('.contrib-btn').forEach(btn => {
                 btn.classList.remove('border-party-accent', 'bg-party-accent/10');
             });
-            event.target.closest('.contrib-btn').classList.add('border-party-accent', 'bg-party-accent/10');
+            if (e && e.target) {
+                e.target.closest('.contrib-btn').classList.add('border-party-accent', 'bg-party-accent/10');
+            } else {
+                // Find button by type and highlight
+                const buttons = document.querySelectorAll('.contrib-btn');
+                const typeIndex = ['skills', 'action', 'ideas', 'donation'].indexOf(type);
+                if (buttons[typeIndex]) buttons[typeIndex].classList.add('border-party-accent', 'bg-party-accent/10');
+            }
             
             // Hide selection, show summary
             document.getElementById('contributionSelection').classList.add('hidden');
@@ -251,10 +258,10 @@
         
         // Display contribution summary if already selected
         if (contributionType) {
-            selectContribution(contributionType);
+            selectContribution(contributionType, null);
         }
         
-        function selectDonation(amount) {
+        function selectDonation(amount, e) {
             selectedDonationAmount = amount;
             document.getElementById('donationAmount').value = amount;
             
@@ -262,7 +269,9 @@
             document.querySelectorAll('.donation-btn').forEach(btn => {
                 btn.classList.remove('border-party-accent', 'bg-party-accent/10');
             });
-            event.target.classList.add('border-party-accent', 'bg-party-accent/10');
+            if (e && e.target) {
+                e.target.classList.add('border-party-accent', 'bg-party-accent/10');
+            }
         }
         
         // Custom donation handler
