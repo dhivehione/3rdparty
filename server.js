@@ -50,6 +50,7 @@ db.exec(`
     donation_amount REAL DEFAULT 0,
     initial_merit_estimate INTEGER DEFAULT 0,
     is_verified INTEGER DEFAULT 1,
+    auth_token TEXT,
     unregistered_at TEXT,
     unregistered_by TEXT,
     unregister_justification TEXT,
@@ -517,7 +518,8 @@ if (lawsDb) {
         vote TEXT NOT NULL CHECK(vote IN ('support', 'oppose', 'abstain')),
         reasoning TEXT,
         voted_at TEXT NOT NULL,
-        user_ip TEXT
+        user_ip TEXT,
+        user_phone TEXT
       )
     `);
     console.log('✓ Sub-article votes table ready');
@@ -540,6 +542,24 @@ if (lawsDb) {
     console.log('✓ Law votes table ready');
   } catch (err) {
     console.log('⚠ Could not create law_votes table:', err.message);
+  }
+
+  // Law-level votes table
+  try {
+    lawsDb.exec(`
+      CREATE TABLE IF NOT EXISTS law_level_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        law_id INTEGER NOT NULL,
+        vote TEXT NOT NULL CHECK(vote IN ('support', 'oppose', 'abstain')),
+        reasoning TEXT,
+        voted_at TEXT NOT NULL,
+        user_ip TEXT,
+        user_phone TEXT
+      )
+    `);
+    console.log('✓ Law-level votes table ready');
+  } catch (err) {
+    console.log('⚠ Could not create law_level_votes table:', err.message);
   }
 }
 
@@ -1176,6 +1196,243 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// POST /api/user/login - User login with phone + NID
+app.post('/api/user/login', (req, res) => {
+  const { phone, nid } = req.body;
+  
+  if (!phone || !nid) {
+    return res.status(400).json({ error: 'Phone and NID required', success: false });
+  }
+  
+  try {
+    const user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(phone, nid);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials or not registered', success: false });
+    }
+    
+    // Generate auth token
+    const authToken = Buffer.from(`${phone}:${nid}:${Date.now()}`).toString('base64');
+    db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, user.id);
+    
+    res.json({ 
+      success: true, 
+      token: authToken,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        nid: user.nid,
+        email: user.email,
+        island: user.island,
+        contribution_type: user.contribution_type,
+        donation_amount: user.donation_amount,
+        initial_merit_estimate: user.initial_merit_estimate,
+        timestamp: user.timestamp
+      }
+    });
+  } catch (error) {
+    console.error('User login error:', error);
+    res.status(500).json({ error: 'Login failed', success: false });
+  }
+});
+
+// POST /api/user/logout - User logout
+app.post('/api/user/logout', (req, res) => {
+  const { phone } = req.body;
+  if (phone) {
+    db.prepare('UPDATE signups SET auth_token = NULL WHERE phone = ?').run(phone);
+  }
+  res.json({ success: true, message: 'Logged out' });
+});
+
+// Middleware to verify user auth token
+function userAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authentication required', success: false });
+  }
+  
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  
+  try {
+    const user = db.prepare('SELECT * FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid or expired token', success: false });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Authentication failed', success: false });
+  }
+}
+
+// GET /api/user/profile - Get user profile
+app.get('/api/user/profile', userAuth, (req, res) => {
+  const user = req.user;
+  
+  // Get clause-level votes
+  let clauseVotes = [];
+  if (lawsDb) {
+    try {
+      clauseVotes = lawsDb.prepare(`
+        SELECT sv.*, sa.sub_article_label as clause_label, a.article_number, a.article_title, l.law_name
+        FROM sub_article_votes sv
+        JOIN sub_articles sa ON sv.sub_article_id = sa.id
+        JOIN articles a ON sa.article_id = a.id
+        JOIN laws l ON a.law_id = l.id
+        WHERE sv.user_phone = ?
+        ORDER BY sv.voted_at DESC
+        LIMIT 50
+      `).all(user.phone);
+    } catch (e) {}
+  }
+  
+  // Get article-level votes
+  let articleVotes = [];
+  try {
+    articleVotes = db.prepare(`
+      SELECT lv.*, a.article_number, a.article_title, l.law_name
+      FROM law_votes lv
+      JOIN articles a ON lv.article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      WHERE lv.user_phone = ?
+      ORDER BY lv.voted_at DESC
+      LIMIT 50
+    `).all(user.phone);
+  } catch (e) {}
+  
+  // Get law-level votes
+  let lawVotes = [];
+  if (lawsDb) {
+    try {
+      lawVotes = lawsDb.prepare(`
+        SELECT llv.*, l.law_name, l.category_name
+        FROM law_level_votes llv
+        JOIN laws l ON llv.law_id = l.id
+        WHERE llv.user_phone = ?
+        ORDER BY llv.voted_at DESC
+        LIMIT 50
+      `).all(user.phone);
+    } catch (e) {}
+  }
+  
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      phone: user.phone,
+      name: user.name,
+      email: user.email,
+      island: user.island,
+      contribution_type: user.contribution_type,
+      donation_amount: user.donation_amount,
+      initial_merit_estimate: user.initial_merit_estimate,
+      timestamp: user.timestamp
+    },
+    votes: {
+      clauses: clauseVotes,
+      articles: articleVotes,
+      laws: lawVotes
+    },
+    stats: {
+      clauseVotesCount: clauseVotes.length,
+      articleVotesCount: articleVotes.length,
+      lawVotesCount: lawVotes.length
+    }
+  });
+});
+
+// POST /api/mvlaws/vote-law - Vote on an entire law (law-level voting)
+app.post('/api/mvlaws/vote-law', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  const { law_id, vote, reasoning, phone } = req.body;
+  
+  if (!law_id) {
+    return res.status(400).json({ error: 'Law ID required', success: false });
+  }
+  
+  if (!['support', 'oppose', 'abstain'].includes(vote)) {
+    return res.status(400).json({ error: 'Invalid vote. Must be: support, oppose, or abstain', success: false });
+  }
+  
+  const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+  
+  const recentVote = lawsDb.prepare(`
+    SELECT id FROM law_level_votes 
+    WHERE law_id = ? AND (user_ip = ? OR user_phone = ?) AND voted_at > ?
+    LIMIT 1
+  `).get(law_id, userIP, phone || '', oneHourAgo);
+  
+  if (recentVote) {
+    return res.status(429).json({ error: 'Please wait an hour before voting on this law again', success: false });
+  }
+  
+  try {
+    const votedAt = new Date().toISOString();
+    
+    const existing = lawsDb.prepare(`
+      SELECT id FROM law_level_votes 
+      WHERE law_id = ? AND (user_ip = ? OR user_phone = ?)
+    `).get(law_id, userIP, phone || '');
+    
+    if (existing) {
+      lawsDb.prepare(`
+        UPDATE law_level_votes SET vote = ?, reasoning = ?, voted_at = ?, user_phone = ? 
+        WHERE id = ?
+      `).run(vote, reasoning || null, votedAt, phone || null, existing.id);
+    } else {
+      lawsDb.prepare(`
+        INSERT INTO law_level_votes (law_id, vote, reasoning, voted_at, user_ip, user_phone)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(law_id, vote, reasoning || null, votedAt, userIP, phone || null);
+    }
+    
+    res.json({ message: 'Law vote recorded!', success: true });
+  } catch (error) {
+    console.error('Law-level vote error:', error);
+    res.status(500).json({ error: 'Could not record vote', success: false });
+  }
+});
+
+// GET /api/mvlaws/:id/law-votes - Get law-level votes for a law
+app.get('/api/mvlaws/:id/law-votes', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const lawId = parseInt(req.params.id);
+    
+    const voteCounts = lawsDb.prepare(`
+      SELECT vote, COUNT(*) as count 
+      FROM law_level_votes 
+      WHERE law_id = ?
+      GROUP BY vote
+    `).all(lawId);
+    
+    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+    let userVote = null;
+    try {
+      userVote = lawsDb.prepare(`
+        SELECT vote, reasoning FROM law_level_votes 
+        WHERE law_id = ? AND (user_ip = ? OR user_phone = ?)
+      `).get(lawId, userIP, req.query.phone || '');
+    } catch (e) {}
+    
+    res.json({ 
+      votes: voteCounts,
+      userVote: userVote || null,
+      success: true 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch law votes', success: false });
+  }
+});
+
 // ==================== SERVE HTML FILES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -1227,6 +1484,10 @@ app.get('/law-stats', (req, res) => {
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
 // ==================== START SERVER ====================

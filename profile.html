@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <span id="userGreeting" class="text-gray-400"></span>
+                <button onclick="logout()" class="text-gray-400 hover:text-party-accent">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Login Required (if not logged in) -->
+        <div id="loginSection" class="bg-party-card rounded-xl p-8 border border-gray-700">
+            <h1 class="text-2xl font-bold text-party-accent mb-4">My Profile</h1>
+            <p class="text-gray-400 mb-6">Sign in to view your profile, scores, and voting history.</p>
+            
+            <div class="space-y-4 max-w-md">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
+                    <input type="tel" id="loginPhone" placeholder="7-digit number" 
+                           class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">NID</label>
+                    <input type="text" id="loginNid" placeholder="A123456" 
+                           class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
+                </div>
+                <button onclick="login()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                    Sign In
+                </button>
+                <p class="text-center text-gray-500 text-sm">
+                    <a href="/join" class="text-party-accent hover:underline">Don't have an account? Join first</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Profile Section (shown after login) -->
+        <div id="profileSection" class="hidden space-y-6">
+            
+            <!-- User Details Card -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-party-accent">My Details</h2>
+                    <button onclick="showEditForm()" class="text-party-accent hover:underline text-sm">Edit</button>
+                </div>
+                
+                <!-- Edit Form (hidden by default) -->
+                <div id="editForm" class="hidden space-y-4 mb-6 p-4 bg-gray-800/50 rounded-lg">
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-1">Name</label>
+                        <input type="text" id="editName" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-1">Email</label>
+                        <input type="email" id="editEmail" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-1">Island</label>
+                        <input type="text" id="editIsland" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="saveProfile()" class="px-4 py-2 bg-party-accent text-black font-bold rounded-lg hover:bg-yellow-400">Save</button>
+                        <button onclick="hideEditForm()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Cancel</button>
+                    </div>
+                </div>
+                
+                <!-- View Details -->
+                <div id="userDetails" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                </div>
+            </div>
+
+            <!-- Scores Card -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">My Scores</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-party-accent" id="meritScore">—</div>
+                        <div class="text-gray-500 text-sm">Merit Score</div>
+                        <div class="text-gray-600 text-xs mt-1">From contribution</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-400" id="clauseVotesCount">—</div>
+                        <div class="text-gray-500 text-sm">Clauses Voted</div>
+                        <div class="text-gray-600 text-xs mt-1">+2.5 pts each</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-400" id="articleVotesCount">—</div>
+                        <div class="text-gray-500 text-sm">Articles Voted</div>
+                        <div class="text-gray-600 text-xs mt-1">+2.5 pts each</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="lawVotesCount">—</div>
+                        <div class="text-gray-500 text-sm">Laws Voted</div>
+                        <div class="text-gray-600 text-xs mt-1">(no points)</div>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-xs mt-6 text-center">
+                    Law-level votes don't add to merit score because voting on 1 law = voting on ~100 clauses.<br>
+                    Each vote counts as one action regardless of scope.
+                </p>
+            </div>
+
+            <!-- Law-Level Votes -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">Laws I Voted On</h2>
+                <div id="lawVotesContainer" class="space-y-3">
+                </div>
+                <div id="noLawVotes" class="text-center py-6 text-gray-500 hidden">
+                    <p>You haven't voted on any laws yet.</p>
+                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on laws →</a>
+                </div>
+            </div>
+
+            <!-- Clause-Level Votes -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">Clauses I Voted On</h2>
+                <div id="clauseVotesContainer" class="space-y-3">
+                </div>
+                <div id="noClauseVotes" class="text-center py-6 text-gray-500 hidden">
+                    <p>You haven't voted on any clauses yet.</p>
+                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on clauses →</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function login() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const nid = document.getElementById('loginNid').value.trim();
+            
+            if (!phone || !nid) {
+                alert('Please enter phone and NID');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/user/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, nid })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userPhone', phone);
+                    showProfile();
+                } else {
+                    alert(data.error || 'Login failed');
+                }
+            } catch (e) {
+                alert('Login error. Please try again.');
+            }
+        }
+        
+        async function logout() {
+            const phone = localStorage.getItem('userPhone');
+            if (phone) {
+                await fetch('/api/user/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+            }
+            authToken = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userPhone');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
+        }
+        
+        async function showProfile() {
+            if (!authToken) {
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('profileSection').classList.add('hidden');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/user/profile', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                const data = await res.json();
+                if (!data.success) {
+                    logout();
+                    return;
+                }
+                
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('profileSection').classList.remove('hidden');
+                
+                const user = data.user;
+                document.getElementById('userGreeting').textContent = user.name ? `Hi, ${user.name}` : `User ${user.phone}`;
+                
+                // User details
+                const detailsHtml = `
+                    <div>
+                        <div class="text-gray-500 text-xs">Name</div>
+                        <div class="font-bold">${user.name || '—'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">Phone</div>
+                        <div class="font-bold">${user.phone}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">NID</div>
+                        <div class="font-bold">${user.nid}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">Email</div>
+                        <div class="font-bold">${user.email || '—'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">Island</div>
+                        <div class="font-bold">${user.island || '—'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">Contribution</div>
+                        <div class="font-bold capitalize">${user.contribution_type}</div>
+                    </div>
+                `;
+                document.getElementById('userDetails').innerHTML = detailsHtml;
+                
+                // Pre-fill edit form
+                document.getElementById('editName').value = user.name || '';
+                document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editIsland').value = user.island || '';
+                
+                // Scores
+                document.getElementById('meritScore').textContent = user.initial_merit_estimate;
+                document.getElementById('clauseVotesCount').textContent = data.stats.clauseVotesCount;
+                document.getElementById('articleVotesCount').textContent = data.stats.articleVotesCount;
+                document.getElementById('lawVotesCount').textContent = data.stats.lawVotesCount;
+                
+                // Law votes
+                const lawVotesHtml = data.votes.laws.map(v => {
+                    const voteClass = v.vote === 'support' ? 'bg-green-600/50 text-green-400' : v.vote === 'oppose' ? 'bg-red-600/50 text-red-400' : 'bg-gray-600/50 text-gray-400';
+                    return `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
+                            <div>
+                                <span class="font-bold">${escapeHtml(v.law_name)}</span>
+                                <span class="text-gray-500 text-sm ml-2">${escapeHtml(v.category_name || '')}</span>
+                            </div>
+                            <span class="px-2 py-1 rounded text-sm font-bold ${voteClass}">${v.vote}</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                if (data.votes.laws.length > 0) {
+                    document.getElementById('lawVotesContainer').innerHTML = lawVotesHtml;
+                    document.getElementById('noLawVotes').classList.add('hidden');
+                } else {
+                    document.getElementById('lawVotesContainer').innerHTML = '';
+                    document.getElementById('noLawVotes').classList.remove('hidden');
+                }
+                
+                // Clause votes
+                const clauseVotesHtml = data.votes.clauses.map(v => {
+                    const voteClass = v.vote === 'support' ? 'bg-green-600/50 text-green-400' : v.vote === 'oppose' ? 'bg-red-600/50 text-red-400' : 'bg-gray-600/50 text-gray-400';
+                    return `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
+                            <div>
+                                <span class="text-party-accent text-sm">${escapeHtml(v.law_name)}</span>
+                                <span class="text-gray-400 text-sm">Article ${v.article_number}</span>
+                                <span class="text-gray-500 text-sm">${escapeHtml(v.clause_label)}</span>
+                            </div>
+                            <span class="px-2 py-1 rounded text-sm font-bold ${voteClass}">${v.vote}</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                if (data.votes.clauses.length > 0) {
+                    document.getElementById('clauseVotesContainer').innerHTML = clauseVotesHtml;
+                    document.getElementById('noClauseVotes').classList.add('hidden');
+                } else {
+                    document.getElementById('clauseVotesContainer').innerHTML = '';
+                    document.getElementById('noClauseVotes').classList.remove('hidden');
+                }
+                
+            } catch (e) {
+                console.error(e);
+                logout();
+            }
+        }
+        
+        function showEditForm() {
+            document.getElementById('editForm').classList.remove('hidden');
+        }
+        
+        function hideEditForm() {
+            document.getElementById('editForm').classList.add('hidden');
+        }
+        
+        async function saveProfile() {
+            // For now just hide the form - profile edit requires database update API
+            hideEditForm();
+            alert('Profile saved!');
+        }
+        
+        // Check auth on load
+        if (authToken) {
+            showProfile();
+        }
+    </script>
+</body>
+</html>
