@@ -14,15 +14,27 @@ if (!fs.existsSync(dataDir)) {
 
 const db = new Database(path.join(dataDir, 'signups.db'));
 
-// Laws database (from mvlaws project)
-const lawsDbPath = process.env.LAWS_DB_PATH || path.join(dataDir, 'laws.db');
-let lawsDb;
-try {
-  lawsDb = new Database(lawsDbPath);
-  console.log('✓ Laws database connected');
-} catch (err) {
-  console.log('⚠ Laws database not found at', lawsDbPath);
-  lawsDb = null;
+// Laws database (from mvlaws project) - check multiple common paths
+const possiblePaths = [
+  process.env.LAWS_DB_PATH,
+  '/app/data/laws.db',
+  '/data/laws.db',
+  path.join(dataDir, 'laws.db')
+].filter(p => p && fs.existsSync(p));
+
+const lawsDbPath = possiblePaths[0] || null;
+
+let lawsDb = null;
+if (lawsDbPath) {
+  try {
+    lawsDb = new Database(lawsDbPath);
+    console.log('✓ Laws database connected:', lawsDbPath);
+  } catch (err) {
+    console.log('⚠ Could not open laws database:', err.message);
+  }
+} else {
+  console.log('⚠ Laws database not found. Checked: /app/data/laws.db, /data/laws.db, ./data/laws.db');
+  console.log('⚠ Set LAWS_DB_PATH environment variable to point to laws.db');
 }
 
 // Create table with updated schema
@@ -128,6 +140,19 @@ db.exec(`
 `);
 
 console.log('✓ SQLite database initialized for 3d Party');
+
+// Law votes table for article-level voting
+db.exec(`
+  CREATE TABLE IF NOT EXISTS law_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id INTEGER NOT NULL,
+    vote TEXT NOT NULL CHECK(vote IN ('support', 'oppose', 'abstain')),
+    reasoning TEXT,
+    voted_at TEXT NOT NULL,
+    user_ip TEXT,
+    user_phone TEXT
+  )
+`);
 
 // ==================== MIDDLEWARE ====================
 app.use(express.json());
@@ -585,38 +610,58 @@ app.get('/api/mvlaws/:id', (req, res) => {
 // GET /api/mvlaws/:id/articles/:articleId - Get article with sub-articles
 app.get('/api/mvlaws/:id/articles/:articleId', (req, res) => {
   if (!lawsDb) {
-    return res.status(503).json({ error: 'Laws database not available', success: false });
+    return res.status(503).json({ error: 'Laws database not available. Set LAWS_DB_PATH environment variable.', success: false });
   }
   
   try {
+    const lawId = parseInt(req.params.id);
     const articleId = parseInt(req.params.articleId);
+    
+    const law = lawsDb.prepare('SELECT * FROM laws WHERE id = ?').get(lawId);
+    if (!law) {
+      return res.status(404).json({ error: 'Law not found', success: false });
+    }
     
     const article = lawsDb.prepare('SELECT * FROM articles WHERE id = ?').get(articleId);
     if (!article) {
       return res.status(404).json({ error: 'Article not found', success: false });
     }
     
-    const subArticles = lawsDb.prepare(`
-      SELECT id, sub_article_label, text_content
-      FROM sub_articles
-      WHERE article_id = ?
-      ORDER BY sub_article_label
-    `).all(articleId);
+    let subArticles = [];
+    try {
+      subArticles = lawsDb.prepare(`
+        SELECT id, sub_article_label, text_content
+        FROM sub_articles
+        WHERE article_id = ?
+        ORDER BY sub_article_label
+      `).all(articleId);
+    } catch (e) {
+      console.log('No sub_articles table or error:', e.message);
+    }
     
-    const voteCounts = lawsDb.prepare(`
-      SELECT vote, COUNT(*) as count 
-      FROM votes 
-      WHERE article_id = ?
-      GROUP BY vote
-    `).all(articleId);
+    let voteCounts = [];
+    try {
+      voteCounts = lawsDb.prepare(`
+        SELECT vote, COUNT(*) as count 
+        FROM votes 
+        WHERE article_id = ?
+        GROUP BY vote
+      `).all(articleId);
+    } catch (e) {
+      console.log('No votes table or error:', e.message);
+    }
     
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-    const userVote = db.prepare(`
-      SELECT vote, reasoning FROM law_votes 
-      WHERE article_id = ? AND (user_phone = ? OR user_ip = ?)
-    `).get(articleId, userIP, userIP);
+    let userVote = null;
+    try {
+      userVote = db.prepare(`
+        SELECT vote, reasoning FROM law_votes 
+        WHERE article_id = ? AND user_ip = ?
+      `).get(articleId, userIP);
+    } catch (e) {}
     
     res.json({ 
+      law,
       article, 
       subArticles,
       votes: voteCounts,
@@ -625,14 +670,14 @@ app.get('/api/mvlaws/:id/articles/:articleId', (req, res) => {
     });
   } catch (error) {
     console.error('Fetch article error:', error);
-    res.status(500).json({ error: 'Could not fetch article', success: false });
+    res.status(500).json({ error: 'Could not fetch article: ' + error.message, success: false });
   }
 });
 
 // GET /api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId - Get sub-article with votes
 app.get('/api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId', (req, res) => {
   if (!lawsDb) {
-    return res.status(503).json({ error: 'Laws database not available', success: false });
+    return res.status(503).json({ error: 'Laws database not available. Set LAWS_DB_PATH environment variable.', success: false });
   }
   
   try {
@@ -643,18 +688,26 @@ app.get('/api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId', (req, r
       return res.status(404).json({ error: 'Sub-article not found', success: false });
     }
     
-    const voteCounts = lawsDb.prepare(`
-      SELECT vote, COUNT(*) as count 
-      FROM sub_article_votes 
-      WHERE sub_article_id = ?
-      GROUP BY vote
-    `).all(subArticleId);
+    let voteCounts = [];
+    try {
+      voteCounts = lawsDb.prepare(`
+        SELECT vote, COUNT(*) as count 
+        FROM sub_article_votes 
+        WHERE sub_article_id = ?
+        GROUP BY vote
+      `).all(subArticleId);
+    } catch (e) {
+      console.log('No sub_article_votes table yet');
+    }
     
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-    const userVote = lawsDb.prepare(`
-      SELECT vote, reasoning FROM sub_article_votes 
-      WHERE sub_article_id = ? AND user_ip = ?
-    `).get(subArticleId, userIP);
+    let userVote = null;
+    try {
+      userVote = lawsDb.prepare(`
+        SELECT vote, reasoning FROM sub_article_votes 
+        WHERE sub_article_id = ? AND user_ip = ?
+      `).get(subArticleId, userIP);
+    } catch (e) {}
     
     res.json({ 
       subArticle, 
@@ -664,7 +717,7 @@ app.get('/api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId', (req, r
     });
   } catch (error) {
     console.error('Fetch sub-article error:', error);
-    res.status(500).json({ error: 'Could not fetch sub-article', success: false });
+    res.status(500).json({ error: 'Could not fetch sub-article: ' + error.message, success: false });
   }
 });
 
@@ -789,15 +842,21 @@ let userId = null;
 // GET /api/mvlaws/stats - Get voting stats
 app.get('/api/mvlaws/stats', (req, res) => {
   if (!lawsDb) {
-    return res.status(503).json({ error: 'Laws database not available', success: false });
+    return res.status(503).json({ error: 'Laws database not available. Set LAWS_DB_PATH environment variable.', success: false });
   }
   
   try {
-    const totalVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM votes').get();
-    const articlesVoted = lawsDb.prepare('SELECT COUNT(DISTINCT article_id) as total FROM votes').get();
-    const voteBreakdown = lawsDb.prepare(`
-      SELECT vote, COUNT(*) as count FROM votes GROUP BY vote
-    `).all();
+    let totalVotes = { total: 0 };
+    let articlesVoted = { total: 0 };
+    let voteBreakdown = [];
+    
+    try {
+      totalVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM votes').get();
+      articlesVoted = lawsDb.prepare('SELECT COUNT(DISTINCT article_id) as total FROM votes').get();
+      voteBreakdown = lawsDb.prepare('SELECT vote, COUNT(*) as count FROM votes GROUP BY vote').all();
+    } catch (e) {
+      console.log('Votes table not available:', e.message);
+    }
     
     res.json({
       totalVotes: totalVotes.total,
@@ -806,7 +865,7 @@ app.get('/api/mvlaws/stats', (req, res) => {
       success: true
     });
   } catch (error) {
-    res.status(500).json({ error: 'Could not fetch stats', success: false });
+    res.status(500).json({ error: 'Could not fetch stats: ' + error.message, success: false });
   }
 });
 
