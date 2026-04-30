@@ -41,11 +41,11 @@
     <div class="bg-party-card border-b border-gray-800">
         <div class="max-w-4xl mx-auto px-4 py-8 text-center">
             <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-4">
-                <span class="text-party-accent text-sm">🏛️ Governance</span>
+                <span class="text-party-accent text-sm">👑 Not your typical politicians</span>
             </div>
-            <h1 class="text-4xl font-bold mb-3">Leadership Structure</h1>
+            <h1 class="text-4xl font-bold mb-3">Who's in Charge Here?</h1>
             <p class="text-gray-400 max-w-2xl mx-auto">
-                How the movement is governed — transparent, merit-based, and accountable to members.
+                Spoiler: It's you. But someone has to answer emails. Meet the people who signed up for that.
             </p>
         </div>
     </div>
@@ -62,130 +62,139 @@
                 </div>
                 <div class="text-right">
                     <div class="text-3xl font-bold text-party-accent" id="memberCount">—</div>
-                    <div class="text-gray-500 text-xs">of <span id="threshold">1000</span> required</div>
+                    <div class="text-gray-500 text-xs">of <span id="threshold">1000</span> needed</div>
                 </div>
             </div>
+            <div class="mt-3 text-gray-500 text-sm" id="minMeritDisplay"></div>
         </div>
 
-        <!-- Governing Council -->
+        <!-- The Actual Leaders -->
         <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-            <h2 class="text-xl font-bold text-party-accent mb-4">
-                <i class="fas fa-users mr-2"></i>Governing Council (Shadow Ministers)
+            <h2 class="text-xl font-bold text-party-accent mb-2">
+                <i class="fas fa-crown mr-2"></i>The Big Chairs (Currently Occupied)
             </h2>
             <p class="text-gray-400 text-sm mb-6">
-                Elected leaders who draft policies and manage day-to-day operations. Selected through rigorous merit-based process with live public interviews.
+                These are the people who said "yes, I'll deal with member complaints at 2am." Respect them. Or don't. They're not your bosses, they're your coworkers.
             </p>
             <div id="councilList" class="space-y-4">
-                <p class="text-gray-500 text-center py-4">No current council members. Apply when threshold is reached.</p>
+                <p class="text-gray-500 text-center py-4">📭 No one in the hot seats yet. Be the first!</p>
             </div>
             
-            <!-- Council Requirements -->
-            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
-                <h3 class="font-bold text-white mb-2">Requirements (Per Whitepaper)</h3>
+            <!-- Requirements -->
+            <div class="mt-6 p-4 bg-party-accent/5 border border-party-accent/20 rounded-lg">
+                <h3 class="font-bold text-white mb-2">📋 The Fine Print (Per Whitepaper)</h3>
                 <ul class="text-gray-400 text-sm space-y-2">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i>Minimum Merit Score eligibility to apply</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i>Public applications with full transparency</li>
-                    <li><i class="fas fa-video text-blue-400 mr-2"></i>Live-streamed interviews by expert panels</li>
-                    <li><i class="fas fa-vote-yea text-purple-400 mr-2"></i>Final selection via Ranked-Choice Voting by all members</li>
-                    <li><i class="fas fa-calendar text-yellow-400 mr-2"></i>Maximum 2-year terms with annual performance reviews</li>
+                    <li><span class="text-party-accent">✓</span> Need minimum Merit Score (you can't just show up and demand power)</li>
+                    <li><span class="text-party-accent">✓</span> Public application (no hiding in backrooms)</li>
+                    <li><span class="text-party-accent">✓</span> Live interview on video (yes, your face, yes, in public)</li>
+                    <li><span class="text-party-accent">✓</span> Everyone votes on final pick via ranked choice (no oligarchy)</li>
+                    <li><span class="text-party-accent">✓</span> 2-year max term (you WILL be replaced, don't get comfortable)</li>
                 </ul>
             </div>
         </div>
 
         <!-- Open Positions -->
         <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-            <h2 class="text-xl font-bold text-party-accent mb-4">
-                <i class="fas fa-briefcase mr-2"></i>Available Positions
+            <h2 class="text-xl font-bold text-party-accent mb-2">
+                <i class="fas fa-briefcase mr-2"></i>Jobs for Ambitious People
             </h2>
+            <p class="text-gray-400 text-sm mb-6">
+                Available spots. Read the requirements. Don't say we didn't warn you about the merit score thing.
+            </p>
             <div id="positionsList" class="space-y-4">
                 <p class="text-gray-500 text-center py-4">Loading positions...</p>
             </div>
         </div>
 
-        <!-- SOPs -->
+        <!-- The Rules -->
         <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-            <h2 class="text-xl font-bold text-party-accent mb-4">
-                <i class="fas fa-book mr-2"></i>Standard Operating Procedures
+            <h2 class="text-xl font-bold text-party-accent mb-2">
+                <i class="fas fa-book mr-2"></i>The Rule Book (SOPs)
             </h2>
             <p class="text-gray-400 text-sm mb-6">
-                Rules and protocols that all leadership must follow for transparent, accountable governance.
+                What happens when leaders mess up? Or follow rules? This is what keeps them honest. Like a performance review, but with actual consequences.
             </p>
             <div id="sopsList" class="space-y-4">
-                <p class="text-gray-500 text-center py-4">Loading SOPs...</p>
+                <p class="text-gray-500 text-center py-4">Loading rules...</p>
             </div>
         </div>
 
-        <!-- How to Become a Leader -->
+        <!-- The Path -->
         <div class="bg-party-card rounded-xl p-6 border border-gray-700">
             <h2 class="text-xl font-bold text-party-accent mb-4">
-                <i class="fas fa-star mr-2"></i>How to Become a Leader
+                <i class="fas fa-rocket mr-2"></i>How to Become Important (Process)
             </h2>
             <div class="space-y-4">
                 <div class="flex items-start">
                     <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">1</div>
                     <div class="ml-4">
-                        <div class="font-bold">Join the Movement</div>
-                        <div class="text-gray-400 text-sm">Become a verified member with Merit Score</div>
+                        <div class="font-bold">Join First</div>
+                        <div class="text-gray-400 text-sm">We can't make you leader if you're not even in the party. That's just how memberships work.</div>
                     </div>
                 </div>
                 <div class="flex items-start">
                     <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">2</div>
                     <div class="ml-4">
-                        <div class="font-bold">Build Your Merit</div>
-                        <div class="text-gray-400 text-sm">Participate in proposals, votes, and community activities</div>
+                        <div class="font-bold">Do Stuff</div>
+                        <div class="text-gray-400 text-sm">Vote on proposals, write policies, help out, bring friends. Your merit score is built from actual work, not just existing.</div>
                     </div>
                 </div>
                 <div class="flex items-start">
                     <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">3</div>
                     <div class="ml-4">
-                        <div class="font-bold">Wait for Threshold</div>
-                        <div class="text-gray-400 text-sm">Leadership applications open when membership reaches threshold</div>
+                        <div class="font-bold">Wait for It</div>
+                        <div class="text-gray-400 text-sm">We need enough members first. Can't have leadership before we have people to lead. That's just math.</div>
                     </div>
                 </div>
                 <div class="flex items-start">
                     <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">4</div>
                     <div class="ml-4">
-                        <div class="font-bold">Apply & Interview</div>
-                        <div class="text-gray-400 text-sm">Submit public application, undergo live public interview</div>
+                        <div class="font-bold">Apply & Get Interviewed</div>
+                        <div class="text-gray-400 text-sm">Write why you want the job. Then do a live public interview. Yes, your actual face. Yes, everyone can watch. Terrifying? Good.</div>
                     </div>
                 </div>
                 <div class="flex items-start">
                     <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">5</div>
                     <div class="ml-4">
-                        <div class="font-bold">Member Vote</div>
-                        <div class="text-gray-400 text-sm">Final selection via Ranked-Choice Voting by all members</div>
+                        <div class="font-bold">Get Voted In</div>
+                        <div class="text-gray-400 text-sm">Members rank candidates. Winner gets the job. If you suck, they can vote you out. That's the "recall" thing.</div>
                     </div>
                 </div>
             </div>
             
             <div class="mt-6 p-4 bg-party-accent/10 border border-party-accent/30 rounded-lg">
                 <a href="/profile" class="block text-center text-party-accent font-bold hover:underline">
-                    <i class="fas fa-user-circle mr-2"></i>Check Your Eligibility in Profile
+                    <i class="fas fa-user-circle mr-2"></i>See If You're Cool Enough (Check Profile)
                 </a>
             </div>
         </div>
 
-        <!-- Accountability -->
+        <!-- What Happens If They Suck -->
         <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-            <h2 class="text-xl font-bold text-party-accent mb-4">
-                <i class="fas fa-shield-alt mr-2"></i>Accountability & Recall
+            <h2 class="text-xl font-bold text-party-accent mb-2">
+                <i class="fas fa-skull mr-2"></i>What If They Mess Up?
             </h2>
-            <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="font-bold text-white mb-2">Yearly Appraisals</h3>
-                    <p class="text-gray-400 text-sm">All leaders undergo annual performance reviews. Ratings based on community feedback and goal achievement.</p>
+            <p class="text-gray-400 text-sm mb-4">We have systems. Because we learned from every other party ever.</p>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="p-4 bg-gray-800/50 rounded-lg">
+                    <div class="text-2xl mb-2">📊</div>
+                    <h3 class="font-bold text-white mb-1">Yearly Reviews</h3>
+                    <p class="text-gray-400 text-sm">Annual appraisal. Yes, like your job but for volunteer political power.</p>
                 </div>
-                <div>
-                    <h3 class="font-bold text-white mb-2">Term Limits</h3>
-                    <p class="text-gray-400 text-sm">Maximum 2-year terms. Leaders must re-apply and be re-elected to serve again.</p>
+                <div class="p-4 bg-gray-800/50 rounded-lg">
+                    <div class="text-2xl mb-2">⏰</div>
+                    <h3 class="font-bold text-white mb-1">Term Limits</h3>
+                    <p class="text-gray-400 text-sm">Max 2 years. Then re-apply like everyone else. No lifetime appointments.</p>
                 </div>
-                <div>
-                    <h3 class="font-bold text-white mb-2">Recall Process</h3>
-                    <p class="text-gray-400 text-sm">Members can initiate recall with 10% petition. 80% supermajority vote removes leader.</p>
+                <div class="p-4 bg-gray-800/50 rounded-lg">
+                    <div class="text-2xl mb-2">🗳️</div>
+                    <h3 class="font-bold text-white mb-1">Recall Vote</h3>
+                    <p class="text-gray-400 text-sm">10% of members petition = recall vote. 80% say go = you're gone. Simple.</p>
                 </div>
-                <div>
-                    <h3 class="font-bold text-white mb-2">Decision Statements</h3>
-                    <p class="text-gray-400 text-sm">All significant decisions documented and published. Public vote required for policies.</p>
+                <div class="p-4 bg-gray-800/50 rounded-lg">
+                    <div class="text-2xl mb-2">📝</div>
+                    <h3 class="font-bold text-white mb-1">Decision Statements</h3>
+                    <p class="text-gray-400 text-sm">All decisions documented and published. No "I don't recall" excuses.</p>
                 </div>
             </div>
         </div>
@@ -194,7 +203,7 @@
 
     <!-- Footer -->
     <div class="border-t border-gray-800 py-8 text-center">
-        <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
+        <a href="/" class="text-party-accent hover:underline">← Back to Home (where it's less serious)</a>
     </div>
 
     <script>
@@ -216,15 +225,16 @@
                 if (status.success) {
                     document.getElementById('memberCount').textContent = status.member_count;
                     document.getElementById('threshold').textContent = status.threshold;
+                    document.getElementById('minMeritDisplay').textContent = `Minimum Merit Score needed: ${status.min_merit} (no, you can't skip this)`;
                     
                     if (status.threshold_met) {
-                        document.getElementById('statusTitle').textContent = '✅ Leadership Applications Open';
+                        document.getElementById('statusTitle').innerHTML = '🎉 Applications Open!';
                         document.getElementById('statusTitle').className = 'text-lg font-bold text-green-400';
-                        document.getElementById('statusMessage').textContent = 'Minimum merit required: ' + status.min_merit;
+                        document.getElementById('statusMessage').textContent = 'The gates are open. Prove yourself.';
                     } else {
-                        document.getElementById('statusTitle').textContent = '🔒 Leadership Applications Closed';
+                        document.getElementById('statusTitle').innerHTML = '🔒 Still Locked';
                         document.getElementById('statusTitle').className = 'text-lg font-bold text-yellow-400';
-                        document.getElementById('statusMessage').textContent = 'Need ' + (status.threshold - status.member_count) + ' more members';
+                        document.getElementById('statusMessage').textContent = `Need ${status.threshold - status.member_count} more people first`;
                     }
                 }
                 
@@ -235,13 +245,13 @@
                         .map(t => `
                             <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
                                 <div>
-                                    <div class="font-bold text-white">${t.name || 'Anonymous Member'}</div>
+                                    <div class="font-bold text-white">${t.name || 'Anonymous Hero'}</div>
                                     <div class="text-party-accent text-sm">${t.position_title}</div>
-                                    <div class="text-gray-500 text-xs">Since ${new Date(t.started_at).toLocaleDateString()}</div>
+                                    <div class="text-gray-500 text-xs">In the chair since ${new Date(t.started_at).toLocaleDateString()}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-party-accent font-bold">${t.merit_score}</div>
-                                    <div class="text-gray-500 text-xs">Merit Score</div>
+                                    <div class="text-gray-500 text-xs">Merit pts</div>
                                 </div>
                             </div>
                         `).join('');
@@ -257,9 +267,9 @@
                         .filter(p => p.is_active)
                         .map(p => {
                             const typeLabel = {
-                                'council': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Council' },
-                                'committee': { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Committee' },
-                                'hub': { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Hub' }
+                                'council': { bg: 'bg-purple-500/20', text: 'text-purple-400', emoji: '👔' },
+                                'committee': { bg: 'bg-blue-500/20', text: 'text-blue-400', emoji: '📋' },
+                                'hub': { bg: 'bg-green-500/20', text: 'text-green-400', emoji: '🔬' }
                             };
                             const typeInfo = typeLabel[p.position_type] || typeLabel.council;
                             
@@ -268,18 +278,18 @@
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <div class="font-bold text-white">${p.title}</div>
-                                            <div class="text-gray-400 text-sm">${p.description || ''}</div>
+                                            <div class="text-gray-400 text-sm">${p.description || 'This person does stuff'}</div>
                                         </div>
-                                        <span class="px-2 py-1 rounded text-xs ${typeInfo.bg} ${typeInfo.text}">${typeInfo.label}</span>
+                                        <span class="px-2 py-1 rounded text-xs ${typeInfo.bg} ${typeInfo.text}">${typeInfo.emoji} ${p.position_type}</span>
                                     </div>
                                     <div class="mt-2 text-gray-500 text-xs">
-                                        <i class="fas fa-star mr-1"></i>Minimum Merit: ${p.min_merit_required}
+                                        <i class="fas fa-star text-party-accent mr-1"></i>Need ${p.min_merit_required} merit points
                                     </div>
                                 </div>
                             `;
                         }).join('');
                     
-                    document.getElementById('positionsList').innerHTML = positionsHtml || '<p class="text-gray-500 text-center py-4">No open positions</p>';
+                    document.getElementById('positionsList').innerHTML = positionsHtml || '<p class="text-gray-500 text-center py-4">No open spots. Check back later.</p>';
                 }
                 
                 // Render SOPs
@@ -292,11 +302,11 @@
                     
                     const sopsHtml = Object.entries(sopsByCategory).map(([cat, items]) => `
                         <div class="mb-4">
-                            <h3 class="font-bold text-party-accent capitalize mb-3">${cat} Operations</h3>
+                            <h3 class="font-bold text-party-accent capitalize mb-3">📁 ${cat} Rules</h3>
                             ${items.map(s => `
                                 <div class="p-3 bg-gray-800/30 rounded-lg mb-2">
                                     <div class="font-medium text-white">${s.title}</div>
-                                    <div class="text-gray-400 text-sm mt-1">${s.content.substring(0, 200)}${s.content.length > 200 ? '...' : ''}</div>
+                                    <div class="text-gray-400 text-sm mt-1">${s.content.substring(0, 180)}${s.content.length > 180 ? '...' : ''}</div>
                                 </div>
                             `).join('')}
                         </div>
