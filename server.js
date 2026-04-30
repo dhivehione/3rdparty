@@ -1826,6 +1826,75 @@ app.post('/api/leadership/apply', userAuth, (req, res) => {
   }
 });
 
+// ==================== PUBLIC LEADERSHIP API ====================
+
+// GET /api/leadership/public - Public leadership status
+app.get('/api/leadership/public', (req, res) => {
+  try {
+    const settings = db.prepare('SELECT member_threshold, min_merit_for_leadership FROM leadership_settings WHERE id = 1').get();
+    const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups WHERE is_verified = 1').get();
+    
+    res.json({
+      success: true,
+      threshold_met: memberCount.total >= settings.member_threshold,
+      member_count: memberCount.total,
+      threshold: settings.member_threshold,
+      min_merit: settings.min_merit_for_leadership
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch status' });
+  }
+});
+
+// GET /api/leadership/positions-public - Public positions list
+app.get('/api/leadership/positions-public', (req, res) => {
+  try {
+    const positions = db.prepare(`
+      SELECT id, title, description, position_type, min_merit_required
+      FROM leadership_positions 
+      WHERE is_active = 1
+      ORDER BY position_type, id
+    `).all();
+    res.json({ success: true, positions });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch positions' });
+  }
+});
+
+// GET /api/leadership/terms-public - Public current leaders
+app.get('/api/leadership/terms-public', (req, res) => {
+  try {
+    const terms = db.prepare(`
+      SELECT lt.id, lt.user_id, lt.started_at, lt.term_number,
+        s.name, s.initial_merit_estimate as merit_score, 
+        lp.title as position_title, lp.position_type
+      FROM leadership_terms lt
+      JOIN signups s ON lt.user_id = s.id
+      JOIN leadership_positions lp ON lt.position_id = lp.id
+      WHERE lt.ended_at IS NULL
+      ORDER BY lt.started_at DESC
+    `).all();
+    res.json({ success: true, terms });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch terms' });
+  }
+});
+
+// GET /api/leadership/sops-public - Public SOPs
+app.get('/api/leadership/sops-public', (req, res) => {
+  try {
+    const sops = db.prepare(`
+      SELECT id, title, content, category, version, updated_at
+      FROM leadership_sops 
+      WHERE is_active = 1
+      ORDER BY category, title
+    `).all();
+    res.json({ success: true, sops });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch SOPs' });
+  }
+});
+
 // ==================== SERVE HTML FILES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -1881,6 +1950,10 @@ app.get('/admin', (req, res) => {
 
 app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
+});
+
+app.get('/leadership', (req, res) => {
+  res.sendFile(path.join(__dirname, 'leadership.html'));
 });
 
 // ==================== START SERVER ====================

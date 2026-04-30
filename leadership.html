@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leadership — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="hidden md:flex space-x-4 text-sm">
+                <a href="/" class="hover:text-party-accent transition">Home</a>
+                <a href="/join" class="hover:text-party-accent transition">Join</a>
+                <a href="/leadership" class="text-party-accent">Leadership</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="bg-party-card border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-8 text-center">
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-4">
+                <span class="text-party-accent text-sm">🏛️ Governance</span>
+            </div>
+            <h1 class="text-4xl font-bold mb-3">Leadership Structure</h1>
+            <p class="text-gray-400 max-w-2xl mx-auto">
+                How the movement is governed — transparent, merit-based, and accountable to members.
+            </p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        
+        <!-- Status Banner -->
+        <div id="statusBanner" class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-lg font-bold" id="statusTitle">Loading...</div>
+                    <div class="text-gray-400 text-sm" id="statusMessage"></div>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold text-party-accent" id="memberCount">—</div>
+                    <div class="text-gray-500 text-xs">of <span id="threshold">1000</span> required</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Governing Council -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-users mr-2"></i>Governing Council (Shadow Ministers)
+            </h2>
+            <p class="text-gray-400 text-sm mb-6">
+                Elected leaders who draft policies and manage day-to-day operations. Selected through rigorous merit-based process with live public interviews.
+            </p>
+            <div id="councilList" class="space-y-4">
+                <p class="text-gray-500 text-center py-4">No current council members. Apply when threshold is reached.</p>
+            </div>
+            
+            <!-- Council Requirements -->
+            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
+                <h3 class="font-bold text-white mb-2">Requirements (Per Whitepaper)</h3>
+                <ul class="text-gray-400 text-sm space-y-2">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Minimum Merit Score eligibility to apply</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Public applications with full transparency</li>
+                    <li><i class="fas fa-video text-blue-400 mr-2"></i>Live-streamed interviews by expert panels</li>
+                    <li><i class="fas fa-vote-yea text-purple-400 mr-2"></i>Final selection via Ranked-Choice Voting by all members</li>
+                    <li><i class="fas fa-calendar text-yellow-400 mr-2"></i>Maximum 2-year terms with annual performance reviews</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-briefcase mr-2"></i>Available Positions
+            </h2>
+            <div id="positionsList" class="space-y-4">
+                <p class="text-gray-500 text-center py-4">Loading positions...</p>
+            </div>
+        </div>
+
+        <!-- SOPs -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-book mr-2"></i>Standard Operating Procedures
+            </h2>
+            <p class="text-gray-400 text-sm mb-6">
+                Rules and protocols that all leadership must follow for transparent, accountable governance.
+            </p>
+            <div id="sopsList" class="space-y-4">
+                <p class="text-gray-500 text-center py-4">Loading SOPs...</p>
+            </div>
+        </div>
+
+        <!-- How to Become a Leader -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-star mr-2"></i>How to Become a Leader
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">1</div>
+                    <div class="ml-4">
+                        <div class="font-bold">Join the Movement</div>
+                        <div class="text-gray-400 text-sm">Become a verified member with Merit Score</div>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">2</div>
+                    <div class="ml-4">
+                        <div class="font-bold">Build Your Merit</div>
+                        <div class="text-gray-400 text-sm">Participate in proposals, votes, and community activities</div>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">3</div>
+                    <div class="ml-4">
+                        <div class="font-bold">Wait for Threshold</div>
+                        <div class="text-gray-400 text-sm">Leadership applications open when membership reaches threshold</div>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">4</div>
+                    <div class="ml-4">
+                        <div class="font-bold">Apply & Interview</div>
+                        <div class="text-gray-400 text-sm">Submit public application, undergo live public interview</div>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-8 h-8 rounded-full bg-party-accent/20 flex items-center justify-center text-party-accent font-bold flex-shrink-0">5</div>
+                    <div class="ml-4">
+                        <div class="font-bold">Member Vote</div>
+                        <div class="text-gray-400 text-sm">Final selection via Ranked-Choice Voting by all members</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 p-4 bg-party-accent/10 border border-party-accent/30 rounded-lg">
+                <a href="/profile" class="block text-center text-party-accent font-bold hover:underline">
+                    <i class="fas fa-user-circle mr-2"></i>Check Your Eligibility in Profile
+                </a>
+            </div>
+        </div>
+
+        <!-- Accountability -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-shield-alt mr-2"></i>Accountability & Recall
+            </h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold text-white mb-2">Yearly Appraisals</h3>
+                    <p class="text-gray-400 text-sm">All leaders undergo annual performance reviews. Ratings based on community feedback and goal achievement.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white mb-2">Term Limits</h3>
+                    <p class="text-gray-400 text-sm">Maximum 2-year terms. Leaders must re-apply and be re-elected to serve again.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white mb-2">Recall Process</h3>
+                    <p class="text-gray-400 text-sm">Members can initiate recall with 10% petition. 80% supermajority vote removes leader.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white mb-2">Decision Statements</h3>
+                    <p class="text-gray-400 text-sm">All significant decisions documented and published. Public vote required for policies.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="border-t border-gray-800 py-8 text-center">
+        <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
+    </div>
+
+    <script>
+        async function loadLeadershipData() {
+            try {
+                const [statusRes, positionsRes, termsRes, sopsRes] = await Promise.all([
+                    fetch('/api/leadership/public'),
+                    fetch('/api/leadership/positions-public'),
+                    fetch('/api/leadership/terms-public'),
+                    fetch('/api/leadership/sops-public')
+                ]);
+                
+                const status = await statusRes.json();
+                const positions = await positionsRes.json();
+                const terms = await termsRes.json();
+                const sops = await sopsRes.json();
+                
+                // Update status banner
+                if (status.success) {
+                    document.getElementById('memberCount').textContent = status.member_count;
+                    document.getElementById('threshold').textContent = status.threshold;
+                    
+                    if (status.threshold_met) {
+                        document.getElementById('statusTitle').textContent = '✅ Leadership Applications Open';
+                        document.getElementById('statusTitle').className = 'text-lg font-bold text-green-400';
+                        document.getElementById('statusMessage').textContent = 'Minimum merit required: ' + status.min_merit;
+                    } else {
+                        document.getElementById('statusTitle').textContent = '🔒 Leadership Applications Closed';
+                        document.getElementById('statusTitle').className = 'text-lg font-bold text-yellow-400';
+                        document.getElementById('statusMessage').textContent = 'Need ' + (status.threshold - status.member_count) + ' more members';
+                    }
+                }
+                
+                // Render council members
+                if (terms.success && terms.terms.length > 0) {
+                    const councilHtml = terms.terms
+                        .filter(t => t.position_type === 'council')
+                        .map(t => `
+                            <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
+                                <div>
+                                    <div class="font-bold text-white">${t.name || 'Anonymous Member'}</div>
+                                    <div class="text-party-accent text-sm">${t.position_title}</div>
+                                    <div class="text-gray-500 text-xs">Since ${new Date(t.started_at).toLocaleDateString()}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-party-accent font-bold">${t.merit_score}</div>
+                                    <div class="text-gray-500 text-xs">Merit Score</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    
+                    if (councilHtml) {
+                        document.getElementById('councilList').innerHTML = councilHtml;
+                    }
+                }
+                
+                // Render positions
+                if (positions.success && positions.positions.length > 0) {
+                    const positionsHtml = positions.positions
+                        .filter(p => p.is_active)
+                        .map(p => {
+                            const typeLabel = {
+                                'council': { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'Council' },
+                                'committee': { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'Committee' },
+                                'hub': { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Hub' }
+                            };
+                            const typeInfo = typeLabel[p.position_type] || typeLabel.council;
+                            
+                            return `
+                                <div class="p-4 bg-gray-800/50 rounded-lg">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-bold text-white">${p.title}</div>
+                                            <div class="text-gray-400 text-sm">${p.description || ''}</div>
+                                        </div>
+                                        <span class="px-2 py-1 rounded text-xs ${typeInfo.bg} ${typeInfo.text}">${typeInfo.label}</span>
+                                    </div>
+                                    <div class="mt-2 text-gray-500 text-xs">
+                                        <i class="fas fa-star mr-1"></i>Minimum Merit: ${p.min_merit_required}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    
+                    document.getElementById('positionsList').innerHTML = positionsHtml || '<p class="text-gray-500 text-center py-4">No open positions</p>';
+                }
+                
+                // Render SOPs
+                if (sops.success && sops.sops.length > 0) {
+                    const sopsByCategory = {};
+                    sops.sops.forEach(s => {
+                        if (!sopsByCategory[s.category]) sopsByCategory[s.category] = [];
+                        sopsByCategory[s.category].push(s);
+                    });
+                    
+                    const sopsHtml = Object.entries(sopsByCategory).map(([cat, items]) => `
+                        <div class="mb-4">
+                            <h3 class="font-bold text-party-accent capitalize mb-3">${cat} Operations</h3>
+                            ${items.map(s => `
+                                <div class="p-3 bg-gray-800/30 rounded-lg mb-2">
+                                    <div class="font-medium text-white">${s.title}</div>
+                                    <div class="text-gray-400 text-sm mt-1">${s.content.substring(0, 200)}${s.content.length > 200 ? '...' : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('sopsList').innerHTML = sopsHtml;
+                }
+                
+            } catch (e) {
+                console.error('Error loading leadership data:', e);
+            }
+        }
+        
+        loadLeadershipData();
+    </script>
+</body>
+</html>
