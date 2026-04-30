@@ -675,6 +675,69 @@ app.get('/api/mvlaws/stats', (req, res) => {
   }
 });
 
+// GET /api/mvlaws/top-voted - Get most voted articles
+app.get('/api/mvlaws/top-voted', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const articles = lawsDb.prepare(`
+      SELECT 
+        a.id as article_id,
+        a.article_number,
+        a.article_title,
+        l.id as law_id,
+        l.law_name,
+        SUM(CASE WHEN v.vote = 'support' THEN 1 ELSE 0 END) as support,
+        SUM(CASE WHEN v.vote = 'oppose' THEN 1 ELSE 0 END) as oppose,
+        SUM(CASE WHEN v.vote = 'abstain' THEN 1 ELSE 0 END) as abstain,
+        COUNT(v.id) as total_votes
+      FROM votes v
+      JOIN articles a ON v.article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      GROUP BY a.id
+      ORDER BY total_votes DESC
+      LIMIT 20
+    `).all();
+    
+    res.json({ articles, success: true });
+  } catch (error) {
+    console.error('Top voted error:', error);
+    res.status(500).json({ error: 'Could not fetch top articles', success: false });
+  }
+});
+
+// GET /api/mvlaws/recent-votes - Get recent votes
+app.get('/api/mvlaws/recent-votes', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const votes = lawsDb.prepare(`
+      SELECT 
+        v.vote,
+        v.voted_at,
+        v.reasoning,
+        a.id as article_id,
+        a.article_number,
+        a.article_title,
+        l.law_name
+      FROM votes v
+      JOIN articles a ON v.article_id = a.id
+      JOIN laws l ON a.law_id = l.id
+      ORDER BY v.voted_at DESC
+      LIMIT 50
+    `).all();
+    
+    res.json({ votes, success: true });
+  } catch (error) {
+    console.error('Recent votes error:', error);
+    res.status(500).json({ error: 'Could not fetch recent votes', success: false });
+  }
+});
+
 // POST /api/wall - Add a post (no signup required)
 app.post('/api/wall', (req, res) => {
   const { nickname, message } = req.body;
@@ -927,6 +990,10 @@ app.get('/legislature', (req, res) => {
 
 app.get('/laws', (req, res) => {
   res.sendFile(path.join(__dirname, 'laws.html'));
+});
+
+app.get('/law-stats', (req, res) => {
+  res.sendFile(path.join(__dirname, 'law-stats.html'));
 });
 
 app.get('/admin', (req, res) => {

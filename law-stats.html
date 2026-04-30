@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Law Voting Stats — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <a href="/laws" class="text-gray-400 hover:text-party-accent">Laws</a>
+                <a href="/" class="text-gray-400 hover:text-party-accent">← Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <h1 class="text-2xl font-bold text-party-accent mb-2">Law Voting Statistics</h1>
+            <p class="text-gray-400">Track which articles and clauses have been voted on by members.</p>
+        </div>
+
+        <!-- Overall Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-3xl font-bold text-party-accent" id="totalVotes">—</div>
+                <div class="text-gray-500 text-sm">Total Votes</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-3xl font-bold text-green-400" id="supportVotes">—</div>
+                <div class="text-gray-500 text-sm">Support</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-3xl font-bold text-red-400" id="opposeVotes">—</div>
+                <div class="text-gray-500 text-sm">Oppose</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-3xl font-bold text-blue-400" id="articlesVoted">—</div>
+                <div class="text-gray-500 text-sm">Articles Voted</div>
+            </div>
+        </div>
+
+        <!-- Top Voted Articles -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4"><i class="fas fa-fire text-party-accent mr-2"></i>Most Voted Articles</h2>
+            <div id="topArticles" class="space-y-3">
+                <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Votes -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4"><i class="fas fa-clock text-party-accent mr-2"></i>Recent Votes</h2>
+            <div id="recentVotes" class="space-y-3">
+                <div class="text-center py-4 text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/mvlaws/stats');
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('totalVotes').textContent = data.totalVotes;
+                    document.getElementById('articlesVoted').textContent = data.articlesVoted;
+                    
+                    let support = 0, oppose = 0, abstain = 0;
+                    data.breakdown.forEach(b => {
+                        if (b.vote === 'support') support = b.count;
+                        if (b.vote === 'oppose') oppose = b.count;
+                        if (b.vote === 'abstain') abstain = b.count;
+                    });
+                    
+                    document.getElementById('supportVotes').textContent = support;
+                    document.getElementById('opposeVotes').textContent = oppose;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        async function loadTopArticles() {
+            try {
+                const res = await fetch('/api/mvlaws/top-voted');
+                const data = await res.json();
+                
+                if (data.success && data.articles.length > 0) {
+                    document.getElementById('topArticles').innerHTML = data.articles.map(a => `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
+                            <div>
+                                <div class="font-bold text-party-accent">${escapeHtml(a.law_name || 'Unknown')}</div>
+                                <div class="text-gray-400 text-sm">Article ${a.article_number}: ${escapeHtml(a.article_title || '')}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-green-400 text-sm">+${a.support}</div>
+                                <div class="text-red-400 text-sm">-${a.oppose}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('topArticles').innerHTML = '<div class="text-gray-500 text-center py-4">No articles voted on yet</div>';
+                }
+            } catch (e) {
+                document.getElementById('topArticles').innerHTML = '<div class="text-gray-500 text-center py-4">Could not load data</div>';
+            }
+        }
+        
+        async function loadRecentVotes() {
+            try {
+                const res = await fetch('/api/mvlaws/recent-votes');
+                const data = await res.json();
+                
+                if (data.success && data.votes.length > 0) {
+                    document.getElementById('recentVotes').innerHTML = data.votes.map(v => `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
+                            <div>
+                                <div class="font-bold text-party-accent">Article ${v.article_number}</div>
+                                <div class="text-gray-400 text-sm">${escapeHtml(v.article_title || '')}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="${v.vote === 'support' ? 'text-green-400' : v.vote === 'oppose' ? 'text-red-400' : 'text-gray-400'} font-bold">
+                                    ${v.vote === 'support' ? 'Support' : v.vote === 'oppose' ? 'Oppose' : 'Abstain'}
+                                </div>
+                                <div class="text-gray-500 text-xs">${formatTime(v.voted_at)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-center py-4">No votes yet. Be the first to vote!</div>';
+                }
+            } catch (e) {
+                document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-center py-4">Could not load data</div>';
+            }
+        }
+        
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+            return Math.floor(diff / 86400000) + 'd ago';
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadStats();
+        loadTopArticles();
+        loadRecentVotes();
+    </script>
+</body>
+</html>
