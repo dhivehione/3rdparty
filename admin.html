@@ -106,6 +106,12 @@
                     <option value="ideas">Ideas & Proposals</option>
                     <option value="donation">Support & Donations</option>
                 </select>
+                <select id="filterStatus" onchange="applyFilter()" 
+                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+                    <option value="all">All Status</option>
+                    <option value="verified">Verified</option>
+                    <option value="unregistered">Unregistered</option>
+                </select>
                 <input type="text" id="searchInput" oninput="applyFilter()" 
                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent flex-1 min-w-[200px]"
                        placeholder="Search by name, phone, or NID...">
@@ -126,10 +132,12 @@
                                 <th class="px-6 py-4">Phone</th>
                                 <th class="px-6 py-4">NID</th>
                                 <th class="px-6 py-4">Name</th>
+                                <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4">Contribution</th>
                                 <th class="px-6 py-4">Donation</th>
                                 <th class="px-6 py-4">Merit</th>
                                 <th class="px-6 py-4">Time</th>
+                                <th class="px-6 py-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="signupsTableBody" class="divide-y divide-gray-700">
@@ -227,12 +235,21 @@
 
         function applyFilter() {
             const filterType = document.getElementById('filterType').value;
+            const filterStatus = document.getElementById('filterStatus').value;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
             let filtered = allSignups;
             
             if (filterType !== 'all') {
                 filtered = filtered.filter(s => s.contribution_type === filterType);
+            }
+            
+            if (filterStatus !== 'all') {
+                if (filterStatus === 'verified') {
+                    filtered = filtered.filter(s => s.is_verified === 1);
+                } else {
+                    filtered = filtered.filter(s => s.is_verified === 0);
+                }
             }
             
             if (searchTerm) {
@@ -266,11 +283,18 @@
             noData.classList.add('hidden');
             
             tbody.innerHTML = signups.map(s => `
-                <tr class="hover:bg-gray-800/50 text-sm">
+                <tr class="hover:bg-gray-800/50 text-sm ${s.is_verified ? '' : 'opacity-50'}">
                     <td class="px-6 py-4 text-gray-500">#${s.id}</td>
                     <td class="px-6 py-4">+960 ${s.phone}</td>
                     <td class="px-6 py-4 font-mono">${s.nid}</td>
                     <td class="px-6 py-4">${s.name || '<span class="text-gray-600">—</span>'}</td>
+                    <td class="px-6 py-4">
+                        ${s.is_verified 
+                            ? '<span class="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs">Verified</span>'
+                            : `<span class="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs">Unregistered</span>
+                               <div class="text-xs text-gray-500 mt-1">${s.unregister_justification || ''}</div>`
+                        }
+                    </td>
                     <td class="px-6 py-4">
                         <span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs">
                             ${typeLabels[s.contribution_type] || s.contribution_type}
@@ -285,15 +309,23 @@
                     <td class="px-6 py-4 text-gray-400 text-xs">
                         ${new Date(s.timestamp).toLocaleString()}
                     </td>
+                    <td class="px-6 py-4">
+                        ${s.is_verified 
+                            ? `<button onclick="unregisterUser(${s.id})" class="text-red-400 hover:text-red-300 text-sm">
+                                <i class="fas fa-user-minus mr-1"></i>Unregister
+                               </button>`
+                            : '<span class="text-gray-600 text-xs">Removed</span>'
+                        }
+                    </td>
                 </tr>
             `).join('');
         }
 
         function exportToCSV() {
-            let csv = 'ID,Phone,NID,Name,Email,Island,Contribution Type,Donation Amount,Initial Merit,Timestamp\n';
+            let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
             
             allSignups.forEach(s => {
-                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.contribution_type},${s.donation_amount},${s.initial_merit_estimate},"${s.timestamp}"\n`;
+                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},${s.contribution_type},${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
             });
             
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -321,6 +353,38 @@
                 }
             } catch (error) {
                 alert('Error clearing database');
+            }
+        }
+
+        async function unregisterUser(userId) {
+            const justification = prompt('Enter justification for unregistering this user (required):');
+            
+            if (!justification || justification.trim().length < 10) {
+                alert('Justification note must be at least 10 characters.');
+                return;
+            }
+            
+            if (!confirm('This will remove the user\'s verified status. Continue?')) return;
+            
+            try {
+                const response = await fetch('/api/unregister', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ user_id: userId, justification: justification.trim() })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    refreshData();
+                } else {
+                    alert(result.error || 'Failed to unregister user');
+                }
+            } catch (error) {
+                alert('Error unregistering user');
             }
         }
 

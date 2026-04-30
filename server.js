@@ -37,6 +37,10 @@ db.exec(`
     contribution_type TEXT NOT NULL CHECK(contribution_type IN ('skills', 'action', 'ideas', 'donation')),
     donation_amount REAL DEFAULT 0,
     initial_merit_estimate INTEGER DEFAULT 0,
+    is_verified INTEGER DEFAULT 1,
+    unregistered_at TEXT,
+    unregistered_by TEXT,
+    unregister_justification TEXT,
     timestamp TEXT NOT NULL
   )
 `);
@@ -888,6 +892,41 @@ app.post('/api/signup', (req, res) => {
       error: 'Something went wrong on our end. We\'re working on it.',
       success: false 
     });
+  }
+});
+
+// POST /api/unregister - Unregister a user (admin only)
+app.post('/api/unregister', adminAuth, (req, res) => {
+  const { user_id, justification } = req.body;
+  
+  if (!user_id) {
+    return res.status(400).json({ error: 'User ID required', success: false });
+  }
+  
+  if (!justification || justification.trim().length < 10) {
+    return res.status(400).json({ error: 'Justification note required (min 10 characters)', success: false });
+  }
+  
+  try {
+    const user = db.prepare('SELECT id, name, phone FROM signups WHERE id = ?').get(user_id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', success: false });
+    }
+    
+    const unregisteredAt = new Date().toISOString();
+    db.prepare(`
+      UPDATE signups 
+      SET is_verified = 0, unregistered_at = ?, unregistered_by = 'admin', unregister_justification = ?
+      WHERE id = ?
+    `).run(unregisteredAt, justification.trim(), user_id);
+    
+    res.json({ 
+      message: `User ${user.name || user.phone} has been unregistered.`,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Unregister error:', error);
+    res.status(500).json({ error: 'Could not unregister user', success: false });
   }
 });
 

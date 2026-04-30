@@ -186,7 +186,7 @@
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const contributionType = urlParams.get('type') || sessionStorage.getItem('contribution_type');
+        let contributionType = urlParams.get('type') || sessionStorage.getItem('contribution_type');
         
         let selectedDonationAmount = 0;
         
