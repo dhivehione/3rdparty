@@ -145,8 +145,12 @@
             <div class="text-6xl mb-4">🎉</div>
             <h2 class="text-3xl font-bold mb-4">Welcome to the 3d Party!</h2>
             <p id="successDetails" class="text-gray-400 mb-6"></p>
-            <a href="/" class="inline-flex items-center space-x-2 text-party-accent hover:underline font-bold">
-                <span>Back to home</span>
+            <p class="text-gray-500 text-sm mb-8">
+                You're now one of the <span id="slotsLeft" class="text-party-accent font-bold">13,000</span> people we need to change everything. 
+                Every member counts — and now you will always know exactly where you stand.
+            </p>
+            <a href="/how" class="inline-flex items-center space-x-2 bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+                <span>See how it works</span>
                 <i class="fas fa-arrow-right"></i>
             </a>
         </div>
@@ -255,7 +259,18 @@
                         detailsText += `<br>Donation of MVR ${selectedDonationAmount} added to Live Treasury.`;
                     }
                     document.getElementById('successDetails').innerHTML = detailsText;
-                    
+                     
+                    // Fetch remaining slots
+                    fetch('/api/signups', { headers: { 'Authorization': 'Bearer guest' } })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.success) {
+                                const remaining = Math.max(0, 13000 - d.total);
+                                document.getElementById('slotsLeft').textContent = remaining.toLocaleString();
+                            }
+                        })
+                        .catch(() => {});
+                     
                     // Clear session storage
                     sessionStorage.clear();
                 } else {

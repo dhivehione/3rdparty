@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laws — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4 text-sm">
+                <a href="/legislature" class="text-gray-400 hover:text-party-accent">Legislature</a>
+                <a href="/" class="text-gray-400 hover:text-party-accent">← Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Stats -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <div class="flex flex-wrap justify-center gap-8 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-party-accent" id="lawCount">—</div>
+                    <div class="text-gray-500 text-sm">Total Laws</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-400" id="voteCount">—</div>
+                    <div class="text-gray-500 text-sm">Votes Cast</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-blue-400" id="articlesVoted">—</div>
+                    <div class="text-gray-500 text-sm">Articles Voted</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="mb-6">
+            <label class="text-gray-400 text-sm mr-2">Category:</label>
+            <select id="categoryFilter" onchange="loadLaws()" class="bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                <option value="all">All Categories</option>
+            </select>
+        </div>
+
+        <!-- Laws List -->
+        <div id="lawsContainer" class="space-y-4">
+            <div id="loadingLaws" class="text-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i> Loading laws...
+            </div>
+        </div>
+        
+        <div id="noLaws" class="text-center py-12 text-gray-500 hidden">
+            <p>No laws found.</p>
+        </div>
+
+    </div>
+
+    <!-- Article Modal -->
+    <div id="articleModal" class="fixed inset-0 bg-black/80 z-50 hidden overflow-y-auto">
+        <div class="max-w-3xl mx-auto my-8 px-4">
+            <div class="bg-party-card rounded-xl border border-gray-700 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="modalLawTitle" class="text-xl font-bold text-party-accent"></h2>
+                        <p id="modalArticleTitle" class="text-gray-400"></p>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+                
+                <div id="subArticlesContainer" class="space-y-4 mb-6 max-h-96 overflow-y-auto">
+                </div>
+                
+                <!-- Voting Section -->
+                <div class="border-t border-gray-700 pt-4">
+                    <h3 class="font-bold mb-3">Your Vote</h3>
+                    <div class="flex flex-wrap gap-3 mb-3">
+                        <button onclick="castVote('support')" class="flex-1 bg-green-600 hover:bg-green-500 py-2 rounded-lg font-bold">
+                            <i class="fas fa-thumbs-up mr-2"></i>Support
+                        </button>
+                        <button onclick="castVote('oppose')" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-lg font-bold">
+                            <i class="fas fa-thumbs-down mr-2"></i>Oppose
+                        </button>
+                        <button onclick="castVote('abstain')" class="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded-lg font-bold">
+                            Abstain
+                        </button>
+                    </div>
+                    
+                    <textarea id="reasoning" placeholder="Optional: Explain your vote..." 
+                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 mb-3" rows="2"></textarea>
+                    
+                    <div id="voteStats" class="flex flex-wrap gap-4 text-sm text-gray-400">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentArticleId = null;
+        let currentLawId = null;
+        
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/mvlaws/stats');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('voteCount').textContent = data.totalVotes;
+                    document.getElementById('articlesVoted').textContent = data.articlesVoted;
+                }
+            } catch (e) { console.error(e); }
+        }
+        
+        async function loadLaws() {
+            const category = document.getElementById('categoryFilter').value;
+            document.getElementById('loadingLaws').classList.remove('hidden');
+            document.getElementById('noLaws').classList.add('hidden');
+            
+            try {
+                const url = category === 'all' ? '/api/mvlaws' : `/api/mvlaws?category=${encodeURIComponent(category)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                document.getElementById('loadingLaws').classList.add('hidden');
+                document.getElementById('lawCount').textContent = data.total || 0;
+                
+                if (data.categories && document.getElementById('categoryFilter').children.length === 1) {
+                    data.categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat;
+                        opt.textContent = cat;
+                        document.getElementById('categoryFilter').appendChild(opt);
+                    });
+                }
+                
+                if (data.laws && data.laws.length > 0) {
+                    document.getElementById('lawsContainer').innerHTML = data.laws.map(law => `
+                        <div class="bg-party-card rounded-xl p-5 border border-gray-700 hover:border-party-accent cursor-pointer transition"
+                             onclick="viewLaw(${law.id})">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg">${escapeHtml(law.law_name)}</h3>
+                                    <span class="text-xs bg-party-accent/20 text-party-accent px-2 py-1 rounded">${escapeHtml(law.category_name || 'Uncategorized')}</span>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-500"></i>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('noLaws').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('loadingLaws').classList.add('hidden');
+                document.getElementById('noLaws').classList.remove('hidden');
+            }
+        }
+        
+        async function viewLaw(lawId) {
+            currentLawId = lawId;
+            try {
+                const res = await fetch(`/api/mvlaws/${lawId}`);
+                const data = await res.json();
+                
+                if (!data.success) return;
+                
+                let html = `<div class="space-y-2 mb-4">
+                    <h3 class="font-bold text-party-accent text-lg">${escapeHtml(data.law.law_name)}</h3>
+                    <p class="text-gray-400 text-sm">${data.articles.length} articles</p>
+                </div>`;
+                
+                if (data.articles.length > 0) {
+                    html += '<div class="space-y-2">';
+                    data.articles.forEach(art => {
+                        html += `<div class="bg-gray-800/50 rounded-lg p-3 hover:bg-gray-800 cursor-pointer" onclick="viewArticle(${art.id})">
+                            <span class="font-bold text-party-accent">Article ${art.article_number}</span>
+                            <span class="text-gray-400 ml-2">${escapeHtml(art.article_title || '')}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                
+                document.getElementById('lawsContainer').innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+        
+        async function viewArticle(articleId) {
+            currentArticleId = articleId;
+            try {
+                const res = await fetch(`/api/mvlaws/${currentLawId}/articles/${articleId}`);
+                const data = await res.json();
+                
+                if (!data.success) return;
+                
+                document.getElementById('modalLawTitle').textContent = data.article.law_id;
+                document.getElementById('modalArticleTitle').textContent = `Article ${data.article.article_number}: ${data.article.article_title || ''}`;
+                
+                document.getElementById('subArticlesContainer').innerHTML = data.subArticles.map(sa => `
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <span class="font-bold text-party-accent">${escapeHtml(sa.sub_article_label)}</span>
+                        <p class="text-gray-300 mt-2">${escapeHtml(sa.text_content)}</p>
+                    </div>
+                `).join('');
+                
+                let support = 0, oppose = 0, abstain = 0;
+                data.votes.forEach(v => {
+                    if (v.vote === 'support') support = v.count;
+                    if (v.vote === 'oppose') oppose = v.count;
+                    if (v.vote === 'abstain') abstain = v.count;
+                });
+                
+                document.getElementById('voteStats').innerHTML = `
+                    <span class="text-green-400"><i class="fas fa-thumbs-up"></i> ${support}</span>
+                    <span class="text-red-400"><i class="fas fa-thumbs-down"></i> ${oppose}</span>
+                    <span class="text-gray-400">${abstain} abstain</span>
+                `;
+                
+                document.getElementById('articleModal').classList.remove('hidden');
+            } catch (e) { console.error(e); }
+        }
+        
+        function closeModal() {
+            document.getElementById('articleModal').classList.add('hidden');
+        }
+        
+        async function castVote(vote) {
+            if (!currentArticleId) return;
+            
+            try {
+                const res = await fetch('/api/mvlaws/vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        article_id: currentArticleId,
+                        vote: vote,
+                        reasoning: document.getElementById('reasoning').value
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert('Vote recorded! Thanks for participating.');
+                    loadStats();
+                    viewArticle(currentArticleId);
+                } else {
+                    alert(data.error);
+                }
+            } catch (e) {
+                alert('Error recording vote. Please try again.');
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadStats();
+        loadLaws();
+    </script>
+</body>
+</html>

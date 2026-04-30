@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ==================== DATABASE SETUP ====================
 const dataDir = path.join(__dirname, 'data');
@@ -13,6 +13,17 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const db = new Database(path.join(dataDir, 'signups.db'));
+
+// Laws database (from mvlaws project)
+const lawsDbPath = process.env.LAWS_DB_PATH || path.join(dataDir, 'laws.db');
+let lawsDb;
+try {
+  lawsDb = new Database(lawsDbPath);
+  console.log('✓ Laws database connected');
+} catch (err) {
+  console.log('⚠ Laws database not found at', lawsDbPath);
+  lawsDb = null;
+}
 
 // Create table with updated schema
 db.exec(`
@@ -465,6 +476,193 @@ app.get('/api/legislation-stats', (req, res) => {
   }
 });
 
+// ==================== LAWS API (Maldives Laws from mvlaws) ====================
+
+// GET /api/mvlaws - List all laws with categories
+app.get('/api/mvlaws', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const { category } = req.query;
+    let sql = 'SELECT id, law_name, category_name, created_at FROM laws';
+    let params = [];
+    
+    if (category && category !== 'all') {
+      sql += ' WHERE category_name = ?';
+      params.push(category);
+    }
+    
+    sql += ' ORDER BY law_name';
+    
+    const laws = lawsDb.prepare(sql).all(...params);
+    
+    const categories = lawsDb.prepare(
+      'SELECT DISTINCT category_name FROM laws WHERE category_name IS NOT NULL ORDER BY category_name'
+    ).all();
+    
+    res.json({ 
+      laws, 
+      categories: categories.map(c => c.category_name),
+      total: laws.length,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Fetch laws error:', error);
+    res.status(500).json({ error: 'Could not fetch laws', success: false });
+  }
+});
+
+// GET /api/mvlaws/:id - Get law with articles
+app.get('/api/mvlaws/:id', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const lawId = parseInt(req.params.id);
+    
+    const law = lawsDb.prepare('SELECT * FROM laws WHERE id = ?').get(lawId);
+    if (!law) {
+      return res.status(404).json({ error: 'Law not found', success: false });
+    }
+    
+    const articles = lawsDb.prepare(`
+      SELECT id, article_number, article_title
+      FROM articles 
+      WHERE law_id = ?
+      ORDER BY article_number
+    `).all(lawId);
+    
+    res.json({ law, articles, success: true });
+  } catch (error) {
+    console.error('Fetch law error:', error);
+    res.status(500).json({ error: 'Could not fetch law', success: false });
+  }
+});
+
+// GET /api/mvlaws/:id/articles/:articleId - Get article with sub-articles
+app.get('/api/mvlaws/:id/articles/:articleId', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const articleId = parseInt(req.params.articleId);
+    
+    const article = lawsDb.prepare('SELECT * FROM articles WHERE id = ?').get(articleId);
+    if (!article) {
+      return res.status(404).json({ error: 'Article not found', success: false });
+    }
+    
+    const subArticles = lawsDb.prepare(`
+      SELECT id, sub_article_label, text_content
+      FROM sub_articles
+      WHERE article_id = ?
+      ORDER BY sub_article_label
+    `).all(articleId);
+    
+    const voteCounts = lawsDb.prepare(`
+      SELECT vote, COUNT(*) as count 
+      FROM votes 
+      WHERE article_id = ?
+      GROUP BY vote
+    `).all(articleId);
+    
+    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const userVote = db.prepare(`
+      SELECT vote, reasoning FROM law_votes 
+      WHERE article_id = ? AND (user_phone = ? OR user_ip = ?)
+    `).get(articleId, userIP, userIP);
+    
+    res.json({ 
+      article, 
+      subArticles,
+      votes: voteCounts,
+      userVote: userVote || null,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Fetch article error:', error);
+    res.status(500).json({ error: 'Could not fetch article', success: false });
+  }
+});
+
+// POST /api/mvlaws/vote - Vote on an article (requires signup)
+app.post('/api/mvlaws/vote', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  const { article_id, vote, reasoning, phone } = req.body;
+  
+  if (!article_id) {
+    return res.status(400).json({ error: 'Article ID required', success: false });
+  }
+  
+  if (!['support', 'oppose', 'abstain'].includes(vote)) {
+    return res.status(400).json({ error: 'Invalid vote. Must be: support, oppose, or abstain', success: false });
+  }
+  
+  let userId = null;
+  if (phone) {
+    const user = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
+    if (user) userId = user.id;
+  }
+  
+  try {
+    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const votedAt = new Date().toISOString();
+    
+    const existing = lawsDb.prepare(`
+      SELECT id FROM votes 
+      WHERE article_id = ? AND (user_id = ? OR user_ip = ?)
+    `).get(article_id, userId || -1, userIP);
+    
+    if (existing) {
+      lawsDb.prepare(`
+        UPDATE votes SET vote = ?, reasoning = ?, voted_at = ? 
+        WHERE id = ?
+      `).run(vote, reasoning || null, votedAt, existing.id);
+    } else {
+      lawsDb.prepare(`
+        INSERT INTO votes (article_id, user_id, vote, reasoning, voted_at, user_ip)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(article_id, userId, vote, reasoning || null, votedAt, userIP);
+    }
+    
+    res.json({ message: 'Vote recorded!', success: true });
+  } catch (error) {
+    console.error('Law vote error:', error);
+    res.status(500).json({ error: 'Could not record vote', success: false });
+  }
+});
+
+// GET /api/mvlaws/stats - Get voting stats
+app.get('/api/mvlaws/stats', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const totalVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM votes').get();
+    const articlesVoted = lawsDb.prepare('SELECT COUNT(DISTINCT article_id) as total FROM votes').get();
+    const voteBreakdown = lawsDb.prepare(`
+      SELECT vote, COUNT(*) as count FROM votes GROUP BY vote
+    `).all();
+    
+    res.json({
+      totalVotes: totalVotes.total,
+      articlesVoted: articlesVoted.total,
+      breakdown: voteBreakdown,
+      success: true
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch stats', success: false });
+  }
+});
+
 // POST /api/wall - Add a post (no signup required)
 app.post('/api/wall', (req, res) => {
   const { nickname, message } = req.body;
@@ -683,6 +881,10 @@ app.get('/join', (req, res) => {
   res.sendFile(path.join(__dirname, 'join.html'));
 });
 
+app.get('/intro', (req, res) => {
+  res.sendFile(path.join(__dirname, 'intro.html'));
+});
+
 app.get('/how', (req, res) => {
   res.sendFile(path.join(__dirname, 'how.html'));
 });
@@ -709,6 +911,10 @@ app.get('/proposals', (req, res) => {
 
 app.get('/legislature', (req, res) => {
   res.sendFile(path.join(__dirname, 'legislature.html'));
+});
+
+app.get('/laws', (req, res) => {
+  res.sendFile(path.join(__dirname, 'laws.html'));
 });
 
 app.get('/admin', (req, res) => {

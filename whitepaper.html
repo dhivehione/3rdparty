@@ -17,9 +17,6 @@
             }
         }
     </script>
-    <style>
-        .prose-whitepaper { white-space: pre-wrap; line-height: 1.8; }
-    </style>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -32,57 +29,140 @@
                     <span class="text-sm text-gray-400">Party</span>
                 </a>
             </div>
-            <a href="/" class="text-gray-400 hover:text-party-accent transition text-sm">
-                ← Back to Home
-            </a>
+            <div class="hidden md:flex space-x-4 text-sm">
+                <a href="/" class="hover:text-party-accent transition">Home</a>
+                <a href="/join" class="hover:text-party-accent transition">Join</a>
+            </div>
         </div>
     </nav>
 
-    <div class="max-w-3xl mx-auto px-4 py-12">
-        
-        <div class="text-center mb-10">
+    <!-- Header -->
+    <div class="bg-party-card border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-12 text-center">
             <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-6">
                 <span class="text-party-accent text-sm">📄 Deep Dive</span>
             </div>
-            <h1 class="text-4xl font-bold mb-4">The Whitepaper</h1>
-            <p class="text-gray-400">
-                Everything you need to know about how the 3d Party works. 
-                <br class="hidden md:block">Fair warning: it's a bit of a read.
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">The Whitepaper</h1>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                A blueprint for next-generation digital democracy in the Maldives.
             </p>
         </div>
+    </div>
 
-        <div class="bg-party-card rounded-xl p-8 border border-gray-700">
-            <div class="prose-whitepaper text-gray-300 text-sm" id="whitepaperContent">
-                <div class="text-center py-12 text-gray-500">
-                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
-                    <p>Loading whitepaper...</p>
-                </div>
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        <div id="whitepaperContent" class="space-y-8">
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+                <p>Loading whitepaper...</p>
             </div>
         </div>
+    </div>
 
-        <div class="text-center mt-10">
-            <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
-        </div>
-
+    <!-- Footer -->
+    <div class="border-t border-gray-800 py-8 text-center">
+        <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
     </div>
 
     <script>
-        // Load whitepaper content
+        function formatWhitepaper(text) {
+            let cleaned = text
+                .replace(/Here is the next section\./g, '')
+                .replace(/Here is the next section, covering the first part of the Core Principles\./g, '')
+                .replace(/Here is the next section\. This is the highly detailed breakdown of the Merit Score, now properly\nformatted for readability\./g, '')
+                .replace(/Here is the next section, which completes the "Core Principles\."/g, '')
+                .replace(/Here is the next section, detailing the platform architecture\./g, '')
+                .replace(/Here is the next section\./g, '')
+                .replace(/Here is the next section, renumbered correctly from "VI" to "VII"\./g, '')
+                .replace(/Here is the next section, the Phased Rollout plan\./g, '')
+                .trim();
+
+            const lines = cleaned.split('\n');
+            let html = '';
+            let inList = false;
+            let listType = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) {
+                    if (inList) {
+                        html += '</ul>';
+                        inList = false;
+                        listType = null;
+                    }
+                    continue;
+                }
+
+                // Roman numeral sections (I., II., III., etc.)
+                if (/^(I{1,3}|IV|V|VI{1,3}|IX|X)\.\s/.test(line)) {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    const title = line.replace(/^(I{1,3}|IV|V|VI{1,3}|IX|X)\.\s/, '');
+                    html += `<h2 class="text-2xl font-bold text-party-accent mt-12 mb-6 border-b border-gray-700 pb-4">${line}</h2>`;
+                    continue;
+                }
+
+                // Lettered subsections (A., B., C., etc.)
+                if (/^[A-Z]\.\s/.test(line) && !line.includes(':')) {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    html += `<h3 class="text-xl font-bold text-white mt-8 mb-4">${line}</h3>`;
+                    continue;
+                }
+
+                // Numbered sections (1., 2., etc.)
+                if (/^\d+\.\s/.test(line) && line.length < 100) {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    html += `<h4 class="text-lg font-semibold text-party-secondary mt-6 mb-3">${line}</h4>`;
+                    continue;
+                }
+
+                // Main title line
+                if (line.includes('Executive Summary') || line.includes('Vision:') || line.includes('Core Principles')) {
+                    if (inList) { html += '</ul>'; inList = false; }
+                    html += `<h1 class="text-3xl font-bold text-party-accent mt-12 mb-6">${line}</h1>`;
+                    continue;
+                }
+
+                // Bullet points with bullet character
+                if (line.startsWith('●') || line.startsWith('○') || line.startsWith('■') || line.startsWith('▪')) {
+                    if (!inList) {
+                        listType = line.startsWith('○') ? 'alpha' : 'bullet';
+                        html += '<ul class="space-y-2 mb-6">';
+                        inList = true;
+                    }
+                    const content = line.replace(/^[●○■▪]\s*/, '').replace(/^●​/g, '').replace(/^○​/g, '').replace(/^■​/g, '');
+                    
+                    // Check for nested bullet
+                    if (content.startsWith('●') || content.startsWith('○')) {
+                        html += '</ul>';
+                        const nestedContent = content.replace(/^[●○]\s*/, '');
+                        html += `<ul class="ml-6 space-y-2 mb-4"><li class="text-gray-300">${nestedContent}</li></ul>`;
+                    } else {
+                        html += `<li class="text-gray-300">${content}</li>`;
+                    }
+                    continue;
+                }
+
+                // Bold terms
+                line = line.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>');
+
+                // Regular paragraph
+                if (inList) { html += '</ul>'; inList = false; }
+                html += `<p class="text-gray-300 leading-relaxed mb-4">${line}</p>`;
+            }
+
+            if (inList) html += '</ul>';
+            return html;
+        }
+
         fetch('/whitepaper.txt')
             .then(response => response.text())
             .then(text => {
-                // Clean up the text - remove placeholder notes
-                let cleaned = text
-                    .replace(/Here is the next section\./g, '')
-                    .replace(/○/g, '•')
-                    .replace(/■/g, '▪')
-                    .replace(/●/g, '•')
-                    .trim();
-                
-                document.getElementById('whitepaperContent').textContent = cleaned;
+                const formatted = formatWhitepaper(text);
+                document.getElementById('whitepaperContent').innerHTML = formatted;
             })
             .catch(err => {
-                document.getElementById('whitepaperContent').textContent = 'Could not load whitepaper. Please try again later.';
+                document.getElementById('whitepaperContent').innerHTML = 
+                    '<p class="text-red-400">Could not load whitepaper. Please try again later.</p>';
             });
     </script>
 </body>

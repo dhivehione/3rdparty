@@ -3,5 +3,8 @@
   "appName": "3rdparty",
   "buildPot": {
     "node": "22"
+  },
+  "volumes": {
+    "data": "/app/data"
   }
 }

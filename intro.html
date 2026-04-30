@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Movement — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center space-x-2 text-white hover:text-party-accent transition">
+                <span class="text-2xl font-bold text-party-accent">3d</span>
+                <span class="text-sm text-gray-400">Party</span>
+            </a>
+            <div class="hidden md:flex space-x-6 text-sm">
+                <a href="/" class="hover:text-party-accent transition">Home</a>
+                <a href="/intro" class="text-party-accent font-bold">The Movement</a>
+                <a href="/how" class="hover:text-party-accent transition">How It Works</a>
+                <a href="/whitepaper" class="hover:text-party-accent transition">Whitepaper</a>
+                <a href="/join" class="hover:text-party-accent transition">Join</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="relative py-20 px-4 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-party-accent/5 to-transparent"></div>
+        <div class="max-w-4xl mx-auto text-center relative">
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-8">
+                <span class="text-party-accent text-sm">The Movement</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black mb-6">
+                A new way to <span class="text-party-accent">govern</span>
+            </h1>
+            <p class="text-xl text-gray-300 max-w-2xl mx-auto mb-12">
+                Not another party. A system where your voice actually matters — not just at the ballot box, but every single day.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/whitepaper" class="bg-party-card border border-gray-700 hover:border-party-accent px-8 py-4 rounded-xl font-bold transition">
+                    Read Our Vision
+                </a>
+                <a href="/join" class="bg-party-accent text-party-dark px-8 py-4 rounded-xl font-bold hover:scale-105 transform transition">
+                    Join the Movement
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Problem -->
+    <section class="py-16 px-4 bg-party-card">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">
+                Why we need something <span class="text-party-accent">different</span>
+            </h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🔒</div>
+                    <h3 class="text-lg font-bold mb-2">Outdated Laws</h3>
+                    <p class="text-gray-400 text-sm">We're governed by rules written decades ago. Laws should evolve with the people they serve.</p>
+                </div>
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🗳️</div>
+                    <h3 class="text-lg font-bold mb-2">Broken Democracy</h3>
+                    <p class="text-gray-400 text-sm">Voting once every 5 years isn't governance. Real democracy means your voice counts every day.</p>
+                </div>
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🤝</div>
+                    <h3 class="text-lg font-bold mb-2">Divided Nation</h3>
+                    <p class="text-gray-400 text-sm">Political parties exist to win, not to solve. We exist to build bridges, not walls.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Our Vision -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">
+                What we <span class="text-party-accent">believe</span>
+            </h2>
+            <div class="space-y-6">
+                <div class="bg-party-card p-8 rounded-xl border border-gray-700 flex items-start space-x-4">
+                    <div class="text-3xl">🌱</div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">Laws should be living</h3>
+                        <p class="text-gray-300">Today's citizens shouldn't be bound by 100-year-old rules. When laws no longer serve the people, the people should change them.</p>
+                    </div>
+                </div>
+                <div class="bg-party-card p-8 rounded-xl border border-gray-700 flex items-start space-x-4">
+                    <div class="text-3xl">🗳️</div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">Direct citizen governance</h3>
+                        <p class="text-gray-300">No more outsourcing democracy to parliament. Every member votes directly on legislation, budgets, and rules.</p>
+                    </div>
+                </div>
+                <div class="bg-party-card p-8 rounded-xl border border-gray-700 flex items-start space-x-4">
+                    <div class="text-3xl">🤲</div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">Bridge-building, not gate-keeping</h3>
+                        <p class="text-gray-300">We don't win by dividing. We win by bringing people together around common-sense solutions.</p>
+                    </div>
+                </div>
+                <div class="bg-party-card p-8 rounded-xl border border-gray-700 flex items-start space-x-4">
+                    <div class="text-3xl">🌴</div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">Built for Maldives</h3>
+                        <p class="text-gray-300">A system designed for our islands, our culture, our scale. Not a copy-paste of foreign models.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- The 3% Goal -->
+    <section class="py-16 px-4 bg-party-card">
+        <div class="max-w-3xl mx-auto text-center">
+            <div class="bg-party-accent/10 border border-party-accent/30 rounded-2xl p-8">
+                <h2 class="text-2xl font-bold mb-4 text-party-accent">The 3% Strategy</h2>
+                <p class="text-gray-300 text-lg mb-4">
+                    We don't need a majority. We only need <strong>~13,000 people</strong> (3% of the population) to build this new system.
+                </p>
+                <p class="text-gray-400">
+                    Every single member matters. No filler. No gatekeepers. Just people who believe in a better Maldives.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-20 px-4">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">
+                Ready to be part of the solution?
+            </h2>
+            <p class="text-gray-400 mb-10">
+                Join 13,000+ citizens building the future of Maldives.
+            </p>
+            <a href="/join" class="inline-block bg-party-accent text-party-dark px-10 py-5 rounded-xl font-bold text-lg hover:scale-105 transform transition shadow-2xl shadow-party-accent/20">
+                JOIN THE 3D PARTY
+            </a>
+            <p class="text-gray-500 text-sm mt-4">Takes 45 seconds • Phone + NID only</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-12 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="text-2xl font-bold text-party-accent mb-4">3d Party</div>
+            <div class="flex justify-center gap-6 text-sm mb-4">
+                <a href="/intro" class="text-party-accent">The Movement</a>
+                <a href="/how" class="text-gray-400 hover:text-party-accent">How It Works</a>
+                <a href="/whitepaper" class="text-gray-400 hover:text-party-accent">Whitepaper</a>
+                <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
+            </div>
+            <p class="text-gray-600 text-xs">© 2024 3d Party Maldives</p>
+        </div>
+    </footer>
+
+    <script>
+        fetch('/api/signups', { headers: { 'Authorization': 'Bearer guest' } })
+            .then(r => r.json())
+            .catch(() => {});
+    </script>
+</body>
+</html>
