@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .faq-item details > summary::-webkit-details-marker { display: none; }
+        .faq-item details[open] > summary { border-bottom: none; border-radius: 0.5rem 0.5rem 0 0; }
+    </style>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-bold text-party-accent">3d</span>
+                    <span class="text-sm text-gray-400">Party</span>
+                </a>
+            </div>
+            <div class="hidden md:flex space-x-4 text-sm">
+                <a href="/" class="hover:text-party-accent transition">Home</a>
+                <a href="/join" class="hover:text-party-accent transition">Join</a>
+                <a href="/faq" class="text-party-accent">FAQ</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="bg-party-card border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-8 text-center">
+            <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-4">
+                <span class="text-party-accent text-sm">❓ Things people actually ask us</span>
+            </div>
+            <h1 class="text-4xl font-bold mb-3">Frequently Asked Questions</h1>
+            <p class="text-gray-400 max-w-2xl mx-auto">
+                Questions we get asked. Answers we actually gave. No legalese, no corporate speak.
+            </p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        
+        <!-- About the Party -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-question-circle mr-2"></i>What Even Is This?
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What is the 3d Party?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        We're a new political movement in the Maldives. Not a party in the traditional sense — more like a direct democracy app where you actually get to vote on laws and policies yourself. No middlemen. No "representatives" who forget what you wanted after election day.
+                        <br><br>
+                        Think of it as a digital town hall that never closes.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Are you an insurance company?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        No. Stop asking. We are a political movement. The "3d" stands for "Third Option" — like, the alternative to the two parties everyone already knows are broken.
+                        <br><br>
+                        (We know the name causes confusion. We considered "3rd Option Party" but someone pointed out that still sounds like insurance. So we said screw it, keep the joke.)
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Who started this?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        A bunch of Maldivian citizens who got tired of the same two options every election. The founders are normal people — not politicians, not wealthy tycoons, just people who thought "there has to be a better way."
+                        <br><br>
+                        The whitepaper has details if you want the full backstory. Or you can just join and find out yourself.
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-cogs mr-2"></i>How Does This Actually Work?
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What is Merit Score?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Your "Merit Score" is your influence in the movement. Not based on money, not based on who you know — based on what you actually contribute.
+                        <br><br>
+                        You earn points by:
+                        <br>• Voting on proposals (pass = more points)
+                        <br>• Writing successful policies
+                        <br>• Bringing in active new members
+                        <br>• Doing tasks on the "bounty board" (legal research, design, etc.)
+                        <br>• Donations (but with diminishing returns — $10 gets more influence than $10,000 proportionally)
+                        <br><br>
+                        Old contributions decay over time (18-month half-life) so you gotta keep participating. Sitting on your early membership doesn't grant eternal power. Sorry early adopters, you actually have to do stuff.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>How do I actually vote on laws?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Once you're a member, you can go to our Laws page and vote on individual clauses, articles, or entire laws. Yes, down to the specific clause level.
+                        <br><br>
+                        You can support, oppose, or abstain. You can also write why you voted that way. Everything is public.
+                        <br><br>
+                        Vote weight? Right now it's one-person-one-vote. Later, when we hit enough members, it becomes merit-weighted. But even then, your vote still counts.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Can I propose my own laws?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Yes! Any verified member can submit a policy proposal.
+                        <br><br>
+                        Process:
+                        <br>1. Write your proposal (must be at least 20 characters, no spam)
+                        <br>2. Stake a small portion of your Merit Score (shows you're serious)
+                        <br>3. Wait for 8-hour cooldown (prevents proposal spam)
+                        <br>4. It goes to a public referendum
+                        <br>5. Members vote. If it passes, it becomes part of our platform agenda.
+                        <br><br>
+                        If it fails with less than 10% support, you lose some points (reputation penalty). If it passes, great!
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What if no one agrees with my proposal?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        That's democracy! Not every idea wins.
+                        <br><br>
+                        BUT there's a "Bridge-Building" bonus — if you amend a failing proposal and it passes, you get a massive 400-point Merit Bonus. So if your idea is almost good but not quite, fix it instead of giving up.
+                        <br><br>
+                        The system rewards compromise and unity, not just having the loudest opinion.
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Joining -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-user-plus mr-2"></i>Joining & Membership
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>How do I join?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Go to the Join page. Enter your phone (7 digits) and NID number. That's it. Takes about 45 seconds.
+                        <br><br>
+                        No email required. No complicated forms. No "donation to join" nonsense.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Is my data safe?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        We store your phone and NID for verification. That's it. No data is sold, shared, or sent to anyone.
+                        <br><br>
+                        How you vote is private (only you see your vote). But the results are public, so everyone can see what the community decided.
+                        <br><br>
+                        The code will be open-source eventually so people can verify we're not doing sketchy stuff.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Can I leave anytime?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Yes, you can just stop participating. But if you leave and come back, your Merit Score resets to zero.
+                        <br><br>
+                        This is intentional. It incentivizes people to work through disagreements instead of just quitting when things get tough.
+                        <br><br>
+                        (Yes, this is basically a "don't abandon the ship" feature. We learned from other movements that fell apart when people left.)
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Leadership -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-crown mr-2"></i>Who's In Charge?
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Are there leaders?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Yes, but they're not "in charge" in the traditional sense. They're more like project managers.
+                        <br><br>
+                        We have "Shadow Ministers" (Governing Council) who handle day-to-day operations. But they can't make major decisions alone — everything significant requires a member vote.
+                        <br><br>
+                        They're elected, have 2-year term limits, and can be recalled if they suck. Check our Leadership page for the full details.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>How do I become a leader?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Two things need to happen first:
+                        <br>1. We need 1,000 members (leadership applications don't make sense with 10 people)
+                        <br>2. You need enough Merit Score (minimum 500, but positions have higher requirements)
+                        <br><br>
+                        Once both are met: apply, do a live public interview (yes, on video), then get voted in by members via ranked-choice voting.
+                        <br><br>
+                        It's actually harder than getting elected in traditional politics. We don't do "familiar face" elections.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What if leaders misbehave?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Several ways:
+                        <br>• <strong>Yearly appraisals</strong> — all leaders get reviewed annually
+                        <br>• <strong>Term limits</strong> — max 2 years, then re-elected like everyone else
+                        <br>• <strong>Recall vote</strong> — if 10% of members sign a petition, we vote on removing them. 80% says go = they're gone
+                        <br>• <strong>Decision statements</strong> — all their decisions are documented and public
+                        <br><br>
+                        The whitepaper calls this "Limits on Leadership Authority." We actually mean it.
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Legal & Power -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-gavel mr-2"></i>The "Wait, Is This Legal?" Section
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Is this even legal in the Maldives?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Currently, yes. We're not doing anything illegal — we're just a group of citizens discussing and voting on policies.
+                        <br><br>
+                        Right now, we function as an "advocacy and public-will barometer" — we can show what the people actually want, even without formal legal status.
+                        <br><br>
+                        If/when we gain political influence and win elections, proposals that passed our referendum process will become the actual policies we implement. That's the plan anyway.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What happens when you win elections?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Then we actually do what we said we'd do. Our candidates are bound to the "People's Manifesto" — the set of high-passing policies that members already voted for.
+                        <br><br>
+                        If an elected representative consistently votes against the platform's referendums, we can initiate a recall and field a challenger against them in the next election.
+                        <br><br>
+                        It's a "digital leash" — they're delegates, not rulers.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>What about coalition government?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        If we need to form a coalition, there's a whole protocol for it:
+                        <br>1. Governing Council proposes a "Negotiation Mandate" to members
+                        <br>2. Members vote on it (supermajority required)
+                        <br>3. If approved, we negotiate publicly (regular updates on the platform)
+                        <br>4. Final deal goes to members for final ratification
+                        <br><br>
+                        Members decide, not the leadership. We're not hiding in backrooms making deals.
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Money -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-money-bill-wave mr-2"></i>Money & Donations
+            </h2>
+            
+            <div class="space-y-4 faq-item">
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Where does the money come from?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Members donate. That's it.
+                        <br><br>
+                        We have a "Live Treasury" — all donations are public. You can see exactly how much came in and where it went. No dark money, no mysterious donors.
+                        <br><br>
+                        The donation formula has steep diminishing returns. $10 donation gets decent Merit points. $10,000 donation gets proportionally way less. Wealthy people can't buy the movement.
+                    </div>
+                </details>
+                
+                <details class="group bg-gray-800/50 rounded-lg">
+                    <summary class="cursor-pointer p-4 font-bold hover:text-party-accent transition flex justify-between items-center">
+                        <span>Can corporations donate?</span>
+                        <i class="fas fa-chevron-down text-gray-500 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="px-4 pb-4 text-gray-300">
+                        Yes, but it won't get them much influence. The logarithmic formula means large donations have heavily diminished returns.
+                        <br><br>
+                        A corporation donating $10,000 gets roughly the same Merit influence as someone donating $50. We think that's fair.
+                        <br><br>
+                        Plus, all donations are public. If a company donates and then gets favorable policies, everyone can see the correlation.
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <!-- Still Have Questions -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-envelope mr-2"></i>Still Have Questions?
+            </h2>
+            <p class="text-gray-300 mb-4">
+                We're not going to have every answer in a FAQ. That's kinda the point of a movement built on open discussion.
+            </p>
+            <div class="flex flex-wrap gap-4">
+                <a href="/whitepaper" class="bg-party-accent/10 text-party-accent px-4 py-2 rounded-lg hover:bg-party-accent/20 transition">
+                    <i class="fas fa-book mr-2"></i>Read the Whitepaper
+                </a>
+                <a href="/wall" class="bg-party-accent/10 text-party-accent px-4 py-2 rounded-lg hover:bg-party-accent/20 transition">
+                    <i class="fas fa-comments mr-2"></i>Ask on The Wall
+                </a>
+                <a href="/join" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold hover:bg-yellow-400 transition">
+                    <i class="fas fa-user-plus mr-2"></i>Join and Ask Yourself
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="border-t border-gray-800 py-8 text-center">
+        <a href="/" class="text-party-accent hover:underline">← Back to Home</a>
+    </div>
+
+</body>
+</html>

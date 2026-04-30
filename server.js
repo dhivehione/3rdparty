@@ -1956,6 +1956,10 @@ app.get('/leadership', (req, res) => {
   res.sendFile(path.join(__dirname, 'leadership.html'));
 });
 
+app.get('/faq', (req, res) => {
+  res.sendFile(path.join(__dirname, 'faq.html'));
+});
+
 // ==================== START SERVER ====================
 app.listen(PORT, () => {
   console.log(`\n🎉 3d Party running at http://localhost:${PORT}`);
