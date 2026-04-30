@@ -48,6 +48,7 @@
                 <a href="/law-stats" class="hover:text-party-accent transition">Law Stats</a>
                 <a href="proposals.html" class="hover:text-party-accent transition">Vote</a>
                 <a href="wall.html" class="hover:text-party-accent transition">The Wall</a>
+                <span id="active-visitors" class="text-xs text-party-muted ml-2"><i class="fas fa-users mr-1"></i>--</span>
                 <a href="join.html" class="hover:text-party-accent transition">Join</a>
             </div>
         </div>
@@ -246,6 +247,46 @@
             // Redirect to signup page
             window.location.href = `/join?type=${selectedContribution}`;
         }
+    </script>
+    
+    <!-- Simple Analytics -->
+    <script>
+        (function() {
+            let sessionId = sessionStorage.getItem('visitor_session');
+            if (!sessionId) {
+                sessionId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                sessionStorage.setItem('visitor_session', sessionId);
+            }
+            
+            function updateActiveCount() {
+                fetch('/api/analytics/active')
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            document.getElementById('active-visitors').innerHTML = 
+                                '<i class="fas fa-users mr-1"></i>' + d.active;
+                        }
+                    })
+                    .catch(() => {});
+            }
+            
+            function heartbeat() {
+                fetch('/api/analytics/heartbeat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                }).then(r => r.json()).then(d => {
+                    if (d.active_count !== undefined) {
+                        document.getElementById('active-visitors').innerHTML = 
+                            '<i class="fas fa-users mr-1"></i>' + d.active_count;
+                    }
+                }).catch(() => {});
+            }
+            
+            heartbeat();
+            setInterval(heartbeat, 30000);
+            setTimeout(updateActiveCount, 2000);
+        })();
     </script>
 </body>
 </html>

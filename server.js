@@ -6,6 +6,27 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ==================== SIMPLE ANALYTICS - ACTIVE VISITORS ====================
+// Store active visitors: { sessionId: timestamp }
+// Sessions expire after 5 minutes of inactivity
+const activeVisitors = new Map();
+const VISITOR_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+function getClientIp(req) {
+  return req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+}
+
+function cleanupExpiredVisitors() {
+  const now = Date.now();
+  for (const [sessionId, lastSeen] of activeVisitors.entries()) {
+    if (now - lastSeen > VISITOR_TIMEOUT_MS) {
+      activeVisitors.delete(sessionId);
+    }
+  }
+}
+
+setInterval(cleanupExpiredVisitors, 60000);
+
 // ==================== DATABASE SETUP ====================
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -299,6 +320,20 @@ app.use((req, res, next) => {
     return res.sendStatus(200);
   }
   next();
+});
+
+// ==================== ANALYTICS API ====================
+// POST /api/analytics/heartbeat - Track active visitor
+app.post('/api/analytics/heartbeat', (req, res) => {
+  const sessionId = req.body.session_id || getClientIp(req);
+  activeVisitors.set(sessionId, Date.now());
+  res.json({ success: true, active_count: activeVisitors.size });
+});
+
+// GET /api/analytics/active - Get active visitor count
+app.get('/api/analytics/active', (req, res) => {
+  cleanupExpiredVisitors();
+  res.json({ active: activeVisitors.size, success: true });
 });
 
 // ==================== AUTH MIDDLEWARE ====================
