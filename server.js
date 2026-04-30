@@ -376,6 +376,28 @@ db.exec(`
   )
 `);
 
+// Migrate database schema if needed
+try {
+  const tableInfo = db.prepare('PRAGMA table_info(signups)').all();
+  const columns = tableInfo.map(col => col.name);
+  
+  const requiredColumns = {
+    'auth_token': 'TEXT',
+    'unregistered_at': 'TEXT',
+    'unregistered_by': 'TEXT',
+    'unregister_justification': 'TEXT'
+  };
+  
+  for (const [column, type] of Object.entries(requiredColumns)) {
+    if (!columns.includes(column)) {
+      db.exec(`ALTER TABLE signups ADD COLUMN ${column} ${type}`);
+      console.log(`✓ Added ${column} column to signups table`);
+    }
+  }
+} catch (error) {
+  console.log('⚠ Database migration error:', error.message);
+}
+
 console.log('✓ SQLite database initialized for 3d Party');
 
 // Law votes table for article-level voting
