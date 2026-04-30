@@ -67,7 +67,7 @@ db.exec(`
     name TEXT,
     email TEXT,
     island TEXT,
-    contribution_type TEXT NOT NULL CHECK(contribution_type IN ('skills', 'action', 'ideas', 'donation')),
+    contribution_type TEXT,
     donation_amount REAL DEFAULT 0,
     initial_merit_estimate INTEGER DEFAULT 0,
     is_verified INTEGER DEFAULT 1,
@@ -1172,7 +1172,7 @@ app.get('/api/wall-stats', (req, res) => {
 // ==================== API ENDPOINTS ====================
 // POST /api/signup - New signup
 app.post('/api/signup', (req, res) => {
-  const { phone, nid, name, email, island, contribution_type, donation_amount } = req.body;
+  const { phone, nid, name, email, island, contribution_types, donation_amount } = req.body;
   
   // Validate mandatory fields
   if (!phone || !nid) {
@@ -1182,11 +1182,23 @@ app.post('/api/signup', (req, res) => {
     });
   }
   
-  if (!contribution_type || !['skills', 'action', 'ideas', 'donation'].includes(contribution_type)) {
-    return res.status(400).json({ 
-      error: 'Please select how you want to contribute. It takes 5 seconds.',
-      success: false 
-    });
+  // Validate contribution_types is array if provided
+  let validTypes = ['skills', 'action', 'ideas', 'donation'];
+  let typesArray = [];
+  if (contribution_types) {
+    if (!Array.isArray(contribution_types)) {
+      return res.status(400).json({ 
+        error: 'contribution_types must be an array.',
+        success: false 
+      });
+    }
+    typesArray = contribution_types.filter(t => validTypes.includes(t));
+    if (typesArray.length !== contribution_types.length) {
+      return res.status(400).json({ 
+        error: 'Invalid contribution type. Choose from: skills, action, ideas, donation.',
+        success: false 
+      });
+    }
   }
   
   // Basic phone validation (Maldivian format: 7 digits)
@@ -1216,18 +1228,22 @@ app.post('/api/signup', (req, res) => {
     });
   }
   
-  // Calculate initial merit estimate based on contribution type
+  // Calculate initial merit estimate based on contribution types
   const meritEstimates = {
     'skills': 250,
     'action': 200,
     'ideas': 150,
     'donation': 100
   };
-  let initialMerit = meritEstimates[contribution_type] + Math.floor(Math.random() * 50);
+  let initialMerit = 50; // base merit
+  typesArray.forEach(type => {
+    initialMerit += meritEstimates[type] || 0;
+  });
+  initialMerit += Math.floor(Math.random() * 50);
   
   // Validate donation amount
   let finalDonation = 0;
-  if (contribution_type === 'donation' && donation_amount) {
+  if (typesArray.includes('donation') && donation_amount) {
     finalDonation = parseFloat(donation_amount);
     if (isNaN(finalDonation) || finalDonation <= 0) {
       return res.status(400).json({ 
@@ -1242,8 +1258,9 @@ app.post('/api/signup', (req, res) => {
   
   try {
     const timestamp = new Date().toISOString();
+    const contributionTypeJson = JSON.stringify(typesArray);
     const stmt = db.prepare(
-      'INSERT INTO signups (phone, nid, name, email, island, contribution_type, donation_amount, initial_merit_estimate, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO signups (phone, nid, name, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
       phone, 
@@ -1251,17 +1268,37 @@ app.post('/api/signup', (req, res) => {
       name || null, 
       email || null, 
       island || null, 
-      contribution_type, 
+      contributionTypeJson, 
       finalDonation,
       initialMerit,
+      1,
+      null,
       timestamp
     );
+    
+    // Auto-login after signup
+    const authToken = Buffer.from(`${phone}:${nid}:${Date.now()}`).toString('base64');
+    db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
+    
+    // Get the user data to return
+    const user = db.prepare('SELECT * FROM signups WHERE id = ?').get(result.lastInsertRowid);
     
     res.status(201).json({ 
       message: `Welcome to the 3d Party! Your initial Merit Score estimate is ${initialMerit} points.`,
       success: true,
-      id: result.lastInsertRowid,
-      initial_merit: initialMerit
+      token: authToken,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        nid: user.nid,
+        email: user.email,
+        island: user.island,
+        contribution_type: user.contribution_type,
+        donation_amount: user.donation_amount,
+        initial_merit_estimate: user.initial_merit_estimate,
+        timestamp: user.timestamp
+      }
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -1314,8 +1351,13 @@ app.get('/api/signups', adminAuth, (req, res) => {
     const count = db.prepare('SELECT COUNT(*) as total FROM signups').get();
     const treasury = db.prepare('SELECT SUM(donation_amount) as total_donations FROM signups WHERE donation_amount > 0').get();
     
+    const parsedSignups = signups.map(s => ({
+      ...s,
+      contribution_type: s.contribution_type ? JSON.parse(s.contribution_type) : []
+    }));
+    
     res.json({ 
-      signups,
+      signups: parsedSignups,
       total: count.total,
       total_treasury: treasury.total_donations || 0,
       success: true 
@@ -1391,7 +1433,7 @@ app.post('/api/user/login', (req, res) => {
         nid: user.nid,
         email: user.email,
         island: user.island,
-        contribution_type: user.contribution_type,
+        contribution_type: user.contribution_type ? JSON.parse(user.contribution_type) : [],
         donation_amount: user.donation_amount,
         initial_merit_estimate: user.initial_merit_estimate,
         timestamp: user.timestamp
@@ -1491,7 +1533,7 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       name: user.name,
       email: user.email,
       island: user.island,
-      contribution_type: user.contribution_type,
+      contribution_type: user.contribution_type ? JSON.parse(user.contribution_type) : [],
       donation_amount: user.donation_amount,
       initial_merit_estimate: user.initial_merit_estimate,
       timestamp: user.timestamp

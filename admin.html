@@ -389,7 +389,10 @@
             let filtered = allSignups;
             
             if (filterType !== 'all') {
-                filtered = filtered.filter(s => s.contribution_type === filterType);
+                filtered = filtered.filter(s => {
+                    const types = Array.isArray(s.contribution_type) ? s.contribution_type : [];
+                    return types.includes(filterType);
+                });
             }
             
             if (filterStatus !== 'all') {
@@ -444,9 +447,10 @@
                         }
                     </td>
                     <td class="px-6 py-4">
-                        <span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs">
-                            ${typeLabels[s.contribution_type] || s.contribution_type}
-                        </span>
+                        ${(Array.isArray(s.contribution_type) ? s.contribution_type : []).map(t => 
+                            `<span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs mr-1">${typeLabels[t] || t}</span>`
+                        ).join('')}
+                        ${(!s.contribution_type || s.contribution_type.length === 0) ? '<span class="text-gray-500">Supporter</span>' : ''}
                     </td>
                     <td class="px-6 py-4">
                         ${s.donation_amount > 0 ? `<span class="text-green-400">MVR ${s.donation_amount}</span>` : '<span class="text-gray-600">—</span>'}
@@ -473,7 +477,8 @@
             let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
             
             allSignups.forEach(s => {
-                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},${s.contribution_type},${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
+                const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
+                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
             });
             
             const blob = new Blob([csv], { type: 'text/csv' });

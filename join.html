@@ -39,29 +39,32 @@
         
         <!-- Contribution Selection (shown if no type in URL) -->
         <div id="contributionSelection" class="mb-8">
-            <p class="text-gray-400 mb-4">First, how do you want to contribute?</p>
+            <p class="text-gray-400 mb-4">How do you want to contribute? (Select all that apply)</p>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button onclick="selectContribution('skills', event)" 
+                <button type="button" onclick="toggleContribution('skills', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">🧠</div>
                     <div class="text-sm font-bold">Skills</div>
                 </button>
-                <button onclick="selectContribution('action', event)" 
+                <button type="button" onclick="toggleContribution('action', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">🏃</div>
                     <div class="text-sm font-bold">Action</div>
                 </button>
-                <button onclick="selectContribution('ideas', event)" 
+                <button type="button" onclick="toggleContribution('ideas', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">💡</div>
                     <div class="text-sm font-bold">Ideas</div>
                 </button>
-                <button onclick="selectContribution('donation', event)" 
+                <button type="button" onclick="toggleContribution('donation', event)" 
                         class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
                     <div class="text-2xl mb-2">💰</div>
                     <div class="text-sm font-bold">Donation</div>
                 </button>
             </div>
+            <button type="button" onclick="skipContribution()" class="mt-4 text-gray-500 hover:text-gray-300 text-sm">
+                I'll decide later (skip)
+            </button>
         </div>
         
         <!-- Contribution Summary (shown after selection) -->
@@ -182,11 +185,10 @@
         </div>
     </div>
 
-    <script>
+<script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        let contributionType = urlParams.get('type') || sessionStorage.getItem('contribution_type');
-        
+        let selectedTypes = [];
         let selectedDonationAmount = 0;
         
         // Contribution type mapping
@@ -204,49 +206,71 @@
             'donation': '💰'
         };
         
-        function selectContribution(type, e) {
-            contributionType = type;
-            sessionStorage.setItem('contribution_type', type);
-            
-            // Highlight selected
-            document.querySelectorAll('.contrib-btn').forEach(btn => {
-                btn.classList.remove('border-party-accent', 'bg-party-accent/10');
-            });
-            if (e && e.target) {
-                e.target.closest('.contrib-btn').classList.add('border-party-accent', 'bg-party-accent/10');
+        function toggleContribution(type, e) {
+            const idx = selectedTypes.indexOf(type);
+            if (idx >= 0) {
+                selectedTypes.splice(idx, 1);
             } else {
-                // Find button by type and highlight
-                const buttons = document.querySelectorAll('.contrib-btn');
-                const typeIndex = ['skills', 'action', 'ideas', 'donation'].indexOf(type);
-                if (buttons[typeIndex]) buttons[typeIndex].classList.add('border-party-accent', 'bg-party-accent/10');
+                selectedTypes.push(type);
             }
             
-            // Hide selection, show summary
+            // Update UI
+            if (e && e.target) {
+                const btn = e.target.closest('.contrib-btn');
+                if (selectedTypes.includes(type)) {
+                    btn.classList.add('border-party-accent', 'bg-party-accent/10');
+                } else {
+                    btn.classList.remove('border-party-accent', 'bg-party-accent/10');
+                }
+            }
+            
+            // Update donation section visibility
+            if (selectedTypes.includes('donation')) {
+                document.getElementById('donationSection').classList.remove('hidden');
+            } else {
+                document.getElementById('donationSection').classList.add('hidden');
+            }
+            
+            // Show summary
+            updateContributionSummary();
+        }
+        
+        function skipContribution() {
+            selectedTypes = [];
+            document.getElementById('contributionSelection').classList.add('hidden');
+            document.getElementById('contributionSummary').classList.add('hidden');
+            document.getElementById('donationSection').classList.add('hidden');
+        }
+        
+        function updateContributionSummary() {
+            if (selectedTypes.length === 0) {
+                document.getElementById('contributionSelection').classList.remove('hidden');
+                document.getElementById('contributionSummary').classList.add('hidden');
+                return;
+            }
+            
             document.getElementById('contributionSelection').classList.add('hidden');
             document.getElementById('contributionSummary').classList.remove('hidden');
             
-            document.getElementById('contributionType').value = type;
+            const icons = selectedTypes.map(t => `<span class="mr-1">${typeIcons[t]}</span>`).join(' ');
+            const labels = selectedTypes.map(t => typeLabels[t]).join(', ');
+            
             document.getElementById('contributionSummary').innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        <span class="text-2xl">${typeIcons[type]}</span>
+                        <div class="text-2xl">${icons}</div>
                         <div>
-                            <p class="text-sm text-gray-400">You're joining as a</p>
-                            <p class="font-bold text-party-accent">${typeLabels[type]}</p>
+                            <p class="text-sm text-gray-400">You're joining as</p>
+                            <p class="font-bold text-party-accent">${labels}</p>
                         </div>
                     </div>
-                    <button onclick="resetContribution()" class="text-gray-400 hover:text-white text-sm">Change</button>
+                    <button type="button" onclick="resetContribution()" class="text-gray-400 hover:text-white text-sm">Change</button>
                 </div>
             `;
-            
-            if (type === 'donation') {
-                document.getElementById('donationSection').classList.remove('hidden');
-            }
         }
         
         function resetContribution() {
-            contributionType = null;
-            sessionStorage.removeItem('contribution_type');
+            selectedTypes = [];
             document.getElementById('contributionSelection').classList.remove('hidden');
             document.getElementById('contributionSummary').classList.add('hidden');
             document.getElementById('donationSection').classList.add('hidden');
@@ -255,9 +279,12 @@
             });
         }
         
-        // Display contribution summary if already selected
-        if (contributionType) {
-            selectContribution(contributionType, null);
+        const storedTypes = sessionStorage.getItem('contribution_types');
+        if (storedTypes) {
+            try {
+                selectedTypes = JSON.parse(storedTypes);
+                selectedTypes.forEach(type => toggleContribution(type, null));
+            } catch (e) {}
         }
         
         function selectDonation(amount, e) {
@@ -302,8 +329,8 @@
                 name: document.getElementById('name').value.trim() || undefined,
                 email: document.getElementById('email').value.trim() || undefined,
                 island: document.getElementById('island').value.trim() || undefined,
-                contribution_type: contributionType,
-                donation_amount: contributionType === 'donation' ? selectedDonationAmount : 0
+                contribution_types: selectedTypes.length > 0 ? selectedTypes : undefined,
+                donation_amount: selectedTypes.includes('donation') ? selectedDonationAmount : 0
             };
             
             try {
@@ -316,11 +343,18 @@
                 const result = await response.json();
                 
                 if (result.success) {
+                    // Auto-login: save token and user data
+                    if (result.token) {
+                        localStorage.setItem('token', result.token);
+                        localStorage.setItem('user', JSON.stringify(result.user));
+                    }
+                    
                     document.getElementById('signupForm').classList.add('hidden');
                     document.getElementById('successMessage').classList.remove('hidden');
                     
-                    let detailsText = `Your initial Merit Score: ${result.initial_merit} points.`;
-                    if (contributionType === 'donation' && selectedDonationAmount > 0) {
+                    const typeText = selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Supporter';
+                    let detailsText = `You signed up as: ${typeText}. Initial Merit Score: ${result.user.initial_merit_estimate} points.`;
+                    if (selectedTypes.includes('donation') && selectedDonationAmount > 0) {
                         detailsText += `<br>Donation of MVR ${selectedDonationAmount} added to Live Treasury.`;
                     }
                     document.getElementById('successDetails').innerHTML = detailsText;
@@ -335,7 +369,7 @@
                             }
                         })
                         .catch(() => {});
-                     
+                      
                     // Clear session storage
                     sessionStorage.clear();
                 } else {

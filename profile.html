@@ -310,7 +310,7 @@
                     </div>
                     <div>
                         <div class="text-gray-500 text-xs">Contribution</div>
-                        <div class="font-bold capitalize">${user.contribution_type}</div>
+                        <div class="font-bold capitalize">${Array.isArray(user.contribution_type) ? user.contribution_type.join(', ') : 'Supporter'}</div>
                     </div>
                 `;
                 document.getElementById('userDetails').innerHTML = detailsHtml;
