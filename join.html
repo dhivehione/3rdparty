@@ -37,8 +37,35 @@
         <h1 class="text-4xl font-bold mb-2">Join the 3d Party</h1>
         <p class="text-gray-400 mb-8">45 seconds. That's all it takes. (We timed it.)</p>
         
-        <!-- Contribution Summary -->
-        <div id="contributionSummary" class="bg-party-accent/10 border border-party-accent/30 rounded-xl p-6 mb-8">
+        <!-- Contribution Selection (shown if no type in URL) -->
+        <div id="contributionSelection" class="mb-8">
+            <p class="text-gray-400 mb-4">First, how do you want to contribute?</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="selectContribution('skills')" 
+                        class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
+                    <div class="text-2xl mb-2">🧠</div>
+                    <div class="text-sm font-bold">Skills</div>
+                </button>
+                <button onclick="selectContribution('action')" 
+                        class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
+                    <div class="text-2xl mb-2">🏃</div>
+                    <div class="text-sm font-bold">Action</div>
+                </button>
+                <button onclick="selectContribution('ideas')" 
+                        class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
+                    <div class="text-2xl mb-2">💡</div>
+                    <div class="text-sm font-bold">Ideas</div>
+                </button>
+                <button onclick="selectContribution('donation')" 
+                        class="contrib-btn bg-party-card border border-gray-600 rounded-lg p-4 hover:border-party-accent transition text-center">
+                    <div class="text-2xl mb-2">💰</div>
+                    <div class="text-sm font-bold">Donation</div>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Contribution Summary (shown after selection) -->
+        <div id="contributionSummary" class="bg-party-accent/10 border border-party-accent/30 rounded-xl p-6 mb-8 hidden">
             <!-- Filled by JavaScript -->
         </div>
         
@@ -178,23 +205,53 @@
             'donation': '💰'
         };
         
-        // Display contribution summary
-        if (contributionType) {
-            document.getElementById('contributionType').value = contributionType;
+        function selectContribution(type) {
+            contributionType = type;
+            sessionStorage.setItem('contribution_type', type);
+            
+            // Highlight selected
+            document.querySelectorAll('.contrib-btn').forEach(btn => {
+                btn.classList.remove('border-party-accent', 'bg-party-accent/10');
+            });
+            event.target.closest('.contrib-btn').classList.add('border-party-accent', 'bg-party-accent/10');
+            
+            // Hide selection, show summary
+            document.getElementById('contributionSelection').classList.add('hidden');
+            document.getElementById('contributionSummary').classList.remove('hidden');
+            
+            document.getElementById('contributionType').value = type;
             document.getElementById('contributionSummary').innerHTML = `
-                <div class="flex items-center space-x-3">
-                    <span class="text-2xl">${typeIcons[contributionType]}</span>
-                    <div>
-                        <p class="text-sm text-gray-400">You're joining as a</p>
-                        <p class="font-bold text-party-accent">${typeLabels[contributionType]}</p>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">${typeIcons[type]}</span>
+                        <div>
+                            <p class="text-sm text-gray-400">You're joining as a</p>
+                            <p class="font-bold text-party-accent">${typeLabels[type]}</p>
+                        </div>
                     </div>
+                    <button onclick="resetContribution()" class="text-gray-400 hover:text-white text-sm">Change</button>
                 </div>
             `;
             
-            // Show donation section if donation type
-            if (contributionType === 'donation') {
+            if (type === 'donation') {
                 document.getElementById('donationSection').classList.remove('hidden');
             }
+        }
+        
+        function resetContribution() {
+            contributionType = null;
+            sessionStorage.removeItem('contribution_type');
+            document.getElementById('contributionSelection').classList.remove('hidden');
+            document.getElementById('contributionSummary').classList.add('hidden');
+            document.getElementById('donationSection').classList.add('hidden');
+            document.querySelectorAll('.contrib-btn').forEach(btn => {
+                btn.classList.remove('border-party-accent', 'bg-party-accent/10');
+            });
+        }
+        
+        // Display contribution summary if already selected
+        if (contributionType) {
+            selectContribution(contributionType);
         }
         
         function selectDonation(amount) {
