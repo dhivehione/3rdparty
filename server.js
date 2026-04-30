@@ -482,6 +482,42 @@ app.get('/api/legislation-stats', (req, res) => {
 
 // ==================== LAWS API (Maldives Laws from mvlaws) ====================
 
+// Create sub_article_votes and law_votes tables if lawsDb exists
+if (lawsDb) {
+  try {
+    lawsDb.exec(`
+      CREATE TABLE IF NOT EXISTS sub_article_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sub_article_id INTEGER NOT NULL,
+        vote TEXT NOT NULL CHECK(vote IN ('support', 'oppose', 'abstain')),
+        reasoning TEXT,
+        voted_at TEXT NOT NULL,
+        user_ip TEXT
+      )
+    `);
+    console.log('✓ Sub-article votes table ready');
+  } catch (err) {
+    console.log('⚠ Could not create sub_article_votes table:', err.message);
+  }
+  
+  try {
+    lawsDb.exec(`
+      CREATE TABLE IF NOT EXISTS law_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        vote TEXT NOT NULL CHECK(vote IN ('support', 'oppose', 'abstain')),
+        reasoning TEXT,
+        voted_at TEXT NOT NULL,
+        user_ip TEXT,
+        user_phone TEXT
+      )
+    `);
+    console.log('✓ Law votes table ready');
+  } catch (err) {
+    console.log('⚠ Could not create law_votes table:', err.message);
+  }
+}
+
 // GET /api/mvlaws - List all laws with categories
 app.get('/api/mvlaws', (req, res) => {
   if (!lawsDb) {
@@ -590,6 +626,101 @@ app.get('/api/mvlaws/:id/articles/:articleId', (req, res) => {
   } catch (error) {
     console.error('Fetch article error:', error);
     res.status(500).json({ error: 'Could not fetch article', success: false });
+  }
+});
+
+// GET /api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId - Get sub-article with votes
+app.get('/api/mvlaws/:id/articles/:articleId/subarticles/:subArticleId', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  try {
+    const subArticleId = parseInt(req.params.subArticleId);
+    
+    const subArticle = lawsDb.prepare('SELECT * FROM sub_articles WHERE id = ?').get(subArticleId);
+    if (!subArticle) {
+      return res.status(404).json({ error: 'Sub-article not found', success: false });
+    }
+    
+    const voteCounts = lawsDb.prepare(`
+      SELECT vote, COUNT(*) as count 
+      FROM sub_article_votes 
+      WHERE sub_article_id = ?
+      GROUP BY vote
+    `).all(subArticleId);
+    
+    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const userVote = lawsDb.prepare(`
+      SELECT vote, reasoning FROM sub_article_votes 
+      WHERE sub_article_id = ? AND user_ip = ?
+    `).get(subArticleId, userIP);
+    
+    res.json({ 
+      subArticle, 
+      votes: voteCounts,
+      userVote: userVote || null,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Fetch sub-article error:', error);
+    res.status(500).json({ error: 'Could not fetch sub-article', success: false });
+  }
+});
+
+// POST /api/mvlaws/vote-subarticle - Vote on a sub-article/clause
+app.post('/api/mvlaws/vote-subarticle', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available', success: false });
+  }
+  
+  const { sub_article_id, vote, reasoning } = req.body;
+  
+  if (!sub_article_id) {
+    return res.status(400).json({ error: 'Sub-article ID required', success: false });
+  }
+  
+  if (!['support', 'oppose', 'abstain'].includes(vote)) {
+    return res.status(400).json({ error: 'Invalid vote. Must be: support, oppose, or abstain', success: false });
+  }
+
+  const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+  
+  const recentVote = lawsDb.prepare(`
+    SELECT id FROM sub_article_votes 
+    WHERE sub_article_id = ? AND user_ip = ? AND voted_at > ?
+    LIMIT 1
+  `).get(sub_article_id, userIP, oneHourAgo);
+  
+  if (recentVote) {
+    return res.status(429).json({ error: 'Please wait an hour before voting again', success: false });
+  }
+
+  try {
+    const votedAt = new Date().toISOString();
+    
+    const existing = lawsDb.prepare(`
+      SELECT id FROM sub_article_votes 
+      WHERE sub_article_id = ? AND user_ip = ?
+    `).get(sub_article_id, userIP);
+    
+    if (existing) {
+      lawsDb.prepare(`
+        UPDATE sub_article_votes SET vote = ?, reasoning = ?, voted_at = ? 
+        WHERE id = ?
+      `).run(vote, reasoning || null, votedAt, existing.id);
+    } else {
+      lawsDb.prepare(`
+        INSERT INTO sub_article_votes (sub_article_id, vote, reasoning, voted_at, user_ip)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(sub_article_id, vote, reasoning || null, votedAt, userIP);
+    }
+    
+    res.json({ message: 'Vote recorded!', success: true });
+  } catch (error) {
+    console.error('Sub-article vote error:', error);
+    res.status(500).json({ error: 'Could not record vote', success: false });
   }
 });
 

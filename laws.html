@@ -110,29 +110,7 @@
                     <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
                 </div>
                 
-                <div id="subArticlesContainer" class="space-y-4 mb-6 max-h-96 overflow-y-auto">
-                </div>
-                
-                <!-- Voting Section -->
-                <div class="border-t border-gray-700 pt-4">
-                    <h3 class="font-bold mb-3">Your Vote</h3>
-                    <div class="flex flex-wrap gap-3 mb-3">
-                        <button onclick="castVote('support')" class="flex-1 bg-green-600 hover:bg-green-500 py-2 rounded-lg font-bold">
-                            <i class="fas fa-thumbs-up mr-2"></i>Support
-                        </button>
-                        <button onclick="castVote('oppose')" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-lg font-bold">
-                            <i class="fas fa-thumbs-down mr-2"></i>Oppose
-                        </button>
-                        <button onclick="castVote('abstain')" class="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded-lg font-bold">
-                            Abstain
-                        </button>
-                    </div>
-                    
-                    <textarea id="reasoning" placeholder="Optional: Explain your vote..." 
-                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 mb-3" rows="2"></textarea>
-                    
-                    <div id="voteStats" class="flex flex-wrap gap-4 text-sm text-gray-400">
-                    </div>
+                <div id="subArticlesContainer" class="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
                 </div>
             </div>
         </div>
@@ -233,28 +211,60 @@
                 
                 if (!data.success) return;
                 
-                document.getElementById('modalLawTitle').textContent = data.article.law_id;
+                document.getElementById('modalLawTitle').textContent = data.law.law_name;
                 document.getElementById('modalArticleTitle').textContent = `Article ${data.article.article_number}: ${data.article.article_title || ''}`;
                 
-                document.getElementById('subArticlesContainer').innerHTML = data.subArticles.map(sa => `
-                    <div class="bg-gray-800/50 rounded-lg p-4">
-                        <span class="font-bold text-party-accent">${escapeHtml(sa.sub_article_label)}</span>
-                        <p class="text-gray-300 mt-2">${escapeHtml(sa.text_content)}</p>
-                    </div>
-                `).join('');
+                // Load votes for each sub-article
+                const subArticlesHtml = await Promise.all(data.subArticles.map(async (sa) => {
+                    let saVotes = { support: 0, oppose: 0, abstain: 0 };
+                    let userVote = null;
+                    
+                    try {
+                        const saRes = await fetch(`/api/mvlaws/${currentLawId}/articles/${articleId}/subarticles/${sa.id}`);
+                        const saData = await saRes.json();
+                        if (saData.success) {
+                            saData.votes.forEach(v => {
+                                if (v.vote === 'support') saVotes.support = v.count;
+                                if (v.vote === 'oppose') saVotes.oppose = v.count;
+                                if (v.vote === 'abstain') saVotes.abstain = v.count;
+                            });
+                            userVote = saData.userVote;
+                        }
+                    } catch(e) {}
+                    
+                    const userVoteClass = userVote ? 
+                        (userVote.vote === 'support' ? 'bg-green-600' : userVote.vote === 'oppose' ? 'bg-red-600' : 'bg-gray-600') : '';
+                    
+                    return `
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-party-accent">${escapeHtml(sa.sub_article_label)}</span>
+                                <div class="flex gap-2 text-xs">
+                                    <span class="text-green-400">+${saVotes.support}</span>
+                                    <span class="text-red-400">-${saVotes.oppose}</span>
+                                    <span class="text-gray-500">${saVotes.abstain} abs</span>
+                                </div>
+                            </div>
+                            <p class="text-gray-300 mb-3">${escapeHtml(sa.text_content)}</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="castSubArticleVote(${sa.id}, 'support')" 
+                                        class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'support' ? 'bg-green-600' : 'bg-green-600/50 hover:bg-green-500'}">
+                                    <i class="fas fa-thumbs-up"></i> Support
+                                </button>
+                                <button onclick="castSubArticleVote(${sa.id}, 'oppose')" 
+                                        class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'oppose' ? 'bg-red-600' : 'bg-red-600/50 hover:bg-red-500'}">
+                                    <i class="fas fa-thumbs-down"></i> Oppose
+                                </button>
+                                <button onclick="castSubArticleVote(${sa.id}, 'abstain')" 
+                                        class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'abstain' ? 'bg-gray-600' : 'bg-gray-600/50 hover:bg-gray-500'}">
+                                    Abstain
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }));
                 
-                let support = 0, oppose = 0, abstain = 0;
-                data.votes.forEach(v => {
-                    if (v.vote === 'support') support = v.count;
-                    if (v.vote === 'oppose') oppose = v.count;
-                    if (v.vote === 'abstain') abstain = v.count;
-                });
-                
-                document.getElementById('voteStats').innerHTML = `
-                    <span class="text-green-400"><i class="fas fa-thumbs-up"></i> ${support}</span>
-                    <span class="text-red-400"><i class="fas fa-thumbs-down"></i> ${oppose}</span>
-                    <span class="text-gray-400">${abstain} abstain</span>
-                `;
+                document.getElementById('subArticlesContainer').innerHTML = subArticlesHtml.join('');
                 
                 document.getElementById('articleModal').classList.remove('hidden');
             } catch (e) { console.error(e); }
@@ -262,6 +272,30 @@
         
         function closeModal() {
             document.getElementById('articleModal').classList.add('hidden');
+        }
+        
+        async function castSubArticleVote(subArticleId, vote) {
+            try {
+                const res = await fetch('/api/mvlaws/vote-subarticle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sub_article_id: subArticleId,
+                        vote: vote
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    viewArticle(currentArticleId);
+                } else if (res.status === 429) {
+                    alert('Please wait an hour before voting again.');
+                } else {
+                    alert(data.error);
+                }
+            } catch (e) {
+                alert('Error recording vote. Please try again.');
+            }
         }
         
         async function castVote(vote) {
