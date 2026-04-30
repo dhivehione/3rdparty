@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>How It Works — 3d Party</title>
+    <title>Your Membership — 3d Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
@@ -11,7 +11,7 @@
             theme: {
                 extend: {
                     colors: {
-                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', muted: '#6B7280' }
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', muted: '#6B7280', secondary: '#4A90E2' }
                     }
                 }
             }
@@ -21,128 +21,158 @@
 <body class="bg-party-dark text-white min-h-screen">
     <!-- Navigation -->
     <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
             <a href="/" class="flex items-center space-x-2 text-white hover:text-party-accent transition">
                 <span class="text-2xl font-bold text-party-accent">3d</span>
                 <span class="text-sm text-gray-400">Party</span>
             </a>
-            <div class="hidden md:flex space-x-6 text-sm">
-                <a href="/" class="hover:text-party-accent transition">Home</a>
-                <a href="intro.html" class="hover:text-party-accent transition">The Movement</a>
-                <a href="whitepaper.html" class="hover:text-party-accent transition">Whitepaper</a>
-                <a href="policies.html" class="hover:text-party-accent transition">Policies</a>
-                <a href="join.html" class="hover:text-party-accent transition">Join</a>
+            <div class="flex items-center space-x-4 text-sm">
+                <a href="/join" class="text-party-accent font-bold">Join</a>
+                <a href="/" class="text-gray-400 hover:text-party-accent">← Home</a>
             </div>
         </div>
     </nav>
 
-    <!-- Content -->
-    <div class="max-w-3xl mx-auto px-4 py-20">
-        <a href="/" class="text-gray-400 hover:text-party-accent transition mb-8 inline-flex items-center space-x-2">
-            <i class="fas fa-arrow-left"></i>
-            <span>Back to home</span>
-        </a>
-        
-        <!-- Context for cold visitors -->
-        <div class="bg-party-card border border-gray-700 rounded-xl p-6 mb-10">
-            <p class="text-gray-300 text-lg">
-                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives where 
-                influence is earned through contribution — not money or connections. We only need ~13,000 members (3% of population) to build this new system.
-            </p>
-            <a href="/join" class="inline-block mt-4 text-party-accent hover:underline">Join in 45 seconds →</a>
+    <!-- Welcome Banner -->
+    <div class="bg-gradient-to-r from-party-accent/20 to-party-secondary/20 border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-8 text-center">
+            <div class="text-5xl mb-3">🎉</div>
+            <h1 class="text-3xl font-bold text-party-accent mb-2">You're In!</h1>
+            <p class="text-gray-300">Welcome to the 3d Party. Here's what you can do now.</p>
         </div>
-        
-        <h1 class="text-4xl font-bold mb-4">How the Merit Score Works</h1>
-        <p class="text-gray-400 text-lg mb-12">Yes, there's math. The app handles it.</p>
-        
-        <!-- Merit Score Explanation -->
-        <div class="prose prose-invert max-w-none space-y-8">
-            <div class="bg-party-card p-8 rounded-xl border border-gray-700">
-                <h2 class="text-2xl font-bold text-party-accent mb-4">🧠 The Basics</h2>
-                <p class="text-gray-300 mb-4">
-                    Your Merit Score is built from three things:
-                </p>
-                <ul class="list-disc pl-5 text-gray-300 space-y-2">
-                    <li><strong>Skills & Professional Expertise</strong> (lawyers, engineers, doctors — what you bring to the table)</li>
-                    <li><strong>On‑the‑Ground Action</strong> (organizing, cleanups, Círculos, physical work)</li>
-                    <li><strong>Ideas & Proposals</strong> (policy suggestions that get community support)</li>
-                    <li><strong>Donations</strong> to the Live Treasury (with diminishing returns so big money can't buy power)</li>
-                </ul>
-                <p class="text-gray-400 text-sm mt-4">
-                    All contributions are verified by the community. No fake points.
-                </p>
-            </div>
+    </div>
 
-            <div class="bg-party-card p-8 rounded-xl border border-gray-700">
-                <h2 class="text-2xl font-bold text-party-accent mb-4">⚖️ Why This Exists</h2>
-                <div class="space-y-4 text-gray-300">
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">📜</span>
-                        <div>
-                            <h3 class="font-bold mb-1">Laws Should Be Living</h3>
-                            <p>We're often ruled by rules written decades ago for a different world. 
-                            In the 3d Party, laws are living documents — you can directly propose changes when they no longer make sense. 
-                            No more being bound by 100‑year‑old decisions you had no say in.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🗳️</span>
-                        <div>
-                            <h3 class="font-bold mb-1">Direct Citizen Voting</h3>
-                            <p>We will not outsource democracy to parliament. 
-                            Every member votes directly on legislation, budgets, and rules. 
-                            No gerrymandering. No middlemen. Your voice counts exactly once.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🎯</span>
-                        <div>
-                            <h3 class="font-bold mb-1">The 3% Strategy</h3>
-                            <p>We only need <strong>13,000 people</strong> (~3% of the population) to build this new system. 
-                            Every single member is crucial. There are no filler names here — 
-                            you will know exactly where you stand and what you'll get.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🔍</span>
-                        <div>
-                            <h3 class="font-bold mb-1">No Insider Connections</h3>
-                            <p>Traditional parties treat members as statistics. Here, your influence is transparent: 
-                            it's your Merit Score. No backroom deals, no family ties, no secret handshakes. 
-                            Just what you actually contribute.</p>
-                        </div>
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        
+        <!-- Progress Card -->
+        <div class="bg-party-card rounded-xl border border-gray-700 p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">📊 The 3% Goal</h2>
+                <span id="memberCount" class="text-party-accent font-bold">—</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-4 mb-2">
+                <div id="progressBar" class="bg-party-accent h-4 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-gray-400 text-sm">
+                <span id="remainingCount">—</span> more members needed to reach 13,000
+            </p>
+        </div>
+
+        <!-- What You Can Do -->
+        <h2 class="text-2xl font-bold mb-6">What You Can Do</h2>
+        
+        <div class="space-y-4 mb-10">
+            <!-- Vote on Laws -->
+            <div class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="flex items-start space-x-4">
+                    <div class="text-3xl">🗳️</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-1">Vote on Every Law</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Not just elections. Every single law, every article, every clause. 
+                            Your vote goes directly into the system — no parliament middlemen.
+                        </p>
+                        <a href="/laws" class="text-party-accent hover:underline text-sm">
+                            Browse Laws → 
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-party-accent/5 border border-party-accent/30 rounded-xl p-6">
-                <p class="text-party-accent font-bold text-lg mb-2">So how much does this matter?</p>
-                <p class="text-gray-300">
-                    The Merit Score opens doors: funding for your proposals, leadership roles, 
-                    and actual voting weight on some decisions. 
-                    It's designed so that consistent, genuine contributors rise naturally — 
-                    and no one can buy their way to the top.
-                </p>
-                <p class="text-gray-400 text-sm mt-4">
-                    The full algorithm is public and community‑auditable. 
-                    Read the <a href="/whitepaper" class="underline text-party-accent">Whitepaper</a> for the technical details.
-                </p>
+            <!-- Propose Ideas -->
+            <div class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="flex items-start space-x-4">
+                    <div class="text-3xl">💡</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-1">Propose Your Ideas</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            See a problem? Propose a solution. Any member can submit proposals 
+                            that the entire community votes on. No gatekeepers.
+                        </p>
+                        <a href="/proposals" class="text-party-accent hover:underline text-sm">
+                            View Proposals →
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div class="text-center mt-12">
-                <a href="/join" class="inline-block bg-party-accent text-party-dark px-10 py-4 rounded-xl font-bold text-lg hover:scale-105 transform transition">
-                    JOIN THE 3D PARTY
+            <!-- Join the Wall -->
+            <div class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="flex items-start space-x-4">
+                    <div class="text-3xl">💬</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-1">Join the Conversation</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            The Wall is open to everyone — share your thoughts, connect with other members, 
+                            and see what's on everyone's mind.
+                        </p>
+                        <a href="/wall" class="text-party-accent hover:underline text-sm">
+                            Visit The Wall →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Stats -->
+            <div class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="flex items-start space-x-4">
+                    <div class="text-3xl">📈</div>
+                    <div>
+                        <h3 class="text-lg font-bold mb-1">Track Everything</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Every vote, every proposal, every outcome is public. 
+                            You always know exactly where the party stands.
+                        </p>
+                        <a href="/law-stats" class="text-party-accent hover:underline text-sm">
+                            See Voting Stats →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="grid md:grid-cols-2 gap-4 mb-10">
+            <a href="/whitepaper" class="bg-party-card border border-gray-700 p-4 rounded-xl hover:border-party-accent transition">
+                <div class="font-bold mb-1">📄 Whitepaper</div>
+                <div class="text-gray-500 text-sm">Our full vision & technical details</div>
+            </a>
+            <a href="/legislature" class="bg-party-card border border-gray-700 p-4 rounded-xl hover:border-party-accent transition">
+                <div class="font-bold mb-1">⚖️ Legislature</div>
+                <div class="text-gray-500 text-sm">Active laws & proposals</div>
+            </a>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center border-t border-gray-800 pt-8">
+            <p class="text-gray-400 mb-4">Already <span id="memberCount2" class="text-party-accent font-bold">—</span> members and counting.</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/laws" class="bg-party-accent text-party-dark px-8 py-3 rounded-xl font-bold hover:scale-105 transform transition">
+                    Start Voting
                 </a>
-                <p class="text-gray-500 text-sm mt-3">Takes 45 seconds. Already <span id="memberCount" class="text-party-accent font-bold">—</span> members.</p>
+                <a href="/" class="bg-party-card border border-gray-700 px-8 py-3 rounded-xl font-bold hover:border-party-accent transition">
+                    Back to Home
+                </a>
             </div>
         </div>
     </div>
 
     <script>
-        // Fetch member count for the button line
         fetch('/api/signups', { headers: { 'Authorization': 'Bearer guest' } })
             .then(r => r.json())
-            .then(d => { if (d.success) document.getElementById('memberCount').textContent = d.total; })
+            .then(d => {
+                if (d.success) {
+                    const total = d.total;
+                    const goal = 13000;
+                    const percent = Math.min(100, (total / goal) * 100);
+                    const remaining = Math.max(0, goal - total);
+                    
+                    document.getElementById('memberCount').textContent = total.toLocaleString();
+                    document.getElementById('memberCount2').textContent = total.toLocaleString();
+                    document.getElementById('remainingCount').textContent = remaining.toLocaleString();
+                    document.getElementById('progressBar').style.width = percent + '%';
+                }
+            })
             .catch(() => {});
     </script>
 </body>
