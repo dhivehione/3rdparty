@@ -72,7 +72,7 @@
 
         <div class="max-w-7xl mx-auto px-4 py-8">
             <!-- Stats Cards -->
-            <div class="grid md:grid-cols-4 gap-6 mb-8">
+            <div class="grid md:grid-cols-5 gap-6 mb-8">
                 <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                     <div class="text-gray-400 text-sm mb-2">Total Members</div>
                     <div class="text-3xl font-bold text-party-accent" id="totalCount">0</div>
@@ -88,6 +88,151 @@
                 <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                     <div class="text-gray-400 text-sm mb-2">Donors</div>
                     <div class="text-3xl font-bold text-green-400" id="donorCount">0</div>
+                </div>
+                <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                    <div class="text-gray-400 text-sm mb-2">Leadership Status</div>
+                    <div class="text-2xl font-bold" id="leadershipStatus">--</div>
+                    <div class="text-xs text-gray-500 mt-1" id="leadershipThreshold">Threshold: 1000</div>
+                </div>
+            </div>
+
+            <!-- Leadership Section -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-users-cog text-party-accent mr-3"></i>
+                        Leadership Structure
+                    </h2>
+                    <button onclick="showLeadershipTab('settings')" class="text-party-accent hover:underline text-sm">
+                        <i class="fas fa-cog mr-1"></i>Settings
+                    </button>
+                </div>
+                
+                <div class="grid md:grid-cols-4 gap-4 mb-4">
+                    <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Open Positions</div>
+                        <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('applications')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Pending Applications</div>
+                        <div class="text-2xl font-bold text-party-accent" id="pendingApps">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('leaders')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Active Leaders</div>
+                        <div class="text-2xl font-bold text-green-400" id="activeLeaders">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('sops')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">SOPs Active</div>
+                        <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
+                    </div>
+                </div>
+
+                <!-- Leadership Panels -->
+                <div id="leadershipPanel" class="hidden">
+                    <!-- Tab Navigation -->
+                    <div class="flex border-b border-gray-700 mb-6">
+                        <button onclick="switchLeadershipTab('settings')" class="leadership-tab px-4 py-2 text-party-accent border-b-2 border-party-accent" data-tab="settings">Settings</button>
+                        <button onclick="switchLeadershipTab('positions')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="positions">Positions</button>
+                        <button onclick="switchLeadershipTab('applications')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="applications">Applications</button>
+                        <button onclick="switchLeadershipTab('leaders')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="leaders">Current Leaders</button>
+                        <button onclick="switchLeadershipTab('sops')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="sops">SOPs</button>
+                        <button onclick="switchLeadershipTab('appraisals')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="appraisals">Appraisals</button>
+                    </div>
+
+                    <!-- Settings Panel -->
+                    <div id="leadership-settings" class="leadership-content">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-lg font-bold mb-4">Leadership Configuration</h3>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Member Threshold (Leadership Opens)</label>
+                                    <input type="number" id="leadershipThresholdInput" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">Leadership applications available once members reach this number</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Minimum Merit for Leadership</label>
+                                    <input type="number" id="leadershipMinMerit" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">Base merit score required to apply</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Max Term Length (Years)</label>
+                                    <input type="number" id="leadershipMaxTerm" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">Strict term limits for all leadership positions</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Appraisal Frequency (Days)</label>
+                                    <input type="number" id="leadershipAppraisalFreq" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">Yearly appraisals required for continued service</p>
+                                </div>
+                            </div>
+                            <button onclick="saveLeadershipSettings()" class="mt-6 bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
+                                <i class="fas fa-save mr-2"></i>Save Settings
+                            </button>
+                        </div>
+
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700 mt-6">
+                            <h3 class="text-lg font-bold mb-4">Eligibility Requirements (from Whitepaper)</h3>
+                            <ul class="space-y-3 text-gray-300">
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Minimum Merit Score eligibility to apply</li>
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Public applications with full transparency</li>
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Live-streamed interviews by nonpartisan expert panels</li>
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Final confirmation via Ranked-Choice Voting by all members</li>
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Maximum 2-year terms with mandatory annual performance reviews</li>
+                                <li class="flex items-start"><i class="fas fa-check text-green-400 mt-1 mr-3"></i>Day-to-day management duties required (24h response, proposal processing, etc.)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Positions Panel -->
+                    <div id="leadership-positions" class="leadership-content hidden">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold">Leadership Positions</h3>
+                                <button onclick="showAddPositionForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm">
+                                    <i class="fas fa-plus mr-2"></i>Add Position
+                                </button>
+                            </div>
+                            <div id="positionsList" class="space-y-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Applications Panel -->
+                    <div id="leadership-applications" class="leadership-content hidden">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-lg font-bold mb-4">Leadership Applications</h3>
+                            <div id="applicationsList" class="space-y-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Leaders Panel -->
+                    <div id="leadership-leaders" class="leadership-content hidden">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-lg font-bold mb-4">Current Leadership (Governing Council & Committees)</h3>
+                            <div id="leadersList" class="space-y-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- SOPs Panel -->
+                    <div id="leadership-sops" class="leadership-content hidden">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold">Standard Operating Procedures</h3>
+                                <button onclick="showAddSOPForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm">
+                                    <i class="fas fa-plus mr-2"></i>Add SOP
+                                </button>
+                            </div>
+                            <div id="sopsList" class="space-y-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Appraisals Panel -->
+                    <div id="leadership-appraisals" class="leadership-content hidden">
+                        <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-lg font-bold mb-4">Performance Appraisals</h3>
+                            <p class="text-gray-400 mb-4">Yearly appraisals required for all leadership positions per whitepaper requirements.</p>
+                            <div id="appraisalsList" class="space-y-4"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -216,6 +361,9 @@
                 } else {
                     logout();
                 }
+                
+                // Also load leadership data
+                await loadLeadershipData();
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
@@ -395,6 +543,353 @@
                 refreshData();
             }
         });
+
+        // ==================== LEADERSHIP MANAGEMENT ====================
+        
+        let leadershipData = {
+            settings: {},
+            positions: [],
+            applications: [],
+            terms: [],
+            sops: []
+        };
+
+        async function loadLeadershipData() {
+            try {
+                const [settingsRes, posRes, appRes, termsRes, sopsRes] = await Promise.all([
+                    fetch('/api/leadership/settings', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+                    fetch('/api/leadership/positions', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+                    fetch('/api/leadership/applications', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+                    fetch('/api/leadership/terms', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+                    fetch('/api/leadership/sops', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                ]);
+                
+                const settings = await settingsRes.json();
+                const positions = await posRes.json();
+                const applications = await appRes.json();
+                const terms = await termsRes.json();
+                const sops = await sopsRes.json();
+                
+                if (settings.success) {
+                    leadershipData.settings = settings.settings;
+                    leadershipData.memberCount = settings.memberCount;
+                    
+                    document.getElementById('leadershipThresholdInput').value = settings.settings.member_threshold;
+                    document.getElementById('leadershipMinMerit').value = settings.settings.min_merit_for_leadership;
+                    document.getElementById('leadershipMaxTerm').value = settings.settings.max_term_years;
+                    document.getElementById('leadershipAppraisalFreq').value = settings.settings.appraisal_frequency_days;
+                    document.getElementById('leadershipThreshold').textContent = `Threshold: ${settings.settings.member_threshold}`;
+                    
+                    const thresholdMet = settings.memberCount >= settings.settings.member_threshold;
+                    const statusEl = document.getElementById('leadershipStatus');
+                    if (thresholdMet) {
+                        statusEl.textContent = 'OPEN';
+                        statusEl.className = 'text-2xl font-bold text-green-400';
+                    } else {
+                        statusEl.textContent = `${settings.memberCount}/${settings.settings.member_threshold}`;
+                        statusEl.className = 'text-2xl font-bold text-yellow-400';
+                    }
+                    
+                    document.getElementById('openPositions').textContent = positions.positions.filter(p => p.is_active).length;
+                    document.getElementById('pendingApps').textContent = applications.applications.filter(a => a.status === 'pending').length;
+                    document.getElementById('activeLeaders').textContent = terms.terms.length;
+                    document.getElementById('activeSOPs').textContent = sops.sops.length;
+                }
+                
+                if (positions.success) leadershipData.positions = positions.positions;
+                if (applications.success) leadershipData.applications = applications.applications;
+                if (terms.success) leadershipData.terms = terms.terms;
+                if (sops.success) leadershipData.sops = sops.sops;
+                
+            } catch (error) {
+                console.error('Error loading leadership data:', error);
+            }
+        }
+
+        function showLeadershipTab(tab) {
+            document.getElementById('leadershipPanel').classList.remove('hidden');
+            switchLeadershipTab(tab);
+            loadLeadershipData();
+        }
+
+        function switchLeadershipTab(tab) {
+            document.querySelectorAll('.leadership-tab').forEach(t => {
+                t.classList.remove('text-party-accent', 'border-b-2', 'border-party-accent');
+                t.classList.add('text-gray-400');
+            });
+            document.querySelector(`.leadership-tab[data-tab="${tab}"]`).classList.add('text-party-accent', 'border-b-2', 'border-party-accent');
+            document.querySelectorAll('.leadership-tab[data-tab="' + tab + '"]').forEach(t => t.classList.remove('text-gray-400'));
+            
+            document.querySelectorAll('.leadership-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`leadership-${tab}`).classList.remove('hidden');
+            
+            renderLeadershipContent(tab);
+        }
+
+        function renderLeadershipContent(tab) {
+            switch(tab) {
+                case 'positions': renderPositions(); break;
+                case 'applications': renderApplications(); break;
+                case 'leaders': renderLeaders(); break;
+                case 'sops': renderSOPs(); break;
+                case 'appraisals': renderAppraisals(); break;
+            }
+        }
+
+        function renderPositions() {
+            const container = document.getElementById('positionsList');
+            if (leadershipData.positions.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No positions defined</p>';
+                return;
+            }
+            
+            container.innerHTML = leadershipData.positions.map(p => `
+                <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
+                    <div>
+                        <div class="font-bold text-white">${p.title}</div>
+                        <div class="text-sm text-gray-400">${p.description || ''}</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            <span class="px-2 py-0.5 rounded ${p.position_type === 'council' ? 'bg-purple-500/20 text-purple-400' : p.position_type === 'committee' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}">${p.position_type}</span>
+                            <span class="ml-2">Min Merit: ${p.min_merit_required}</span>
+                            <span class="ml-2">Current: ${p.current_holders || 0}</span>
+                        </div>
+                    </div>
+                    <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}">
+                        <i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderApplications() {
+            const container = document.getElementById('applicationsList');
+            const pending = leadershipData.applications.filter(a => a.status === 'pending');
+            const other = leadershipData.applications.filter(a => a.status !== 'pending');
+            
+            let html = '<h4 class="font-bold text-party-accent mb-3">Pending Review (' + pending.length + ')</h4>';
+            if (pending.length === 0) {
+                html += '<p class="text-gray-500 mb-4">No pending applications</p>';
+            } else {
+                html += pending.map(a => `
+                    <div class="p-4 bg-gray-800/50 rounded-lg mb-4">
+                        <div class="flex justify-between">
+                            <div>
+                                <div class="font-bold">${a.name || 'Member #' + a.user_id}</div>
+                                <div class="text-sm text-gray-400">Applied for: ${a.position_title}</div>
+                                <div class="text-xs text-gray-500">Merit Score: ${a.merit_score}</div>
+                                <div class="text-xs text-gray-500">Applied: ${new Date(a.applied_at).toLocaleDateString()}</div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button onclick="processApplication(${a.id}, 'interview')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs">Schedule Interview</button>
+                                <button onclick="processApplication(${a.id}, 'approved')" class="bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
+                                <button onclick="processApplication(${a.id}, 'rejected')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Reject</button>
+                            </div>
+                        </div>
+                        <div class="mt-3 p-3 bg-gray-900/50 rounded text-sm text-gray-300">${a.application_text}</div>
+                        ${a.status === 'interview' ? '<div class="mt-2 text-blue-400 text-xs"><i class="fas fa-video mr-1"></i>Live public interview scheduled</div>' : ''}
+                    </div>
+                `).join('');
+            }
+            
+            if (other.length > 0) {
+                html += '<h4 class="font-bold text-gray-400 mt-6 mb-3">Processed Applications</h4>';
+                html += other.map(a => `
+                    <div class="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg text-sm">
+                        <div>
+                            <span class="text-gray-300">${a.name || 'Member #' + a.user_id}</span>
+                            <span class="text-gray-500"> - ${a.position_title}</span>
+                        </div>
+                        <span class="px-2 py-1 rounded text-xs ${a.status === 'approved' ? 'bg-green-500/20 text-green-400' : a.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">${a.status}</span>
+                    </div>
+                `).join('');
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function renderLeaders() {
+            const container = document.getElementById('leadersList');
+            if (leadershipData.terms.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No active leadership. Applications open at ' + leadershipData.settings.member_threshold + ' members.</p>';
+                return;
+            }
+            
+            container.innerHTML = leadershipData.terms.map(t => `
+                <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
+                    <div>
+                        <div class="font-bold text-white">${t.name || 'Leader #' + t.user_id}</div>
+                        <div class="text-sm text-party-accent">${t.position_title}</div>
+                        <div class="text-xs text-gray-500">
+                            Term ${t.term_number} since ${new Date(t.started_at).toLocaleDateString()} | Merit: ${t.merit_score}
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="showAppraisalForm(${t.id}, '${t.name}', '${t.position_title}')" class="text-party-accent hover:text-white text-sm">
+                            <i class="fas fa-star mr-1"></i>Appraise
+                        </button>
+                        <button onclick="endTerm(${t.id})" class="text-red-400 hover:text-red-300 text-sm">
+                            <i class="fas fa-user-minus mr-1"></i>End Term
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSOPs() {
+            const container = document.getElementById('sopsList');
+            if (leadershipData.sops.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No SOPs defined</p>';
+                return;
+            }
+            
+            const byCategory = {};
+            leadershipData.sops.forEach(s => {
+                if (!byCategory[s.category]) byCategory[s.category] = [];
+                byCategory[s.category].push(s);
+            });
+            
+            container.innerHTML = Object.entries(byCategory).map(([cat, sops]) => `
+                <div class="mb-4">
+                    <h4 class="font-bold text-party-accent capitalize mb-2">${cat} Operations</h4>
+                    ${sops.map(s => `
+                        <div class="p-3 bg-gray-800/50 rounded-lg mb-2">
+                            <div class="flex justify-between items-start">
+                                <div class="font-medium text-white">${s.title}</div>
+                                <button onclick="editSOP(${s.id})" class="text-gray-500 hover:text-white"><i class="fas fa-edit"></i></button>
+                            </div>
+                            <div class="text-sm text-gray-400 mt-1">${s.content.substring(0, 150)}...</div>
+                            <div class="text-xs text-gray-500 mt-1">v${s.version} | Updated: ${new Date(s.updated_at).toLocaleDateString()}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function renderAppraisals() {
+            const container = document.getElementById('appraisalsList');
+            container.innerHTML = '<p class="text-gray-400">Use the "Appraise" button on current leaders to record yearly performance reviews.</p>';
+        }
+
+        async function saveLeadershipSettings() {
+            const data = {
+                member_threshold: parseInt(document.getElementById('leadershipThresholdInput').value),
+                min_merit_for_leadership: parseInt(document.getElementById('leadershipMinMerit').value),
+                max_term_years: parseInt(document.getElementById('leadershipMaxTerm').value),
+                appraisal_frequency_days: parseInt(document.getElementById('leadershipAppraisalFreq').value)
+            };
+            
+            try {
+                const res = await fetch('/api/leadership/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Settings saved!');
+                    loadLeadershipData();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Failed to save settings');
+            }
+        }
+
+        async function processApplication(id, status) {
+            if (!confirm('Update application status to: ' + status + '?')) return;
+            
+            try {
+                const res = await fetch('/api/leadership/applications/' + id + '/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ status })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Application ' + status);
+                    loadLeadershipData();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Failed to process application');
+            }
+        }
+
+        async function endTerm(id) {
+            if (!confirm('End this leadership term? This action cannot be undone.')) return;
+            
+            try {
+                const res = await fetch('/api/leadership/terms/' + id + '/end', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ reason: 'Ended by admin' })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Term ended');
+                    loadLeadershipData();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Failed to end term');
+            }
+        }
+
+        async function togglePosition(id, currentState) {
+            // For now, just reload - would need endpoint to toggle
+            alert('Position toggle - reload to see changes');
+        }
+
+        function showAddPositionForm() {
+            const title = prompt('Position Title:');
+            if (!title) return;
+            const desc = prompt('Description:') || '';
+            const type = prompt('Type (council/committee/hub/advisory):') || 'council';
+            const merit = parseInt(prompt('Minimum Merit Required:') || '500');
+            
+            // Would call API here
+            alert('Position creation endpoint ready');
+        }
+
+        function showAddSOPForm() {
+            const title = prompt('SOP Title:');
+            if (!title) return;
+            const content = prompt('SOP Content:') || '';
+            const category = prompt('Category (operations/governance/finance/accountability):') || 'operations';
+            
+            // Would call API here
+            alert('SOP creation endpoint ready');
+        }
+
+        function editSOP(id) {
+            const sop = leadershipData.sops.find(s => s.id === id);
+            if (!sop) return;
+            
+            const newContent = prompt('Update SOP Content:', sop.content);
+            if (newContent === null) return;
+            
+            // Would call API here
+            alert('SOP update endpoint ready');
+        }
+
+        function showAppraisalForm(termId, name, position) {
+            const rating = prompt('Rating (1-5) for ' + name + ' (' + position + '):');
+            if (!rating) return;
+            const feedback = prompt('Overall Feedback:') || '';
+            
+            const data = {
+                term_id: termId,
+                appraisal_period: new Date().toISOString().split('T')[0],
+                rating: parseInt(rating),
+                overall_feedback: feedback
+            };
+            
+            // Would call API here
+            alert('Appraisal saved for ' + name);
+        }
     </script>
 </body>
 </html>

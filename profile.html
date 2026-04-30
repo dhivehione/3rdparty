@@ -129,6 +129,57 @@
                 </p>
             </div>
 
+            <!-- Leadership Application Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-user-tie mr-2"></i>Leadership
+                </h2>
+                <div id="leadershipStatus" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-500"></i>
+                    <p class="text-gray-500 mt-2">Checking eligibility...</p>
+                </div>
+                <div id="leadershipContent" class="hidden">
+                    <!-- Status when closed -->
+                    <div id="leadershipClosed" class="hidden text-center py-4">
+                        <div class="text-yellow-400 text-4xl mb-3">🔒</div>
+                        <p class="text-gray-400 mb-2">Leadership applications closed</p>
+                        <p class="text-gray-500 text-sm" id="thresholdMessage"></p>
+                    </div>
+                    
+                    <!-- Status when open but not eligible -->
+                    <div id="leadershipNotEligible" class="hidden text-center py-4">
+                        <div class="text-orange-400 text-4xl mb-3">⚠️</div>
+                        <p class="text-gray-400 mb-2">Not eligible yet</p>
+                        <p class="text-gray-500 text-sm" id="eligibilityMessage"></p>
+                    </div>
+                    
+                    <!-- Apply form -->
+                    <div id="leadershipApply" class="hidden">
+                        <p class="text-green-400 mb-4">
+                            <i class="fas fa-check-circle mr-2"></i>You are eligible to apply for leadership!
+                        </p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-1">Select Position</label>
+                                <select id="leadershipPosition" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                    <option value="">Choose a position...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-1">Why do you want to lead?</label>
+                                <textarea id="leadershipApplication" rows="4" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="Describe your qualifications, vision, and commitment to the movement..."></textarea>
+                            </div>
+                            <p class="text-gray-500 text-xs">
+                                Your application will be reviewed, followed by a live public interview. Final selection via Ranked-Choice Voting by all members.
+                            </p>
+                            <button onclick="submitLeadershipApplication()" class="bg-party-accent text-black font-bold px-6 py-2 rounded-lg hover:bg-yellow-400">
+                                Submit Application
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Law-Level Votes -->
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">Laws I Voted On</h2>
@@ -320,6 +371,9 @@
                     document.getElementById('noClauseVotes').classList.remove('hidden');
                 }
                 
+                // Load leadership status
+                await loadLeadershipStatus();
+                
             } catch (e) {
                 console.error(e);
                 logout();
@@ -344,6 +398,110 @@
         if (authToken) {
             showProfile();
         }
-    </script>
+
+        // ==================== LEADERSHIP FUNCTIONS ====================
+        
+        async function loadLeadershipStatus() {
+            if (!authToken) {
+                document.getElementById('leadershipStatus').classList.add('hidden');
+                return;
+            }
+            
+            try {
+                const [statusRes, profileRes] = await Promise.all([
+                    fetch('/api/leadership/status'),
+                    fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                ]);
+                
+                const status = await statusRes.json();
+                const profile = await profileRes.json();
+                
+                document.getElementById('leadershipStatus').classList.add('hidden');
+                document.getElementById('leadershipContent').classList.remove('hidden');
+                
+                if (!status.success) {
+                    document.getElementById('leadershipClosed').classList.remove('hidden');
+                    document.getElementById('thresholdMessage').textContent = 'Leadership system initializing...';
+                    return;
+                }
+                
+                const user = profile.user;
+                
+                if (!status.threshold_met) {
+                    document.getElementById('leadershipClosed').classList.remove('hidden');
+                    document.getElementById('thresholdMessage').textContent = `Need ${status.threshold} members. Currently: ${status.member_count}`;
+                    return;
+                }
+                
+                if (user.initial_merit_estimate < status.min_merit_required) {
+                    document.getElementById('leadershipNotEligible').classList.remove('hidden');
+                    document.getElementById('eligibilityMessage').textContent = `Need ${status.min_merit_required} merit. Your score: ${user.initial_merit_estimate}`;
+                    return;
+                }
+                
+                // Eligible - show apply form
+                document.getElementById('leadershipApply').classList.remove('hidden');
+                
+                // Load available positions
+                const positionsRes = await fetch('/api/leadership/positions');
+                const positions = await positionsRes.json();
+                
+                if (positions.success && positions.positions.length > 0) {
+                    const select = document.getElementById('leadershipPosition');
+                    positions.positions.filter(p => p.is_active).forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = `${p.title} (Min ${p.min_merit_required} merit)`;
+                        select.appendChild(option);
+                    });
+                }
+                
+            } catch (e) {
+                console.error('Leadership status error:', e);
+                document.getElementById('leadershipStatus').classList.add('hidden');
+            }
+        }
+        
+        async function submitLeadershipApplication() {
+            const positionId = document.getElementById('leadershipPosition').value;
+            const applicationText = document.getElementById('leadershipApplication').value;
+            
+            if (!positionId) {
+                alert('Please select a position');
+                return;
+            }
+            
+            if (!applicationText || applicationText.length < 50) {
+                alert('Please write at least 50 characters about why you want to lead');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/leadership/apply', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ 
+                        position_id: parseInt(positionId),
+                        application_text: applicationText
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert('Application submitted! You will be notified when your live public interview is scheduled.');
+                    document.getElementById('leadershipApplication').value = '';
+                    document.getElementById('leadershipPosition').value = '';
+                } else {
+                    alert(data.error || 'Failed to submit application');
+                }
+            } catch (e) {
+                alert('Error submitting application');
+            }
+        }
+        
+        
 </body>
 </html>
