@@ -7,6 +7,13 @@
 set -e
 
 IMAGE_NAME="dhimarketer/3rdparty"
+
+echo "Committing and pushing to GitHub..."
+git add -A
+git commit -m "Update $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+git push
+
+echo ""
 TAG="${1:-latest}"
 
 echo "Building Docker image: $IMAGE_NAME:$TAG"

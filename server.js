@@ -605,14 +605,26 @@ app.post('/api/mvlaws/vote', (req, res) => {
     return res.status(400).json({ error: 'Invalid vote. Must be: support, oppose, or abstain', success: false });
   }
   
-  let userId = null;
+let userId = null;
   if (phone) {
     const user = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
     if (user) userId = user.id;
   }
+
+  const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
   
+  const recentVote = lawsDb.prepare(`
+    SELECT id FROM votes 
+    WHERE (user_id = ? OR user_ip = ?) AND voted_at > ?
+    LIMIT 1
+  `).get(userId || -1, userIP, oneHourAgo);
+  
+  if (recentVote) {
+    return res.status(429).json({ error: 'Please wait before voting again', success: false });
+  }
+
   try {
-    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const votedAt = new Date().toISOString();
     
     const existing = lawsDb.prepare(`

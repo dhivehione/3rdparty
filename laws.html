@@ -38,6 +38,22 @@
 
     <div class="max-w-4xl mx-auto px-4 py-8">
         
+        <!-- Context for cold visitors -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <p class="text-gray-400 mb-3">
+                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives — not an insurance company. 
+                We let citizens directly vote on laws. No parliament middlemen.
+            </p>
+            <a href="/join" class="text-party-accent hover:underline text-sm">Join in 45 seconds →</a>
+        </div>
+        
+        <!-- Intro -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <h1 class="text-2xl font-bold text-party-accent mb-2">Laws & Voting</h1>
+            <p class="text-gray-300 mb-4">Browse and vote on the laws that govern 3d Party. Each law contains multiple articles. Members can support, oppose, or abstain from voting on any article. Your votes shape our collective voice.</p>
+            <p class="text-gray-500 text-sm">Click any law to view its articles, then cast your vote on each one.</p>
+        </div>
+
         <!-- Stats -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
             <div class="flex flex-wrap justify-center gap-8 text-center">
@@ -262,6 +278,8 @@
                     alert('Vote recorded! Thanks for participating.');
                     loadStats();
                     viewArticle(currentArticleId);
+                } else if (res.status === 429) {
+                    alert('Please wait an hour before voting again.');
                 } else {
                     alert(data.error);
                 }
