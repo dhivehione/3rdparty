@@ -2,6 +2,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2822,7 +2823,6 @@ app.get('/api/donation-info', (req, res) => {
 });
 
 // POST /api/donate - Submit donation with slip
-const multer = require('multer');
 const upload = multer({
   dest: path.join(dataDir, 'uploads'),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
