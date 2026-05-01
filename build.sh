@@ -41,7 +41,23 @@ if [ "$LOCAL_COMMITS" -gt 0 ]; then
 fi
 
 echo ""
-TAG="${1:-latest}"
+# Auto-generate version if not provided
+COMMIT_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "dev")
+COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "dev")
+if [ -z "$1" ]; then
+    # Use commit hash + date for version
+    TIMESTAMP=$(date '+%Y%m%d-%H%M%S')
+    TAG="$COMMIT_SHORT-$TIMESTAMP"
+    echo "Auto-generated version: $TAG"
+else
+    TAG="$1"
+fi
+
+# Create version file for container
+echo "VERSION=$TAG" > version.txt
+echo "COMMIT=$COMMIT_HASH" >> version.txt
+echo "BUILT=$(date '+%Y-%m-%d %H:%M:%S')" >> version.txt
+echo "Created version.txt"
 
 echo "Building Docker image: $IMAGE_NAME:$TAG"
 

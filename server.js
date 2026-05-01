@@ -2742,8 +2742,18 @@ app.get('/faq', (req, res) => {
 });
 
 // ==================== START SERVER ====================
+const fs = require('fs');
+let version = 'unknown';
+try {
+  const versionData = fs.readFileSync(path.join(__dirname, 'version.txt'), 'utf8');
+  versionData.split('\n').forEach(line => {
+    if (line.startsWith('VERSION=')) version = line.replace('VERSION=', '');
+  });
+} catch (e) {}
+
 app.listen(PORT, () => {
-  console.log(`\n🎉 3d Party running at http://localhost:${PORT}`);
+  console.log(`\n🏷️  Version: ${version}`);
+  console.log(`🎉 3d Party running at http://localhost:${PORT}`);
   console.log(`📊 Admin: http://localhost:${PORT}/admin`);
   console.log(`🔑 Password: ${ADMIN_PASSWORD}`);
   console.log(`💡 "No, we are not doing 3rd party insurance."\n`);
