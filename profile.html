@@ -17,6 +17,51 @@
             }
         }
     </script>
+    <script>
+        // Pre-define functions to ensure they're available immediately
+        async function checkRegistration() {
+            const nid = document.getElementById('checkNid').value.trim();
+            if (!nid) { alert('Please enter your NID'); return; }
+            try {
+                const res = await fetch('/api/check-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nid })
+                });
+                const data = await res.json();
+                if (data.registered) {
+                    document.getElementById('nidCheckSection').classList.add('hidden');
+                    document.getElementById('registeredResult').classList.remove('hidden');
+                    document.getElementById('usernameStatus').textContent = data.hasUsername ? 'You have a username set.' : 'You have not set a username yet.';
+                } else {
+                    document.getElementById('nidCheckSection').classList.add('hidden');
+                    document.getElementById('notRegisteredResult').classList.remove('hidden');
+                }
+            } catch (e) { alert('Error checking registration. Please try again.'); }
+        }
+
+        async function loginWithPhone() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            if (!phone) { alert('Please enter your phone number'); return; }
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                const data = await res.json();
+                if (data.success && data.token) {
+                    localStorage.setItem('authToken', data.token);
+                    window.location.reload();
+                } else { alert(data.error || 'Login failed'); }
+            } catch (e) { alert('Error logging in'); }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.reload();
+        }
+    </script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -309,38 +354,9 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        // checkRegistration and loginWithPhone are defined in head for immediate availability
         
-        async function checkRegistration() {
-            const nid = document.getElementById('checkNid').value.trim();
-            if (!nid) {
-                alert('Please enter your NID');
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/check-registration', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nid })
-                });
-                
-                const data = await res.json();
-                if (data.registered) {
-                    document.getElementById('nidCheckSection').classList.add('hidden');
-                    document.getElementById('registeredResult').classList.remove('hidden');
-                    document.getElementById('usernameStatus').textContent = data.hasUsername 
-                        ? 'You have a username set.' 
-                        : 'You have not set a username yet.';
-                } else {
-                    document.getElementById('nidCheckSection').classList.add('hidden');
-                    document.getElementById('notRegisteredResult').classList.remove('hidden');
-                }
-            } catch (e) {
-                alert('Error checking registration. Please try again.');
-            }
-        }
-        
-        async function loginWithPhone() {
+        async function loginWithPhoneAPI() {
             const phone = document.getElementById('loginPhone').value.trim();
             const nid = document.getElementById('checkNid').value.trim();
             
