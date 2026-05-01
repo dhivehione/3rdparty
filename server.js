@@ -1889,21 +1889,22 @@ app.post('/api/user/login', (req, res) => {
   // Determine login method
   let user;
   
-  if (username && password) {
-    // Username + password login
-    // username can be: NID or custom username
-    // password is: phone number
-    user = db.prepare(`
-      SELECT * FROM signups 
-      WHERE (username = ? OR nid = ?) 
-      AND phone = ? AND is_verified = 1
-    `).get(username.trim(), username.trim(), password);
-  } else if (phone && nid) {
-    // Phone + NID login (original method)
-    user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(phone, nid);
-  } else {
-    return res.status(400).json({ error: 'Login requires either (phone + nid) or (username + password)', success: false });
-  }
+   if (username && password) {
+     // Username + password login
+     // username can be: NID or custom username
+     // password is: phone number (non-digits removed for comparison)
+     const cleanedPassword = password.replace(/\D/g, '');
+     user = db.prepare(`
+       SELECT * FROM signups 
+       WHERE (username = ? OR nid = ?) 
+       AND phone = ? AND is_verified = 1
+     `).get(username.trim(), username.trim(), cleanedPassword);
+   } else if (phone && nid) {
+     // Phone + NID login (original method)
+     // Clean phone input for consistency with validation/storage
+     const cleanedPhone = phone.replace(/\D/g, '');
+     user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(cleanedPhone, nid);
+   }
   
   if (!user) {
     return res.status(401).json({ error: 'Invalid credentials or not registered', success: false });
