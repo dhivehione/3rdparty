@@ -219,19 +219,21 @@
             const category = document.getElementById('searchCategory').value;
             const includeClauses = document.getElementById('includeClauses').checked;
 
+            console.log('Running search, elements check:', {
+                loading: !!document.getElementById('loadingLaws'),
+                noLaws: !!document.getElementById('noLaws'),
+                catFilter: !!document.getElementById('categoryFilterContainer'),
+                searchInput: !!document.getElementById('searchInput'),
+                lawsContainer: !!document.getElementById('lawsContainer')
+            });
+            
             const loadingEl = document.getElementById('loadingLaws');
             const noLawsEl = document.getElementById('noLaws');
             const catFilterEl = document.getElementById('categoryFilterContainer');
             
-            if (!loadingEl || !noLawsEl || !catFilterEl) {
-                console.error('Missing DOM elements');
-                alert('Page not fully loaded. Please refresh and try again.');
-                return;
-            }
-            
-            loadingEl.classList.remove('hidden');
-            noLawsEl.classList.add('hidden');
-            catFilterEl.classList.add('hidden');
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            if (noLawsEl) noLawsEl.classList.add('hidden');
+            if (catFilterEl) catFilterEl.classList.add('hidden');
 
             try {
                 const params = new URLSearchParams({
@@ -244,7 +246,8 @@
                 const res = await fetch(`/api/mvlaws/search?${params}`);
                 const data = await res.json();
 
-                document.getElementById('loadingLaws').classList.add('hidden');
+                const loadingElAfter = document.getElementById('loadingLaws');
+                if (loadingElAfter) loadingElAfter.classList.add('hidden');
 
                 if (!data.success) {
                     alert(data.error || 'Search failed');
