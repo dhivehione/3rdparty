@@ -1590,6 +1590,32 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// POST /api/check-registration - Check if NID is registered
+app.post('/api/check-registration', (req, res) => {
+  const { nid } = req.body;
+  
+  if (!nid) {
+    return res.status(400).json({ error: 'NID is required', success: false });
+  }
+  
+  try {
+    const user = db.prepare('SELECT id, phone, name, username, is_verified FROM signups WHERE nid = ?').get(nid.trim());
+    
+    if (!user) {
+      return res.json({ registered: false, success: true });
+    }
+    
+    res.json({ 
+      registered: true, 
+      hasUsername: !!user.username,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Check registration error:', error);
+    res.status(500).json({ error: 'Could not check registration', success: false });
+  }
+});
+
 // POST /api/user/login - User login with phone + NID OR username + password
 app.post('/api/user/login', (req, res) => {
   const { phone, nid, username, password } = req.body;
@@ -2017,6 +2043,7 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       id: user.id,
       phone: user.phone,
       name: user.name,
+      nid: user.nid,
       email: user.email,
       island: user.island,
       contribution_type: user.contribution_type ? JSON.parse(user.contribution_type) : [],
@@ -2035,6 +2062,63 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       lawVotesCount: lawVotes.length
     }
   });
+});
+
+// PUT /api/user/profile - Update user profile (username)
+app.put('/api/user/profile', userAuth, (req, res) => {
+  const user = req.user;
+  const { username, name, email, island } = req.body;
+  
+  try {
+    // Check if username is being updated and if it's taken
+    if (username !== undefined) {
+      const trimmedUsername = username.trim();
+      if (trimmedUsername === '') {
+        return res.status(400).json({ error: 'Username cannot be empty', success: false });
+      }
+      
+      const existing = db.prepare('SELECT id FROM signups WHERE username = ? AND id != ?').get(trimmedUsername, user.id);
+      if (existing) {
+        return res.status(409).json({ error: 'Username already taken', success: false });
+      }
+      
+      db.prepare('UPDATE signups SET username = ? WHERE id = ?').run(trimmedUsername, user.id);
+    }
+    
+    // Update other fields
+    if (name !== undefined) {
+      db.prepare('UPDATE signups SET name = ? WHERE id = ?').run(name.trim() || null, user.id);
+    }
+    if (email !== undefined) {
+      db.prepare('UPDATE signups SET email = ? WHERE id = ?').run(email.trim() || null, user.id);
+    }
+    if (island !== undefined) {
+      db.prepare('UPDATE signups SET island = ? WHERE id = ?').run(island.trim() || null, user.id);
+    }
+    
+    // Fetch updated user
+    const updatedUser = db.prepare('SELECT * FROM signups WHERE id = ?').get(user.id);
+    
+    res.json({ 
+      success: true, 
+      user: {
+        id: updatedUser.id,
+        phone: updatedUser.phone,
+        name: updatedUser.name,
+        username: updatedUser.username,
+        nid: updatedUser.nid,
+        email: updatedUser.email,
+        island: updatedUser.island,
+        contribution_type: updatedUser.contribution_type ? JSON.parse(updatedUser.contribution_type) : [],
+        donation_amount: updatedUser.donation_amount,
+        initial_merit_estimate: updatedUser.initial_merit_estimate,
+        timestamp: updatedUser.timestamp
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Could not update profile', success: false });
+  }
 });
 
 // POST /api/mvlaws/vote-law - Vote on an entire law (law-level voting)

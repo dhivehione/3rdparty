@@ -43,48 +43,45 @@
             <h1 class="text-2xl font-bold text-party-accent mb-4">My Profile</h1>
             <p class="text-gray-400 mb-6">Sign in to view your profile, scores, and voting history.</p>
             
-            <!-- Toggle between login methods -->
-            <div class="mb-4 flex gap-4 text-sm">
-                <button onclick="showLoginMethod('classic')" id="classicTab" class="text-party-accent border-b-2 border-party-accent pb-1">Phone + NID</button>
-                <button onclick="showLoginMethod('username')" id="usernameTab" class="text-gray-400 hover:text-party-accent pb-1">Username + Password</button>
+            <!-- NID Check Section (shown first) -->
+            <div id="nidCheckSection" class="space-y-4 max-w-md">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Enter your NID to check registration</label>
+                    <input type="text" id="checkNid" placeholder="A123456" 
+                           class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
+                </div>
+                <button onclick="checkRegistration()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                    Check Registration
+                </button>
             </div>
             
-            <div class="space-y-4 max-w-md">
-                <!-- Classic: Phone + NID -->
-                <div id="classicLogin">
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
-                        <input type="tel" id="loginPhone" placeholder="7-digit number" 
-                               class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
-                    </div>
-                    <div class="mt-4">
-                        <label class="block text-gray-400 text-sm mb-1">NID</label>
-                        <input type="text" id="loginNid" placeholder="A123456" 
-                               class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
-                    </div>
+            <!-- Check Result: Not Registered -->
+            <div id="notRegisteredResult" class="hidden mt-6 p-4 bg-red-900/30 border border-red-600 rounded-lg">
+                <p class="text-red-400">You are not registered yet.</p>
+                <a href="/join" class="text-party-accent hover:underline block mt-2">Join the party →</a>
+            </div>
+            
+            <!-- Check Result: Registered - Show Login -->
+            <div id="registeredResult" class="hidden mt-6 space-y-4">
+                <div class="p-4 bg-green-900/30 border border-green-600 rounded-lg">
+                    <p class="text-green-400">You are registered!</p>
+                    <p class="text-gray-500 text-sm mt-1" id="usernameStatus"></p>
                 </div>
                 
-                <!-- Username + Password -->
-                <div id="usernameLogin" class="hidden">
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-1">Username / NID / Name</label>
-                        <input type="text" id="loginUsername" placeholder="Your username, NID, or name" 
-                               class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
-                    </div>
-                    <div class="mt-4">
-                        <label class="block text-gray-400 text-sm mb-1">Password (Phone Number)</label>
-                        <input type="tel" id="loginPassword" placeholder="Your phone number" 
-                               class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
-                    </div>
+                <!-- Login with Phone -->
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Phone Number (as password)</label>
+                    <input type="tel" id="loginPhone" placeholder="7-digit number" 
+                           class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
                 </div>
-                
-                <button onclick="login()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                <button onclick="loginWithPhone()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
                     Sign In
                 </button>
-                <p class="text-center text-gray-500 text-sm">
-                    <a href="/join" class="text-party-accent hover:underline">Don't have an account? Join first</a>
-                </p>
             </div>
+             
+            <p class="text-center text-gray-500 text-sm mt-6">
+                <a href="/join" class="text-party-accent hover:underline">Don't have an account? Join first</a>
+            </p>
         </div>
 
         <!-- Profile Section (shown after login) -->
@@ -99,6 +96,11 @@
                 
                 <!-- Edit Form (hidden by default) -->
                 <div id="editForm" class="hidden space-y-4 mb-6 p-4 bg-gray-800/50 rounded-lg">
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-1">Username</label>
+                        <input type="text" id="editUsername" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="Choose a username">
+                        <p class="text-gray-500 text-xs mt-1">Used for login instead of NID</p>
+                    </div>
                     <div>
                         <label class="block text-gray-400 text-sm mb-1">Name</label>
                         <input type="text" id="editName" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
@@ -308,39 +310,50 @@
             return div.innerHTML;
         }
         
-        async function login() {
-            // Check which login method is active
-            const classicVisible = !document.getElementById('classicLogin').classList.contains('hidden');
+        async function checkRegistration() {
+            const nid = document.getElementById('checkNid').value.trim();
+            if (!nid) {
+                alert('Please enter your NID');
+                return;
+            }
             
-            let body;
+            try {
+                const res = await fetch('/api/check-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nid })
+                });
+                
+                const data = await res.json();
+                if (data.registered) {
+                    document.getElementById('nidCheckSection').classList.add('hidden');
+                    document.getElementById('registeredResult').classList.remove('hidden');
+                    document.getElementById('usernameStatus').textContent = data.hasUsername 
+                        ? 'You have a username set.' 
+                        : 'You have not set a username yet.';
+                } else {
+                    document.getElementById('nidCheckSection').classList.add('hidden');
+                    document.getElementById('notRegisteredResult').classList.remove('hidden');
+                }
+            } catch (e) {
+                alert('Error checking registration. Please try again.');
+            }
+        }
+        
+        async function loginWithPhone() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const nid = document.getElementById('checkNid').value.trim();
             
-            if (classicVisible) {
-                // Classic: Phone + NID
-                const phone = document.getElementById('loginPhone').value.trim();
-                const nid = document.getElementById('loginNid').value.trim();
-                
-                if (!phone || !nid) {
-                    alert('Please enter phone and NID');
-                    return;
-                }
-                body = { phone, nid };
-            } else {
-                // Username + Password
-                const username = document.getElementById('loginUsername').value.trim();
-                const password = document.getElementById('loginPassword').value.trim();
-                
-                if (!username || !password) {
-                    alert('Please enter username and password');
-                    return;
-                }
-                body = { username, password };
+            if (!phone) {
+                alert('Please enter your phone number');
+                return;
             }
             
             try {
                 const res = await fetch('/api/user/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({ phone, nid })
                 });
                 
                 const data = await res.json();
@@ -354,24 +367,6 @@
                 }
             } catch (e) {
                 alert('Login error. Please try again.');
-            }
-        }
-        
-        function showLoginMethod(method) {
-            if (method === 'classic') {
-                document.getElementById('classicLogin').classList.remove('hidden');
-                document.getElementById('usernameLogin').classList.add('hidden');
-                document.getElementById('classicTab').classList.add('text-party-accent', 'border-b-2', 'border-party-accent');
-                document.getElementById('classicTab').classList.remove('text-gray-400');
-                document.getElementById('usernameTab').classList.remove('text-party-accent', 'border-b-2', 'border-party-accent');
-                document.getElementById('usernameTab').classList.add('text-gray-400');
-            } else {
-                document.getElementById('classicLogin').classList.add('hidden');
-                document.getElementById('usernameLogin').classList.remove('hidden');
-                document.getElementById('usernameTab').classList.add('text-party-accent', 'border-b-2', 'border-party-accent');
-                document.getElementById('usernameTab').classList.remove('text-gray-400');
-                document.getElementById('classicTab').classList.remove('text-party-accent', 'border-b-2', 'border-party-accent');
-                document.getElementById('classicTab').classList.add('text-gray-400');
             }
         }
         
@@ -389,6 +384,15 @@
             localStorage.removeItem('userPhone');
             document.getElementById('loginSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
+            resetLoginSection();
+        }
+        
+        function resetLoginSection() {
+            document.getElementById('checkNid').value = '';
+            document.getElementById('loginPhone').value = '';
+            document.getElementById('nidCheckSection').classList.remove('hidden');
+            document.getElementById('notRegisteredResult').classList.add('hidden');
+            document.getElementById('registeredResult').classList.add('hidden');
         }
         
         async function showProfile() {
@@ -430,6 +434,10 @@
                         <div class="font-bold">${user.nid}</div>
                     </div>
                     <div>
+                        <div class="text-gray-500 text-xs">Username</div>
+                        <div class="font-bold">${user.username || '—'}</div>
+                    </div>
+                    <div>
                         <div class="text-gray-500 text-xs">Email</div>
                         <div class="font-bold">${user.email || '—'}</div>
                     </div>
@@ -445,6 +453,7 @@
                 document.getElementById('userDetails').innerHTML = detailsHtml;
                 
                 // Pre-fill edit form
+                document.getElementById('editUsername').value = user.username || '';
                 document.getElementById('editName').value = user.name || '';
                 document.getElementById('editEmail').value = user.email || '';
                 document.getElementById('editIsland').value = user.island || '';
@@ -518,9 +527,31 @@
         }
         
         async function saveProfile() {
-            // For now just hide the form - profile edit requires database update API
-            hideEditForm();
-            alert('Profile saved!');
+            const username = document.getElementById('editUsername').value.trim();
+            const name = document.getElementById('editName').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+            const island = document.getElementById('editIsland').value.trim();
+            
+            try {
+                const res = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ username, name, email, island })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    hideEditForm();
+                    showProfile();
+                } else {
+                    alert(data.error || 'Failed to save profile');
+                }
+            } catch (e) {
+                alert('Error saving profile');
+            }
         }
         
         // Check auth on load
