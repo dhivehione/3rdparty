@@ -196,9 +196,14 @@
         }
 
         function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('searchInfo').classList.add('hidden');
-            document.getElementById('categoryFilterContainer').classList.remove('hidden');
+            const searchInputEl = document.getElementById('searchInput');
+            const searchInfoEl = document.getElementById('searchInfo');
+            const catFilterEl = document.getElementById('categoryFilterContainer');
+            
+            if (searchInputEl) searchInputEl.value = '';
+            if (searchInfoEl) searchInfoEl.classList.add('hidden');
+            if (catFilterEl) catFilterEl.classList.remove('hidden');
+            
             isSearchMode = false;
             loadLaws();
         }
@@ -214,9 +219,19 @@
             const category = document.getElementById('searchCategory').value;
             const includeClauses = document.getElementById('includeClauses').checked;
 
-            document.getElementById('loadingLaws').classList.remove('hidden');
-            document.getElementById('noLaws').classList.add('hidden');
-            document.getElementById('categoryFilterContainer').classList.add('hidden');
+            const loadingEl = document.getElementById('loadingLaws');
+            const noLawsEl = document.getElementById('noLaws');
+            const catFilterEl = document.getElementById('categoryFilterContainer');
+            
+            if (!loadingEl || !noLawsEl || !catFilterEl) {
+                console.error('Missing DOM elements');
+                alert('Page not fully loaded. Please refresh and try again.');
+                return;
+            }
+            
+            loadingEl.classList.remove('hidden');
+            noLawsEl.classList.add('hidden');
+            catFilterEl.classList.add('hidden');
 
             try {
                 const params = new URLSearchParams({
@@ -237,8 +252,12 @@
                 }
 
                 // Show search info
-                document.getElementById('searchInfo').classList.remove('hidden');
-                document.getElementById('searchKeywords').textContent = data.keywords.join(', ');
+                const searchInfoEl = document.getElementById('searchInfo');
+                const searchKeywordsEl = document.getElementById('searchKeywords');
+                if (searchInfoEl && searchKeywordsEl) {
+                    searchInfoEl.classList.remove('hidden');
+                    searchKeywordsEl.textContent = data.keywords.join(', ');
+                }
                 isSearchMode = true;
 
                 // Populate search category dropdown from results
@@ -354,7 +373,8 @@
 
             } catch (e) {
                 console.error('Search error:', e);
-                document.getElementById('loadingLaws').classList.add('hidden');
+                const loadingEl = document.getElementById('loadingLaws');
+                if (loadingEl) loadingEl.classList.add('hidden');
                 alert('Search failed. Please try again.');
             }
         }

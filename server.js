@@ -80,6 +80,25 @@ db.exec(`
   )
 `);
 
+// Migration: Add missing columns to existing signups table
+const signupMigrations = [
+  { col: 'is_verified', def: 'INTEGER DEFAULT 1' },
+  { col: 'username', def: 'TEXT' },
+  { col: 'auth_token', def: 'TEXT' },
+  { col: 'unregistered_at', def: 'TEXT' },
+  { col: 'unregistered_by', def: 'TEXT' },
+  { col: 'unregister_justification', def: 'TEXT' }
+];
+
+signupMigrations.forEach(m => {
+  try {
+    db.exec(`ALTER TABLE signups ADD COLUMN ${m.col} ${m.def}`);
+    console.log(`✓ Migration: Added ${m.col} to signups`);
+  } catch (e) {
+    // Column already exists or other error - ignore
+  }
+});
+
 // Referrals table - track who introduced whom
 db.exec(`
   CREATE TABLE IF NOT EXISTS referrals (
