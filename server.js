@@ -2742,7 +2742,6 @@ app.get('/faq', (req, res) => {
 });
 
 // ==================== START SERVER ====================
-const fs = require('fs');
 let version = 'unknown';
 try {
   const versionData = fs.readFileSync(path.join(__dirname, 'version.txt'), 'utf8');

@@ -74,4 +74,8 @@ docker push $IMAGE_NAME:$TAG
 docker push $IMAGE_NAME:latest
 
 echo "Done! Image pushed: $IMAGE_NAME:$TAG"
-echo "In CapRover, use image name: $IMAGE_NAME:$TAG"
+echo "Also available as: $IMAGE_NAME:latest"
+echo ""
+echo "CapRover deployment options:"
+echo "  - Use '$IMAGE_NAME:$TAG' to track specific version"
+echo "  - Use '$IMAGE_NAME:latest' for always-latest deployment"
