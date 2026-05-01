@@ -285,10 +285,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS donations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
-    phone TEXT NOT NULL,
-    nid TEXT NOT NULL,
+    phone TEXT,
+    nid TEXT,
     amount REAL NOT NULL,
     slip_filename TEXT,
+    remarks TEXT,
     status TEXT DEFAULT 'pending',
     verified_by TEXT,
     verified_at TEXT,
@@ -296,6 +297,13 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES signups(id)
   )
 `);
+
+// Add remarks column if it doesn't exist (for existing databases)
+try {
+  db.exec(`ALTER TABLE donations ADD COLUMN remarks TEXT`);
+} catch (e) {
+  // Column already exists, ignore error
+}
 
 // ==================== LEADERSHIP STRUCTURE TABLES ====================
 
@@ -1527,13 +1535,15 @@ app.get('/api/wall-stats', (req, res) => {
   try {
     const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get();
     const wallCount = db.prepare('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1').get();
-    const treasury = db.prepare('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0').get();
-    
-    res.json({ 
+    const signupTreasury = db.prepare('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0').get();
+    const donationTreasury = db.prepare('SELECT SUM(amount) as total FROM donations WHERE status = "verified"').get();
+    const totalTreasury = (signupTreasury.total || 0) + (donationTreasury.total || 0);
+
+    res.json({
       members: memberCount.total,
       wallPosts: wallCount.total,
-      treasury: treasury.total || 0,
-      success: true 
+      treasury: totalTreasury,
+      success: true
     });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch stats', success: false });
@@ -2839,30 +2849,28 @@ const uploadDir = path.join(dataDir, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 app.post('/api/donate', upload.single('slip'), (req, res) => {
-  const { phone, nid, amount } = req.body;
-  
-  if (!phone || !nid || !amount) {
-    return res.status(400).json({ error: 'Phone, NID, and amount are required', success: false });
+  const { phone, nid, amount, remarks } = req.body;
+
+  if (!amount) {
+    return res.status(400).json({ error: 'Donation amount is required', success: false });
   }
-  
+
   const donationAmount = parseFloat(amount);
   if (isNaN(donationAmount) || donationAmount <= 0) {
     return res.status(400).json({ error: 'Invalid donation amount', success: false });
   }
-  
+
   if (!req.file) {
     return res.status(400).json({ error: 'Deposit slip is required', success: false });
   }
-  
+
   try {
     const createdAt = new Date().toISOString();
     const stmt = db.prepare(`
-      UPDATE signups 
-      SET donation_amount = donation_amount + ?,
-          is_verified = 0
-      WHERE phone = ? AND nid = ?
+      INSERT INTO donations (phone, nid, amount, slip_filename, remarks, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `);
-    const result = stmt.run(donationAmount, phone, nid);
+    const result = stmt.run(phone || null, nid || null, donationAmount, req.file.filename, remarks || null, createdAt);
     
     // Log the pending donation for admin review
     db.prepare(`
@@ -2965,27 +2973,30 @@ app.get('/api/admin/donations/pending', adminAuth, (req, res) => {
 // POST /api/admin/donations/:id/verify - Verify a donation (admin only)
 app.post('/api/admin/donations/:id/verify', adminAuth, (req, res) => {
   const donationId = parseInt(req.params.id);
-  
+
   try {
     const donation = db.prepare('SELECT * FROM donations WHERE id = ?').get(donationId);
     if (!donation) {
       return res.status(404).json({ error: 'Donation not found', success: false });
     }
-    
+
     // Update donation status
     db.prepare(`UPDATE donations SET status = 'verified', verified_at = ?, verified_by = ? WHERE id = ?`)
       .run(new Date().toISOString(), 'admin', donationId);
-    
+
     // Update user's donation amount if linked to a user
     if (donation.user_id) {
       db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
         .run(donation.amount, donation.user_id);
-    } else {
+    } else if (donation.phone && donation.nid) {
       // Try to find user by phone/nid
-      db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE phone = ? AND nid = ?`)
-        .run(donation.amount, donation.phone, donation.nid);
+      const user = db.prepare('SELECT id FROM signups WHERE phone = ? AND nid = ?').get(donation.phone, donation.nid);
+      if (user) {
+        db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
+          .run(donation.amount, user.id);
+      }
     }
-    
+
     res.json({ success: true, message: 'Donation verified and added to treasury' });
   } catch (error) {
     console.error('Donation verify error:', error);

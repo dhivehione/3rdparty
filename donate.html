@@ -84,23 +84,10 @@
                 </div>
             </div>
 
-            <!-- Phone -->
+            <!-- Remarks -->
             <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Your Phone Number <span class="text-red-400">*</span></label>
-                <div class="flex">
-                    <span class="bg-gray-800 px-4 py-3 rounded-l-lg border border-gray-600 border-r-0 text-gray-400">+960</span>
-                    <input type="tel" id="phone" required 
-                           class="flex-1 bg-gray-800 border border-gray-600 rounded-r-lg px-4 py-3 focus:outline-none focus:border-party-accent"
-                           placeholder="7-digit number" maxlength="7">
-                </div>
-            </div>
-
-            <!-- NID -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">National ID (NID) <span class="text-red-400">*</span></label>
-                <input type="text" id="nid" required 
-                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
-                       placeholder="A123456" maxlength="10">
+                <label class="block text-sm font-medium mb-2">Remarks (optional)</label>
+                <textarea id="remarks" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent" placeholder="Any additional notes about your donation..."></textarea>
             </div>
 
             <!-- Deposit Slip Upload -->
@@ -205,17 +192,6 @@
         }
 
         async function submitDonation() {
-            const phone = document.getElementById('phone').value.trim();
-            const nid = document.getElementById('nid').value.trim();
-
-            if (!phone || phone.length < 7) {
-                alert('Please enter a valid phone number');
-                return;
-            }
-            if (!nid) {
-                alert('Please enter your NID');
-                return;
-            }
             if (!selectedAmount || selectedAmount <= 0) {
                 alert('Please select a donation amount');
                 return;
@@ -226,8 +202,13 @@
             }
 
             const formData = new FormData();
-            formData.append('phone', phone);
-            formData.append('nid', nid);
+            const phone = document.getElementById('phone')?.value.trim();
+            const nid = document.getElementById('nid')?.value.trim();
+            const remarks = document.getElementById('remarks')?.value.trim();
+
+            if (phone) formData.append('phone', phone);
+            if (nid) formData.append('nid', nid);
+            if (remarks) formData.append('remarks', remarks);
             formData.append('amount', selectedAmount);
             formData.append('slip', uploadedFile);
 
