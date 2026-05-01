@@ -140,6 +140,7 @@ db.exec(`
     referred_id INTEGER NOT NULL,
     relation TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
+    details TEXT,
     base_reward_given INTEGER DEFAULT 0,
     engagement_bonus_given INTEGER DEFAULT 0,
     created_at TEXT NOT NULL,
@@ -149,6 +150,11 @@ db.exec(`
     FOREIGN KEY (referred_id) REFERENCES signups(id)
   )
 `);
+
+// Migration: Add missing columns to referrals
+try {
+  db.exec('ALTER TABLE referrals ADD COLUMN details TEXT');
+} catch (e) {}
 
 // System-wide activity log for tracing issues and disputes
 db.exec(`
@@ -2772,6 +2778,30 @@ app.get('/leadership', (req, res) => {
 
 app.get('/faq', (req, res) => {
   res.sendFile(path.join(__dirname, 'faq.html'));
+});
+
+// ==================== COMPREHENSIVE MIGRATIONS ====================
+const migrations = [
+  // signups table - already handled above
+  
+  // referrals table
+  { table: 'referrals', col: 'details', def: 'TEXT' },
+  
+  // activity_log table - should already have details, but ensure it
+  { table: 'activity_log', col: 'details', def: 'TEXT' },
+  
+  // leadership tables
+  { table: 'leadership_positions', col: 'details', def: 'TEXT' },
+  { table: 'leadership_applications', col: 'details', def: 'TEXT' },
+];
+
+migrations.forEach(m => {
+  try {
+    db.exec(`ALTER TABLE ${m.table} ADD COLUMN ${m.col} ${m.def}`);
+    console.log(`✓ Migration: Added ${m.col} to ${m.table}`);
+  } catch (e) {
+    // Column exists or other error - ignore
+  }
 });
 
 // ==================== START SERVER ====================
