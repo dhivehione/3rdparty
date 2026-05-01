@@ -374,6 +374,140 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== HIDDEN ENROLLMENT API (Undocumented) ====================
+// For enrolling friends/family - rate limited hidden feature
+const https = require('https');
+
+const ENROLL_RATE_LIMIT_MS = 60 * 1000; // 1 minute between searches
+const ENROLL_MAX_PER_DAY = 50; // Max 50 searches per day per IP
+
+const enrollRateLimits = new Map(); // ip -> { lastRequest: timestamp, dailyCount: number, dailyReset: date }
+
+function checkEnrollRateLimit(ip) {
+  const now = Date.now();
+  const record = enrollRateLimits.get(ip);
+  
+  if (!record) {
+    enrollRateLimits.set(ip, { lastRequest: now, dailyCount: 1, dailyReset: new Date(now + 24*60*60*1000) });
+    return { allowed: true, remaining: ENROLL_MAX_PER_DAY - 1, resetIn: ENROLL_RATE_LIMIT_MS };
+  }
+  
+  // Reset daily counter if past reset time
+  if (now > record.dailyReset.getTime()) {
+    record.dailyCount = 1;
+    record.dailyReset = new Date(now + 24*60*60*1000);
+    enrollRateLimits.set(ip, record);
+    return { allowed: true, remaining: ENROLL_MAX_PER_DAY - 1, resetIn: ENROLL_RATE_LIMIT_MS };
+  }
+  
+  // Check daily limit
+  if (record.dailyCount >= ENROLL_MAX_PER_DAY) {
+    return { allowed: false, remaining: 0, resetIn: record.dailyReset.getTime() - now };
+  }
+  
+  // Check per-request rate limit
+  if (now - record.lastRequest < ENROLL_RATE_LIMIT_MS) {
+    return { allowed: false, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: ENROLL_RATE_LIMIT_MS - (now - record.lastRequest) };
+  }
+  
+  // Update counters
+  record.lastRequest = now;
+  record.dailyCount++;
+  enrollRateLimits.set(ip, record);
+  
+  return { allowed: true, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: 0 };
+}
+
+// POST /api/enroll/lookup - Hidden endpoint to search maldivesedirectory.com
+// Used for enrolling friends and family - rate limited
+// Accepts optional 'token' parameter for authenticated access (full data)
+app.post('/api/enroll/lookup', (req, res) => {
+  const ip = getClientIp(req);
+  const rateCheck = checkEnrollRateLimit(ip);
+  
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ 
+      error: 'Rate limit exceeded. Try again later.',
+      retry_after_seconds: Math.ceil(rateCheck.resetIn / 1000),
+      remaining_daily: 0,
+      success: false 
+    });
+  }
+  
+  const { query, name, island, address, token } = req.body;
+  
+  if (!query && !name && !island && !address) {
+    return res.status(400).json({ 
+      error: 'At least one search parameter required: query, name, island, or address',
+      success: false 
+    });
+  }
+  
+  // Build search payload for maldivesedirectory.com
+  const searchPayload = JSON.stringify({
+    query: query || '',
+    name: name || '',
+    island: island || '',
+    address: address || '',
+    page_size: 10
+  });
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(searchPayload)
+  };
+  
+  // If token provided (placeholder for now), use it for authenticated access
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const options = {
+    hostname: process.env.DIRECTORY_API_HOST || 'www.maldivesedirectory.com',
+    path: '/api/mydir/advanced_search/',
+    method: 'POST',
+    headers: headers,
+    timeout: 10000
+  };
+  
+  const proxyReq = https.request(options, (proxyRes) => {
+    let data = '';
+    
+    proxyRes.on('data', (chunk) => {
+      data += chunk;
+    });
+    
+    proxyRes.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        res.json({
+          success: true,
+          results: parsed.results || [],
+          total_count: parsed.total_count || 0,
+          rate_limit: {
+            remaining_daily: rateCheck.remaining,
+            reset_in_seconds: rateCheck.resetIn > 0 ? Math.ceil(rateCheck.resetIn / 1000) : null
+          }
+        });
+      } catch (e) {
+        res.status(502).json({ error: 'Could not reach directory service', success: false });
+      }
+    });
+  });
+  
+  proxyReq.on('error', (e) => {
+    res.status(502).json({ error: 'Directory service unavailable: ' + e.message, success: false });
+  });
+  
+  proxyReq.on('timeout', () => {
+    proxyReq.destroy();
+    res.status(504).json({ error: 'Directory service timeout', success: false });
+  });
+  
+  proxyReq.write(searchPayload);
+  proxyReq.end();
+});
+
 // ==================== ANALYTICS API ====================
 // POST /api/analytics/heartbeat - Track active visitor
 app.post('/api/analytics/heartbeat', (req, res) => {
@@ -2114,7 +2248,6 @@ app.put('/api/user/profile', userAuth, (req, res) => {
         initial_merit_estimate: updatedUser.initial_merit_estimate,
         timestamp: updatedUser.timestamp
       }
-    });
     });
   } catch (error) {
     console.error('Update profile error:', error);
