@@ -152,6 +152,74 @@
                     Each vote counts as one action regardless of scope.
                 </p>
             </div>
+            
+            <!-- Introduce Member Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-user-plus mr-2"></i>Introduce Members
+                </h2>
+                <p class="text-gray-400 text-sm mb-4">Invite others to join the movement. Earn points when they join and complete their first action.</p>
+                
+                <!-- Referral Stats -->
+                <div id="referralStats" class="mb-4 p-4 bg-gray-800/50 rounded-lg">
+                    <div class="flex justify-around text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-party-accent" id="totalReferrals">0</div>
+                            <div class="text-gray-500 text-xs">Total Introduced</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-green-400" id="referralBasePoints">0</div>
+                            <div class="text-gray-500 text-xs">Base Points</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-blue-400" id="referralBonusPoints">0</div>
+                            <div class="text-gray-500 text-xs">Bonus Points</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-purple-400" id="referralTotalPoints">0</div>
+                            <div class="text-gray-500 text-xs">Total Earned</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Introduce Form -->
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
+                            <input type="tel" id="introPhone" placeholder="7-digit number" 
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">NID</label>
+                            <input type="text" id="introNid" placeholder="A123456" 
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Relation</label>
+                            <select id="introRelation" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="">Select relation</option>
+                                <option value="family">Family</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="neighbor">Neighbor</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="introduceMember()" class="bg-party-accent text-party-dark font-bold px-6 py-2 rounded-lg hover:bg-yellow-400">
+                        <i class="fas fa-paper-plane mr-2"></i>Send Invitation
+                    </button>
+                </div>
+                
+                <!-- Referral List -->
+                <div id="referralList" class="mt-6">
+                    <h3 class="text-lg font-bold text-gray-300 mb-3">Your Introductions</h3>
+                    <div id="referralsContainer" class="space-y-2">
+                        <p class="text-gray-500 text-sm">Loading...</p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Leadership Application Section -->
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
