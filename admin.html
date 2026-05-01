@@ -94,40 +94,76 @@
                     <div class="text-2xl font-bold" id="leadershipStatus">--</div>
                     <div class="text-xs text-gray-500 mt-1" id="leadershipThreshold">Threshold: 1000</div>
                 </div>
-            </div>
-
-            <!-- Leadership Section -->
-            <div class="mb-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold flex items-center">
-                        <i class="fas fa-users-cog text-party-accent mr-3"></i>
-                        Leadership Structure
-                    </h2>
-                    <button onclick="showLeadershipTab('settings')" class="text-party-accent hover:underline text-sm">
-                        <i class="fas fa-cog mr-1"></i>Settings
-                    </button>
                 </div>
-                
-                <div class="grid md:grid-cols-4 gap-4 mb-4">
-                    <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                        <div class="text-gray-400 text-sm">Open Positions</div>
-                        <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
+
+                <!-- Proposals Management Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-file-alt text-party-accent mr-3"></i>
+                            Proposals Management
+                        </h2>
+                        <button onclick="loadProposalsAdmin()" class="text-party-accent hover:underline text-sm">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
                     </div>
-                    <div onclick="showLeadershipTab('applications')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                        <div class="text-gray-400 text-sm">Pending Applications</div>
-                        <div class="text-2xl font-bold text-party-accent" id="pendingApps">0</div>
-                    </div>
-                    <div onclick="showLeadershipTab('leaders')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                        <div class="text-gray-400 text-sm">Active Leaders</div>
-                        <div class="text-2xl font-bold text-green-400" id="activeLeaders">0</div>
-                    </div>
-                    <div onclick="showLeadershipTab('sops')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                        <div class="text-gray-400 text-sm">SOPs Active</div>
-                        <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
+                    <div id="proposalsAdminList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">Loading proposals...</div>
                     </div>
                 </div>
 
-                <!-- Leadership Panels -->
+                <!-- Donation Verification Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-money-check-alt text-green-400 mr-3"></i>
+                            Pending Donations
+                        </h2>
+                        <button onclick="loadPendingDonations()" class="text-party-accent hover:underline text-sm">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div id="donationsList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">Loading donations...</div>
+                    </div>
+                </div>
+
+                <!-- Leadership Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-users-cog text-party-accent mr-3"></i>
+                            Leadership Structure
+                        </h2>
+                        <button onclick="showLeadershipTab('settings')" class="text-party-accent hover:underline text-sm">
+                            <i class="fas fa-cog mr-1"></i>Settings
+                        </button>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-5 gap-4 mb-4">
+                        <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                            <div class="text-gray-400 text-sm">Open Positions</div>
+                            <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
+                        </div>
+                        <div onclick="showLeadershipTab('applications')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                            <div class="text-gray-400 text-sm">Pending Applications</div>
+                            <div class="text-2xl font-bold text-party-accent" id="pendingApps">0</div>
+                        </div>
+                        <div onclick="showLeadershipTab('leaders')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                            <div class="text-gray-400 text-sm">Active Leaders</div>
+                            <div class="text-2xl font-bold text-green-400" id="activeLeaders">0</div>
+                        </div>
+                        <div onclick="showLeadershipTab('sops')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                            <div class="text-gray-400 text-sm">SOPs Active</div>
+                            <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
+                        </div>
+                        <div onclick="showLeadershipTab('appraisals')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                            <div class="text-gray-400 text-sm">Appraisals Due</div>
+                            <div class="text-2xl font-bold text-yellow-400" id="pendingAppraisals">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Leadership Panels -->
                 <div id="leadershipPanel" class="hidden">
                     <!-- Tab Navigation -->
                     <div class="flex border-b border-gray-700 mb-6">
@@ -895,6 +931,184 @@
             // Would call API here
             alert('Appraisal saved for ' + name);
         }
+
+        // ==================== PROPOSALS MANAGEMENT ====================
+        async function loadProposalsAdmin() {
+            const container = document.getElementById('proposalsAdminList');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            try {
+                const res = await fetch('/api/admin/proposals', {
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                });
+                const data = await res.json();
+                
+                if (data.success && data.proposals) {
+                    container.innerHTML = data.proposals.map(p => `
+                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${p.title}</h3>
+                                    <span class="text-xs text-gray-400">${p.category} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded ${getStatusColor(p.status)}">${p.status}</span>
+                            </div>
+                            <p class="text-gray-400 text-sm mb-3">${p.description.substring(0, 150)}${p.description.length > 150 ? '...' : ''}</p>
+                            ${p.status === 'active' ? `
+                                <div class="flex gap-2">
+                                    <button onclick="updateProposalStatus(${p.id}, 'approved')" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
+                                        <i class="fas fa-check mr-1"></i>Approve
+                                    </button>
+                                    <button onclick="updateProposalStatus(${p.id}, 'rejected')" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30">
+                                        <i class="fas fa-times mr-1"></i>Reject
+                                    </button>
+                                    <button onclick="updateProposalStatus(${p.id}, 'postponed')" class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded text-sm hover:bg-yellow-500/30">
+                                        <i class="fas fa-pause mr-1"></i>Postpone
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="text-sm text-gray-500">
+                                    ${p.status === 'approved' ? '✓ Approved' : p.status === 'rejected' ? '✗ Rejected' : '⏸ Postponed'}
+                                </div>
+                            `}
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500">No proposals found.</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading proposals.</div>';
+            }
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'approved': return 'bg-green-500/20 text-green-400';
+                case 'rejected': return 'bg-red-500/20 text-red-400';
+                case 'postponed': return 'bg-yellow-500/20 text-yellow-400';
+                default: return 'bg-gray-700 text-gray-400';
+            }
+        }
+
+        async function updateProposalStatus(proposalId, status) {
+            const feedback = status === 'rejected' ? prompt('Reason for rejection:') : '';
+            
+            try {
+                const res = await fetch(`/api/admin/proposals/${proposalId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken')
+                    },
+                    body: JSON.stringify({ status, feedback })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Proposal ' + status + '!');
+                    loadProposalsAdmin();
+                } else {
+                    alert(data.error || 'Failed to update');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        // ==================== DONATION VERIFICATION ====================
+        async function loadPendingDonations() {
+            const container = document.getElementById('donationsList');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            try {
+                const res = await fetch('/api/admin/donations/pending', {
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                });
+                const data = await res.json();
+                
+                if (data.success && data.donations && data.donations.length > 0) {
+                    container.innerHTML = data.donations.map(d => `
+                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div class="font-bold text-lg">MVR ${d.amount}</div>
+                                    <div class="text-sm text-gray-400">${d.phone} | ${d.nid}</div>
+                                    <div class="text-xs text-gray-500">${new Date(d.created_at).toLocaleString()}</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">Pending</span>
+                            </div>
+                            ${d.slip_filename ? `
+                                <div class="mb-3">
+                                    <img src="/uploads/${d.slip_filename}" class="max-h-32 rounded border border-gray-700" alt="Deposit Slip">
+                                </div>
+                            ` : ''}
+                            <div class="flex gap-2">
+                                <button onclick="verifyDonation(${d.id})" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
+                                    <i class="fas fa-check mr-1"></i>Verify & Approve
+                                </button>
+                                <button onclick="rejectDonation(${d.id})" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30">
+                                    <i class="fas fa-times mr-1"></i>Reject
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">💰</div><p>No pending donations.</p></div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading donations.</div>';
+            }
+        }
+
+        async function verifyDonation(donationId) {
+            try {
+                const res = await fetch(`/api/admin/donations/${donationId}/verify`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Donation verified! Amount added to Live Treasury.');
+                    loadPendingDonations();
+                    refreshData();
+                } else {
+                    alert(data.error || 'Failed to verify');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        async function rejectDonation(donationId) {
+            const reason = prompt('Reason for rejection:');
+            if (reason === null) return;
+            
+            try {
+                const res = await fetch(`/api/admin/donations/${donationId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken')
+                    },
+                    body: JSON.stringify({ reason })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Donation rejected.');
+                    loadPendingDonations();
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        // Load data on page load
+        setTimeout(() => {
+            loadProposalsAdmin();
+            loadPendingDonations();
+        }, 1000);
     </script>
 </body>
 </html>

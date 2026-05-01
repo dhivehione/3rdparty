@@ -174,23 +174,8 @@
                 Already have an account? <a href="/profile" class="text-party-accent hover:underline">Sign in</a>
             </p>
         </form>
-
-        <!-- Success Message -->
-        <div id="successMessage" class="hidden text-center py-12">
-            <div class="text-6xl mb-4">🎉</div>
-            <h2 class="text-3xl font-bold mb-4">Welcome to the 3d Party!</h2>
-            <p id="successDetails" class="text-gray-400 mb-6"></p>
-            <p class="text-gray-500 text-sm mb-8">
-                You're now one of the <span id="slotsLeft" class="text-party-accent font-bold">13,000</span> people building a new system for Maldives.
-            </p>
-            <a href="/how" class="inline-flex items-center space-x-2 bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
-                <span>See what you can do</span>
-                <i class="fas fa-arrow-right"></i>
-            </a>
-        </div>
-    </div>
-
-<script>
+    
+    <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let selectedTypes = [];
@@ -355,29 +340,9 @@
                         localStorage.setItem('user', JSON.stringify(result.user));
                     }
                     
-                    document.getElementById('signupForm').classList.add('hidden');
-                    document.getElementById('successMessage').classList.remove('hidden');
-                    
-                    const typeText = selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Supporter';
-                    let detailsText = `You signed up as: ${typeText}. Initial Merit Score: ${result.user.initial_merit_estimate} points.`;
-                    if (selectedTypes.includes('donation') && selectedDonationAmount > 0) {
-                        detailsText += `<br>Donation of MVR ${selectedDonationAmount} added to Live Treasury.`;
-                    }
-                    document.getElementById('successDetails').innerHTML = detailsText;
-                     
-                    // Fetch remaining slots
-                    fetch('/api/signups/count')
-                        .then(r => r.json())
-                        .then(d => {
-                            if (d.success) {
-                                const remaining = Math.max(0, 13000 - d.total);
-                                document.getElementById('slotsLeft').textContent = remaining.toLocaleString();
-                            }
-                        })
-                        .catch(() => {});
-                      
-                    // Clear session storage
-                    sessionStorage.clear();
+                    // Redirect to join-success page
+                    window.location.href = '/join-success';
+                    return;
                 } else {
                     alert(result.error || 'Signup failed. Please try again.');
                 }

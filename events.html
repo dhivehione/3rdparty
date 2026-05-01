@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', muted: '#6B7280', secondary: '#4A90E2' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="nav.js"></script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        <a href="/" class="text-gray-400 hover:text-party-accent transition mb-8 inline-flex items-center space-x-2">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to home</span>
+        </a>
+
+        <h1 class="text-4xl font-bold mb-4">What Happens Next?</h1>
+        <p class="text-gray-400 text-lg mb-12">You've joined. Here's what's coming up and how you can get involved.</p>
+
+        <!-- Upcoming Events -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-bold mb-6">📅 Upcoming Events</h2>
+            <div id="eventsList" class="space-y-4">
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                    <p>Loading events...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- What You Can Do Now -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-bold mb-6">🚀 What You Can Do Now</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <a href="/laws" class="bg-party-card border border-gray-700 p-6 rounded-xl hover:border-party-accent transition">
+                    <div class="text-3xl mb-3">🗳️</div>
+                    <h3 class="font-bold mb-2">Vote on Laws</h3>
+                    <p class="text-gray-400 text-sm">Start shaping policy immediately. Every vote counts.</p>
+                </a>
+                <a href="/proposals" class="bg-party-card border border-gray-700 p-6 rounded-xl hover:border-party-accent transition">
+                    <div class="text-3xl mb-3">💡</div>
+                    <h3 class="font-bold mb-2">Submit Proposals</h3>
+                    <p class="text-gray-400 text-sm">Got ideas? Share them with the community.</p>
+                </a>
+                <a href="/wall" class="bg-party-card border border-gray-700 p-6 rounded-xl hover:border-party-accent transition">
+                    <div class="text-3xl mb-3">💬</div>
+                    <h3 class="font-bold mb-2">Join the Conversation</h3>
+                    <p class="text-gray-400 text-sm">Connect with other members on the Wall.</p>
+                </a>
+                <a href="/donate" class="bg-party-card border border-gray-700 p-6 rounded-xl hover:border-party-accent transition">
+                    <div class="text-3xl mb-3">💰</div>
+                    <h3 class="font-bold mb-2">Support the Party</h3>
+                    <p class="text-gray-400 text-sm">Every contribution helps us grow faster.</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="bg-party-card rounded-xl border border-gray-700 p-8">
+            <h2 class="text-2xl font-bold mb-6">📊 Our Journey</h2>
+            <div class="space-y-6">
+                <div class="flex items-start space-x-4">
+                    <div class="bg-party-accent/20 text-party-accent w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
+                    <div>
+                        <h3 class="font-bold text-party-accent">We're Growing</h3>
+                        <p class="text-gray-400 text-sm">First, we need 13,000 members (3% of population). Currently at <span id="memberCount" class="text-party-accent font-bold">—</span>.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-gray-400">2</div>
+                    <div>
+                        <h3 class="font-bold text-gray-400">Community Building</h3>
+                        <p class="text-gray-500 text-sm">Regular meetups, online discussions, and policy development sessions.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-gray-400">3</div>
+                    <div>
+                        <h3 class="font-bold text-gray-400">Local Elections</h3>
+                        <p class="text-gray-500 text-sm">We'll start contesting local council elections to prove our model works.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-gray-400">4</div>
+                    <div>
+                        <h3 class="font-bold text-gray-400">General Election</h3>
+                        <p class="text-gray-500 text-sm">With enough support, we contest the national election and form government.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-gray-400">5</div>
+                    <div>
+                        <h3 class="font-bold text-gray-400">Government Formation</h3>
+                        <p class="text-gray-500 text-sm">Live TV cabinet selection, performance appraisals, and real change begins.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load events
+        fetch('/api/events')
+            .then(r => r.json())
+            .then(d => {
+                const container = document.getElementById('eventsList');
+                if (d.success && d.events && d.events.length > 0) {
+                    container.innerHTML = d.events.map(e => `
+                        <div class="bg-party-card border border-gray-700 p-6 rounded-xl hover:border-party-accent transition">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg">${e.title}</h3>
+                                <span class="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">${new Date(e.event_date).toLocaleDateString()}</span>
+                            </div>
+                            <p class="text-gray-400 text-sm mb-3">${e.description || ''}</p>
+                            ${e.location ? `<p class="text-gray-500 text-xs"><i class="fas fa-map-marker-alt mr-1"></i>${e.location}</p>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700">
+                            <div class="text-4xl mb-3">📅</div>
+                            <p>No events scheduled yet.</p>
+                            <p class="text-sm mt-2">Check back soon or follow us on social media!</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(() => {
+                document.getElementById('eventsList').innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <p>Could not load events right now.</p>
+                    </div>
+                `;
+            });
+
+        // Load member count
+        fetch('/api/signups/count')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('memberCount').textContent = d.total.toLocaleString() + ' / 13,000';
+                }
+            })
+            .catch(() => {});
+    </script>
+</body>
+</html>

@@ -267,6 +267,35 @@ db.exec(`
   )
 `);
 
+// ==================== EVENTS TABLE ====================
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    event_date TEXT NOT NULL,
+    location TEXT,
+    created_at TEXT NOT NULL
+  )
+`);
+
+// ==================== DONATIONS TABLE (for tracking pending/verified donations) ====================
+db.exec(`
+  CREATE TABLE IF NOT EXISTS donations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    phone TEXT NOT NULL,
+    nid TEXT NOT NULL,
+    amount REAL NOT NULL,
+    slip_filename TEXT,
+    status TEXT DEFAULT 'pending',
+    verified_by TEXT,
+    verified_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
 // ==================== LEADERSHIP STRUCTURE TABLES ====================
 
 // Leadership settings (threshold, term limits, etc.)
@@ -2777,6 +2806,208 @@ app.get('/api/leadership/sops-public', (req, res) => {
   }
 });
 
+// ==================== DONATION API ====================
+// GET /api/donation-info - Get bank details (public)
+app.get('/api/donation-info', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      bank_name: process.env.DONATION_BANK_NAME || 'Bank of Maldives',
+      account_name: process.env.DONATION_ACCOUNT_NAME || '3d Party',
+      account_number: process.env.DONATION_ACCOUNT_NUMBER || '—'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch donation info', success: false });
+  }
+});
+
+// POST /api/donate - Submit donation with slip
+const multer = require('multer');
+const upload = multer({
+  dest: path.join(dataDir, 'uploads'),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only images allowed'));
+    }
+    cb(null, true);
+  }
+});
+
+// Create uploads dir if not exists
+const uploadDir = path.join(dataDir, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+app.post('/api/donate', upload.single('slip'), (req, res) => {
+  const { phone, nid, amount } = req.body;
+  
+  if (!phone || !nid || !amount) {
+    return res.status(400).json({ error: 'Phone, NID, and amount are required', success: false });
+  }
+  
+  const donationAmount = parseFloat(amount);
+  if (isNaN(donationAmount) || donationAmount <= 0) {
+    return res.status(400).json({ error: 'Invalid donation amount', success: false });
+  }
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'Deposit slip is required', success: false });
+  }
+  
+  try {
+    const createdAt = new Date().toISOString();
+    const stmt = db.prepare(`
+      UPDATE signups 
+      SET donation_amount = donation_amount + ?,
+          is_verified = 0
+      WHERE phone = ? AND nid = ?
+    `);
+    const result = stmt.run(donationAmount, phone, nid);
+    
+    // Log the pending donation for admin review
+    db.prepare(`
+      INSERT INTO activity_log (user_id, action, details, timestamp)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      null,
+      'donation_pending',
+      JSON.stringify({ phone, nid, amount: donationAmount, slip: req.file.filename }),
+      createdAt
+    );
+    
+    res.json({ success: true, message: 'Donation submitted for verification' });
+  } catch (error) {
+    console.error('Donation error:', error);
+    res.status(500).json({ error: 'Could not process donation', success: false });
+  }
+});
+
+// ==================== EVENTS API ====================
+// GET /api/events - Get upcoming events (public)
+app.get('/api/events', (req, res) => {
+  try {
+    const events = db.prepare(`
+      SELECT * FROM events 
+      WHERE event_date >= date('now') 
+      ORDER BY event_date ASC
+    `).all();
+    res.json({ events, success: true });
+  } catch (error) {
+    // Events table may not exist yet
+    res.json({ events: [], success: true });
+  }
+});
+
+// ==================== PROPOSAL MANAGEMENT API (Admin) ====================
+// POST /api/admin/proposals/:id/status - Update proposal status (admin only)
+app.post('/api/admin/proposals/:id/status', adminAuth, (req, res) => {
+  const { status, feedback } = req.body;
+  const proposalId = parseInt(req.params.id);
+  
+  if (!['approved', 'rejected', 'postponed', 'active'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status', success: false });
+  }
+  
+  try {
+    const stmt = db.prepare('UPDATE proposals SET status = ?, updated_at = ? WHERE id = ?');
+    stmt.run(status, new Date().toISOString(), proposalId);
+    
+    // Log the action
+    db.prepare(`
+      INSERT INTO activity_log (user_id, action, details, timestamp)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      null,
+      'proposal_status_change',
+      JSON.stringify({ proposal_id: proposalId, status, feedback }),
+      new Date().toISOString()
+    );
+    
+    res.json({ success: true, message: `Proposal ${status}` });
+  } catch (error) {
+    console.error('Proposal status update error:', error);
+    res.status(500).json({ error: 'Could not update proposal', success: false });
+  }
+});
+
+// ==================== ADMIN API ENDPOINTS ====================
+// GET /api/admin/proposals - Get all proposals (admin only)
+app.get('/api/admin/proposals', adminAuth, (req, res) => {
+  try {
+    const proposals = db.prepare(`
+      SELECT p.*, 
+             (SELECT COUNT(*) FROM votes WHERE proposal_id = p.id) as vote_count
+      FROM proposals p
+      ORDER BY p.created_at DESC
+    `).all();
+    res.json({ proposals, success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch proposals', success: false });
+  }
+});
+
+// GET /api/admin/donations/pending - Get pending donations (admin only)
+app.get('/api/admin/donations/pending', adminAuth, (req, res) => {
+  try {
+    const donations = db.prepare(`
+      SELECT d.*, s.name, s.phone as user_phone
+      FROM donations d
+      LEFT JOIN signups s ON d.user_id = s.id
+      WHERE d.status = 'pending'
+      ORDER BY d.created_at DESC
+    `).all();
+    res.json({ donations, success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch donations', success: false });
+  }
+});
+
+// POST /api/admin/donations/:id/verify - Verify a donation (admin only)
+app.post('/api/admin/donations/:id/verify', adminAuth, (req, res) => {
+  const donationId = parseInt(req.params.id);
+  
+  try {
+    const donation = db.prepare('SELECT * FROM donations WHERE id = ?').get(donationId);
+    if (!donation) {
+      return res.status(404).json({ error: 'Donation not found', success: false });
+    }
+    
+    // Update donation status
+    db.prepare(`UPDATE donations SET status = 'verified', verified_at = ?, verified_by = ? WHERE id = ?`)
+      .run(new Date().toISOString(), 'admin', donationId);
+    
+    // Update user's donation amount if linked to a user
+    if (donation.user_id) {
+      db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
+        .run(donation.amount, donation.user_id);
+    } else {
+      // Try to find user by phone/nid
+      db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE phone = ? AND nid = ?`)
+        .run(donation.amount, donation.phone, donation.nid);
+    }
+    
+    res.json({ success: true, message: 'Donation verified and added to treasury' });
+  } catch (error) {
+    console.error('Donation verify error:', error);
+    res.status(500).json({ error: 'Could not verify donation', success: false });
+  }
+});
+
+// POST /api/admin/donations/:id/reject - Reject a donation (admin only)
+app.post('/api/admin/donations/:id/reject', adminAuth, (req, res) => {
+  const donationId = parseInt(req.params.id);
+  const { reason } = req.body;
+  
+  try {
+    db.prepare(`UPDATE donations SET status = 'rejected', verified_at = ? WHERE id = ?`)
+      .run(new Date().toISOString(), donationId);
+    
+    res.json({ success: true, message: 'Donation rejected' });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not reject donation', success: false });
+  }
+});
+
 // ==================== SERVE HTML FILES ====================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -2796,6 +3027,18 @@ app.get('/how', (req, res) => {
 
 app.get('/wall', (req, res) => {
   res.sendFile(path.join(__dirname, 'wall.html'));
+});
+
+app.get('/donate', (req, res) => {
+  res.sendFile(path.join(__dirname, 'donate.html'));
+});
+
+app.get('/events', (req, res) => {
+  res.sendFile(path.join(__dirname, 'events.html'));
+});
+
+app.get('/join-success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'join-success.html'));
 });
 
 app.get('/join', (req, res) => {

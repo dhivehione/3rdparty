@@ -14,6 +14,9 @@ function getPageName() {
     if (path.includes('proposals')) return 'proposals';
     if (path.includes('wall')) return 'wall';
     if (path.includes('join')) return 'join';
+    if (path.includes('join-success')) return 'join-success';
+    if (path.includes('donate')) return 'donate';
+    if (path.includes('events')) return 'events';
     if (path.includes('profile')) return 'profile';
     if (path.includes('leadership')) return 'leadership';
     if (path.includes('faq')) return 'faq';
@@ -43,7 +46,9 @@ function createNavigation() {
                 <a href="/laws" class="hover:text-party-accent transition ${currentPage === 'laws' ? 'text-party-accent font-bold' : 'text-gray-300'}">Laws</a>
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
+                <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
                 <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
+                <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
                 </span>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', muted: '#6B7280', secondary: '#4A90E2' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="nav.js"></script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+
+    <div class="max-w-4xl mx-auto px-4 py-20 text-center">
+        <!-- Celebration -->
+        <div class="text-6xl mb-6">🎉</div>
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">
+            You're In!
+        </h1>
+        <p class="text-xl text-gray-300 mb-8">Welcome to the 3d Party. Here's what you can do now.</p>
+
+        <!-- Member Info Banner -->
+        <div class="bg-party-accent/10 border border-party-accent/20 rounded-xl p-6 max-w-2xl mx-auto mb-12">
+            <p class="text-white">
+                <i class="fas fa-info-circle text-party-accent mr-2"></i>
+                We don't use insider connections or party bosses — your Merit Score is the only fair way to gain influence and rise.
+            </p>
+        </div>
+
+        <!-- What's Next Cards -->
+        <div class="grid md:grid-cols-2 gap-6 mb-12 text-left">
+            <a href="/laws" class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="text-3xl mb-3">🗳️</div>
+                <h3 class="text-lg font-bold mb-1">Vote on Laws</h3>
+                <p class="text-gray-400 text-sm">Every law, every article, every clause. Your vote goes directly to the system.</p>
+            </a>
+            <a href="/proposals" class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="text-3xl mb-3">💡</div>
+                <h3 class="text-lg font-bold mb-1">Submit Proposals</h3>
+                <p class="text-gray-400 text-sm">Got ideas? Share them with the community and see them become policy.</p>
+            </a>
+            <a href="/events" class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="text-3xl mb-3">📅</div>
+                <h3 class="text-lg font-bold mb-1">Upcoming Events</h3>
+                <p class="text-gray-400 text-sm">See what's happening next and how you can get involved.</p>
+            </a>
+            <a href="/donate" class="bg-party-card rounded-xl border border-gray-700 p-6 hover:border-party-accent transition">
+                <div class="text-3xl mb-3">💰</div>
+                <h3 class="text-lg font-bold mb-1">Support the Party</h3>
+                <p class="text-gray-400 text-sm">Every contribution helps us grow faster towards our 13,000 goal.</p>
+            </a>
+        </div>
+
+        <!-- Progress Card -->
+        <div class="bg-party-card rounded-xl border border-gray-700 p-6 mb-8 max-w-2xl mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">📊 The 3% Goal</h2>
+                <span id="memberCount" class="text-party-accent font-bold">—</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-4 mb-2">
+                <div id="progressBar" class="bg-party-accent h-4 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-gray-400 text-sm">
+                <span id="remainingCount">—</span> more members needed to reach 13,000
+            </p>
+        </div>
+
+        <!-- Grow the Party -->
+        <div class="bg-party-card rounded-xl border border-party-accent/50 p-6 mb-10 max-w-2xl mx-auto">
+            <div class="flex items-start space-x-4">
+                <div class="text-3xl">🚀</div>
+                <div class="text-left">
+                    <h2 class="text-xl font-bold mb-2">Grow the Party, Climb the Ladder</h2>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Invite your family, friends, neighbors — anyone ready for a better way. 
+                        Each new member you bring in earns you points toward climbing the ranks.
+                    </p>
+                    <a href="/profile" class="bg-party-accent/20 text-party-accent px-4 py-2 rounded-lg text-sm font-bold hover:bg-party-accent hover:text-party-dark transition">
+                        🎯 Invite Friends
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/how" class="bg-party-accent text-party-dark px-8 py-3 rounded-xl font-bold hover:scale-105 transform transition">
+                How It Works
+            </a>
+            <a href="/" class="bg-party-card border border-gray-700 px-8 py-3 rounded-xl font-bold hover:border-party-accent transition">
+                Back to Home
+            </a>
+        </div>
+    </div>
+
+    <script>
+        fetch('/api/signups/count')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    const total = d.total;
+                    const goal = 13000;
+                    const percent = Math.min(100, (total / goal) * 100);
+                    const remaining = Math.max(0, goal - total);
+                    
+                    document.getElementById('memberCount').textContent = total.toLocaleString();
+                    document.getElementById('remainingCount').textContent = remaining.toLocaleString();
+                    document.getElementById('progressBar').style.width = percent + '%';
+                }
+            })
+            .catch(() => {});
+    </script>
+</body>
+</html>
