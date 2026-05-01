@@ -200,19 +200,19 @@
                 </p>
             </div>
             
-            <!-- Introduce Member Section -->
+            <!-- Enroll Family & Friends Section -->
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">
-                    <i class="fas fa-user-plus mr-2"></i>Introduce Members
+                    <i class="fas fa-users mr-2"></i>Enroll Family & Friends
                 </h2>
-                <p class="text-gray-400 text-sm mb-4">Invite others to join the movement. Earn points when they join and complete their first action.</p>
-                
+                <p class="text-gray-400 text-sm mb-4">Directly enroll your family and friends. They'll be registered immediately and you'll earn points when they complete their first action.</p>
+
                 <!-- Referral Stats -->
-                <div id="referralStats" class="mb-4 p-4 bg-gray-800/50 rounded-lg">
+                <div id="referralStats" class="mb-6 p-4 bg-gray-800/50 rounded-lg">
                     <div class="flex justify-around text-center">
                         <div>
                             <div class="text-2xl font-bold text-party-accent" id="totalReferrals">0</div>
-                            <div class="text-gray-500 text-xs">Total Introduced</div>
+                            <div class="text-gray-500 text-xs">Total Enrolled</div>
                         </div>
                         <div>
                             <div class="text-2xl font-bold text-green-400" id="referralBasePoints">0</div>
@@ -228,23 +228,26 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Introduce Form -->
+
+                <!-- Enrollment Form -->
                 <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-gray-300 mb-2">Add Family/Friend Details</h3>
+
+                    <!-- Basic Info -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
-                            <input type="tel" id="introPhone" placeholder="7-digit number" 
+                            <label class="block text-gray-400 text-sm mb-1">Phone Number *</label>
+                            <input type="tel" id="enrollPhone" placeholder="7-digit number"
                                    class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-gray-400 text-sm mb-1">NID</label>
-                            <input type="text" id="introNid" placeholder="A123456" 
+                            <label class="block text-gray-400 text-sm mb-1">NID *</label>
+                            <input type="text" id="enrollNid" placeholder="A123456"
                                    class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-gray-400 text-sm mb-1">Relation</label>
-                            <select id="introRelation" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                            <label class="block text-gray-400 text-sm mb-1">Relation *</label>
+                            <select id="enrollRelation" class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                                 <option value="">Select relation</option>
                                 <option value="family">Family</option>
                                 <option value="friend">Friend</option>
@@ -254,14 +257,68 @@
                             </select>
                         </div>
                     </div>
-                    <button onclick="introduceMember()" class="bg-party-accent text-party-dark font-bold px-6 py-2 rounded-lg hover:bg-yellow-400">
-                        <i class="fas fa-paper-plane mr-2"></i>Send Invitation
+
+                    <!-- Additional Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Name</label>
+                            <input type="text" id="enrollName" placeholder="Full name"
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Email</label>
+                            <input type="email" id="enrollEmail" placeholder="email@example.com"
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-1">Island</label>
+                            <input type="text" id="enrollIsland" placeholder="Island name"
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                    </div>
+
+                    <!-- Contribution Types -->
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">How will they contribute?</label>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="enrollTypeSkills" value="skills"
+                                       class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent">
+                                <span class="text-sm text-gray-300">🛠️ Skills</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="enrollTypeAction" value="action"
+                                       class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent">
+                                <span class="text-sm text-gray-300">🤝 Action</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="enrollTypeIdeas" value="ideas"
+                                       class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent">
+                                <span class="text-sm text-gray-300">💡 Ideas</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="enrollTypeDonation" value="donation"
+                                       class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent">
+                                <span class="text-sm text-gray-300">💰 Donation</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Donation Amount (shown only if donation is selected) -->
+                    <div id="enrollDonationSection" class="hidden">
+                        <label class="block text-gray-400 text-sm mb-1">Donation Amount (MVR)</label>
+                        <input type="number" id="enrollDonationAmount" placeholder="0"
+                               class="w-full md:w-1/3 bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
+                    </div>
+
+                    <button onclick="enrollFamilyFriend()" class="bg-party-accent text-party-dark font-bold px-6 py-3 rounded-lg hover:bg-yellow-400 transition">
+                        <i class="fas fa-user-plus mr-2"></i>Enroll Now
                     </button>
                 </div>
-                
+
                 <!-- Referral List -->
-                <div id="referralList" class="mt-6">
-                    <h3 class="text-lg font-bold text-gray-300 mb-3">Your Introductions</h3>
+                <div id="referralList" class="mt-8">
+                    <h3 class="text-lg font-bold text-gray-300 mb-3">Your Enrollments</h3>
                     <div id="referralsContainer" class="space-y-2">
                         <p class="text-gray-500 text-sm">Loading...</p>
                     </div>
@@ -354,6 +411,21 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        // Toggle donation amount field
+        document.addEventListener('DOMContentLoaded', function() {
+            const donationCheckbox = document.getElementById('enrollTypeDonation');
+            if (donationCheckbox) {
+                donationCheckbox.addEventListener('change', function() {
+                    const donationSection = document.getElementById('enrollDonationSection');
+                    if (this.checked) {
+                        donationSection.classList.remove('hidden');
+                    } else {
+                        donationSection.classList.add('hidden');
+                    }
+                });
+            }
+        });
+
         // checkRegistration and loginWithPhone are defined in head for immediate availability
         
         async function loginWithPhoneAPI() {
@@ -527,7 +599,10 @@
                 
                 // Load leadership status
                 await loadLeadershipStatus();
-                
+
+                // Load referrals
+                loadReferrals();
+
             } catch (e) {
                 console.error(e);
                 logout();
@@ -641,30 +716,30 @@
         async function submitLeadershipApplication() {
             const positionId = document.getElementById('leadershipPosition').value;
             const applicationText = document.getElementById('leadershipApplication').value;
-            
+
             if (!positionId) {
                 alert('Please select a position');
                 return;
             }
-            
+
             if (!applicationText || applicationText.length < 50) {
                 alert('Please write at least 50 characters about why you want to lead');
                 return;
             }
-            
+
             try {
                 const res = await fetch('/api/leadership/apply', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         position_id: parseInt(positionId),
                         application_text: applicationText
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.success) {
                     alert('Application submitted! You will be notified when your live public interview is scheduled.');
@@ -677,7 +752,127 @@
                 alert('Error submitting application');
             }
         }
-        
-        
+
+        // ==================== ENROLL FAMILY & FRIENDS ====================
+
+        async function enrollFamilyFriend() {
+            const phone = document.getElementById('enrollPhone').value.trim();
+            const nid = document.getElementById('enrollNid').value.trim();
+            const relation = document.getElementById('enrollRelation').value;
+            const name = document.getElementById('enrollName').value.trim();
+            const email = document.getElementById('enrollEmail').value.trim();
+            const island = document.getElementById('enrollIsland').value.trim();
+
+            // Get selected contribution types
+            const contributionTypes = [];
+            if (document.getElementById('enrollTypeSkills').checked) contributionTypes.push('skills');
+            if (document.getElementById('enrollTypeAction').checked) contributionTypes.push('action');
+            if (document.getElementById('enrollTypeIdeas').checked) contributionTypes.push('ideas');
+            if (document.getElementById('enrollTypeDonation').checked) contributionTypes.push('donation');
+
+            const donationAmount = document.getElementById('enrollDonationAmount').value;
+
+            // Validate required fields
+            if (!phone || !nid || !relation) {
+                alert('Please fill in all required fields (Phone, NID, Relation)');
+                return;
+            }
+
+            const payload = {
+                phone,
+                nid,
+                relation,
+                name: name || undefined,
+                email: email || undefined,
+                island: island || undefined,
+                contribution_types: contributionTypes.length > 0 ? contributionTypes : undefined,
+                donation_amount: (contributionTypes.includes('donation') && donationAmount) ? parseFloat(donationAmount) : undefined
+            };
+
+            try {
+                const res = await fetch('/api/enroll-family-friend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(data.message || 'Successfully enrolled!');
+                    // Clear form
+                    document.getElementById('enrollPhone').value = '';
+                    document.getElementById('enrollNid').value = '';
+                    document.getElementById('enrollRelation').value = '';
+                    document.getElementById('enrollName').value = '';
+                    document.getElementById('enrollEmail').value = '';
+                    document.getElementById('enrollIsland').value = '';
+                    document.getElementById('enrollTypeSkills').checked = false;
+                    document.getElementById('enrollTypeAction').checked = false;
+                    document.getElementById('enrollTypeIdeas').checked = false;
+                    document.getElementById('enrollTypeDonation').checked = false;
+                    document.getElementById('enrollDonationAmount').value = '';
+                    document.getElementById('enrollDonationSection').classList.add('hidden');
+                    // Refresh referrals list
+                    loadReferrals();
+                } else {
+                    alert(data.error || 'Failed to enroll. Please try again.');
+                }
+            } catch (e) {
+                alert('Error during enrollment. Please try again.');
+            }
+        }
+
+        async function loadReferrals() {
+            if (!authToken) return;
+
+            try {
+                const res = await fetch('/api/referrals', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Update stats
+                    document.getElementById('totalReferrals').textContent = data.summary.total;
+                    document.getElementById('referralBasePoints').textContent = data.summary.base_points;
+                    document.getElementById('referralBonusPoints').textContent = data.summary.engagement_points;
+                    document.getElementById('referralTotalPoints').textContent = data.summary.total_points;
+
+                    // Update list
+                    const container = document.getElementById('referralsContainer');
+                    if (data.referrals.length === 0) {
+                        container.innerHTML = '<p class="text-gray-500 text-sm">No enrollments yet.</p>';
+                    } else {
+                        container.innerHTML = data.referrals.map(r => {
+                            const statusColor = r.status === 'joined' || r.status === 'active' ? 'text-green-400' : 'text-yellow-400';
+                            const relationIcon = r.relation === 'family' ? '👪' : r.relation === 'friend' ? '👫' : '👤';
+                            return `
+                                <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">${relationIcon}</span>
+                                        <div>
+                                            <div class="font-bold text-sm">${r.referred_name || 'Pending...'}</div>
+                                            <div class="text-gray-500 text-xs">${r.relation} • ${r.status}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-party-accent text-sm font-bold">+${r.base_reward + r.engagement_bonus} pts</div>
+                                        <div class="text-gray-500 text-xs">${new Date(r.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading referrals:', e);
+            }
+        }
+
 </body>
 </html>

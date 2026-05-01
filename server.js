@@ -2095,6 +2095,167 @@ app.post('/api/referral/introduce', userAuth, (req, res) => {
   }
 });
 
+// POST /api/enroll-family-friend - Enroll a family member or friend directly (optimized for logged-in users)
+app.post('/api/enroll-family-friend', userAuth, (req, res) => {
+  const { phone, nid, name, username, email, island, contribution_types, donation_amount, relation } = req.body;
+  const referrerId = req.user.id;
+
+  // Validate mandatory fields
+  if (!phone || !nid || !relation) {
+    return res.status(400).json({
+      error: 'Phone, NID, and relation are required',
+      success: false
+    });
+  }
+
+  // Validate relation
+  const validRelations = ['family', 'friend', 'colleague', 'neighbor', 'other'];
+  if (!validRelations.includes(relation)) {
+    return res.status(400).json({
+      error: 'Invalid relation. Choose from: family, friend, colleague, neighbor, other',
+      success: false
+    });
+  }
+
+  // Validate contribution_types is array if provided
+  let validTypes = ['skills', 'action', 'ideas', 'donation'];
+  let typesArray = [];
+  if (contribution_types) {
+    if (!Array.isArray(contribution_types)) {
+      return res.status(400).json({
+        error: 'contribution_types must be an array.',
+        success: false
+      });
+    }
+    typesArray = contribution_types.filter(t => validTypes.includes(t));
+  }
+
+  // Basic phone validation (Maldivian format: 7 digits)
+  const phoneRegex = /^[0-9]{7}$/;
+  if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
+    return res.status(400).json({
+      error: 'Please enter a valid 7-digit phone number.',
+      success: false
+    });
+  }
+
+  // Basic NID validation
+  const nidRegex = /^[A-Za-z][0-9]{6,7}$/;
+  if (!nidRegex.test(nid.trim())) {
+    return res.status(400).json({
+      error: 'Please enter a valid NID (e.g., A123456).',
+      success: false
+    });
+  }
+
+  // Check for duplicate phone or NID
+  const existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ? OR nid = ?').get(phone, nid);
+  if (existing) {
+    return res.status(409).json({
+      error: 'This person is already registered with us.',
+      success: false
+    });
+  }
+
+  // Calculate initial merit estimate
+  const meritEstimates = {
+    'skills': 250,
+    'action': 200,
+    'ideas': 150,
+    'donation': 100
+  };
+  let initialMerit = 50; // base merit
+  typesArray.forEach(type => {
+    initialMerit += meritEstimates[type] || 0;
+  });
+  initialMerit += Math.floor(Math.random() * 50);
+
+  // Validate donation amount
+  let finalDonation = 0;
+  if (typesArray.includes('donation') && donation_amount) {
+    finalDonation = parseFloat(donation_amount);
+    if (isNaN(finalDonation) || finalDonation <= 0) {
+      return res.status(400).json({
+        error: 'Please enter a valid donation amount.',
+        success: false
+      });
+    }
+    const donationBonus = Math.floor(finalDonation / 100) * 5;
+    initialMerit += donationBonus;
+  }
+
+  try {
+    const timestamp = new Date().toISOString();
+    const contributionTypeJson = JSON.stringify(typesArray);
+
+    // Create the new user
+    const stmt = db.prepare(
+      'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    const result = stmt.run(
+      phone,
+      nid,
+      name || null,
+      username ? username.trim() : null,
+      email || null,
+      island || null,
+      contributionTypeJson,
+      finalDonation,
+      initialMerit,
+      1,
+      null,
+      timestamp
+    );
+
+    // Count successful invites for this referrer
+    const inviteCount = db.prepare(`
+      SELECT COUNT(*) as count FROM referrals
+      WHERE referrer_id = ? AND (status = 'joined' OR status = 'active') AND base_reward_given = 1
+    `).get(referrerId).count;
+
+    const basePoints = getReferralPoints(inviteCount + 1, false);
+
+    // Create referral record (already joined since we just created the user)
+    const insertReferral = db.prepare(`
+      INSERT INTO referrals (referrer_id, referred_id, relation, status, base_reward_given, created_at, referred_joined_at)
+      VALUES (?, ?, ?, 'joined', ?, ?, ?)
+    `);
+    insertReferral.run(referrerId, result.lastInsertRowid, relation, basePoints, timestamp, timestamp);
+
+    // Award points to referrer
+    db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+      .run(basePoints, referrerId);
+
+    // Log the activity
+    logActivity('family_friend_enrolled', referrerId, result.lastInsertRowid, {
+      relation,
+      base_points_awarded: basePoints,
+      referrer_invite_count: inviteCount + 1,
+      enrolled_name: name || 'N/A'
+    }, req);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully enrolled ${name || 'family member'}! You earned ${basePoints} base points. They need to complete their first action for you to get the engagement bonus.`,
+      points_earned: basePoints,
+      enrolled_user: {
+        id: result.lastInsertRowid,
+        phone,
+        name: name || null,
+        nid,
+        relation
+      }
+    });
+
+  } catch (error) {
+    console.error('Enroll family/friend error:', error);
+    res.status(500).json({
+      error: 'Failed to enroll. Please try again.',
+      success: false
+    });
+  }
+});
+
 // GET /api/referrals - Get user's referrals
 app.get('/api/referrals', userAuth, (req, res) => {
   try {
