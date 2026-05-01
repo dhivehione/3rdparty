@@ -158,7 +158,7 @@
     </div>
 
     <script>
-        fetch('/api/signups', { headers: { 'Authorization': 'Bearer guest' } })
+        fetch('/api/signups/count')
             .then(r => r.json())
             .then(d => {
                 if (d.success) {

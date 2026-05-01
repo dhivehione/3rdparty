@@ -217,9 +217,7 @@
         // Fetch member count on load
         async function fetchMemberCount() {
             try {
-                const response = await fetch('/api/signups', {
-                    headers: { 'Authorization': 'Bearer guest' }
-                });
+                const response = await fetch('/api/signups/count');
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('memberCount').textContent = data.total || 0;

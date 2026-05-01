@@ -1519,6 +1519,16 @@ app.post('/api/unregister', adminAuth, (req, res) => {
   }
 });
 
+// GET /api/signups/count - Get signup count (public)
+app.get('/api/signups/count', (req, res) => {
+  try {
+    const count = db.prepare('SELECT COUNT(*) as total FROM signups').get();
+    res.json({ total: count.total, success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch count', success: false });
+  }
+});
+
 // GET /api/signups - Get all signups (admin only)
 app.get('/api/signups', adminAuth, (req, res) => {
   try {
