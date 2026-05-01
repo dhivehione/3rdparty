@@ -1593,14 +1593,16 @@ app.post('/api/signup', (req, res) => {
     }
   }
   
-  // Basic phone validation (Maldivian format: 7 digits)
-  const phoneRegex = /^[0-9]{7}$/;
-  if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
-    return res.status(400).json({ 
-      error: 'Please enter a valid 7-digit phone number.',
-      success: false 
-    });
-  }
+   // Basic phone validation (Maldivian format: 7 digits)
+   const phoneRegex = /^[0-9]{7}$/;
+   if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
+     return res.status(400).json({ 
+       error: 'Please enter a valid 7-digit phone number.',
+       success: false 
+     });
+   }
+   // Clean phone number to store only digits (consistent with validation and login)
+   const cleanedPhone = phone.replace(/\D/g, '');
   
   // Basic NID validation
   const nidRegex = /^[A-Za-z][0-9]{6,7}$/;
@@ -1611,8 +1613,8 @@ app.post('/api/signup', (req, res) => {
     });
   }
   
-  // Check for duplicate phone or NID
-  const existing = db.prepare('SELECT id FROM signups WHERE phone = ? OR nid = ?').get(phone, nid);
+   // Check for duplicate phone or NID
+   const existing = db.prepare('SELECT id FROM signups WHERE phone = ? OR nid = ?').get(cleanedPhone, nid);
   if (existing) {
     return res.status(409).json({ 
       error: 'You\'re already in the party! One membership per person, please.',
@@ -1648,30 +1650,30 @@ app.post('/api/signup', (req, res) => {
     initialMerit += donationBonus;
   }
   
-  try {
-    const timestamp = new Date().toISOString();
-    const contributionTypeJson = JSON.stringify(typesArray);
-    const stmt = db.prepare(
-      'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    const result = stmt.run(
-      phone, 
-      nid, 
-      name || null,
-      username ? username.trim() : null, 
-      email || null, 
-      island || null, 
-      contributionTypeJson, 
-      finalDonation,
-      initialMerit,
-      1,
-      null,
-      timestamp
-    );
+   try {
+     const timestamp = new Date().toISOString();
+     const contributionTypeJson = JSON.stringify(typesArray);
+     const stmt = db.prepare(
+       'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+     );
+     const result = stmt.run(
+       cleanedPhone, 
+       nid, 
+       name || null,
+       username ? username.trim() : null, 
+       email || null, 
+       island || null, 
+       contributionTypeJson, 
+       finalDonation,
+       initialMerit,
+       1,
+       null,
+       timestamp
+     );
     
-    // Auto-login after signup
-    const authToken = Buffer.from(`${phone}:${nid}:${Date.now()}`).toString('base64');
-    db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
+     // Auto-login after signup
+     const authToken = Buffer.from(`${cleanedPhone}:${nid}:${Date.now()}`).toString('base64');
+     db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
     
     // Check for pending referrals
     const pendingReferral = db.prepare(`
@@ -2149,8 +2151,9 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
     });
   }
 
-  // Check for duplicate phone or NID
-  const existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ? OR nid = ?').get(phone, nid);
+   // Check for duplicate phone or NID
+   const cleanedPhone = phone.replace(/\D/g, '');
+   const existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ? OR nid = ?').get(cleanedPhone, nid);
   if (existing) {
     return res.status(409).json({
       error: 'This person is already registered with us.',
@@ -2189,24 +2192,24 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
     const timestamp = new Date().toISOString();
     const contributionTypeJson = JSON.stringify(typesArray);
 
-    // Create the new user
-    const stmt = db.prepare(
-      'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    const result = stmt.run(
-      phone,
-      nid,
-      name || null,
-      username ? username.trim() : null,
-      email || null,
-      island || null,
-      contributionTypeJson,
-      finalDonation,
-      initialMerit,
-      1,
-      null,
-      timestamp
-    );
+     // Create the new user
+     const stmt = db.prepare(
+       'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+     );
+     const result = stmt.run(
+       cleanedPhone,
+       nid,
+       name || null,
+       username ? username.trim() : null,
+       email || null,
+       island || null,
+       contributionTypeJson,
+       finalDonation,
+       initialMerit,
+       1,
+       null,
+       timestamp
+     );
 
     // Count successful invites for this referrer
     const inviteCount = db.prepare(`
@@ -2235,18 +2238,24 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
       enrolled_name: name || 'N/A'
     }, req);
 
-    res.status(201).json({
-      success: true,
-      message: `Successfully enrolled ${name || 'family member'}! You earned ${basePoints} base points. They need to complete their first action for you to get the engagement bonus.`,
-      points_earned: basePoints,
-      enrolled_user: {
-        id: result.lastInsertRowid,
-        phone,
-        name: name || null,
-        nid,
-        relation
-      }
-    });
+     res.status(201).json({
+       success: true,
+       message: `Successfully enrolled ${name || 'family member'}! You earned ${basePoints} base points. They need to complete their first action for you to get the engagement bonus.`,
+       points_earned: basePoints,
+       enrolled_user: {
+         id: result.lastInsertRowid,
+         phone: cleanedPhone,
+         name: name || null,
+         nid,
+         email: email || null,
+         username: username ? username.trim() : null,
+         island: island || null,
+         contribution_type: contributionTypeJson,
+         donation_amount: finalDonation,
+         initial_merit_estimate: initialMerit,
+         timestamp
+       }
+     });
 
   } catch (error) {
     console.error('Enroll family/friend error:', error);
