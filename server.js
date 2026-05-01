@@ -99,6 +99,39 @@ signupMigrations.forEach(m => {
   }
 });
 
+// Fix signups table schema - remove CHECK constraint if it exists
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS signups_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT NOT NULL,
+    nid TEXT NOT NULL,
+    name TEXT,
+    username TEXT,
+    email TEXT,
+    island TEXT,
+    contribution_type TEXT,
+    donation_amount REAL DEFAULT 0,
+    initial_merit_estimate INTEGER DEFAULT 0,
+    is_verified INTEGER DEFAULT 1,
+    auth_token TEXT,
+    unregistered_at TEXT,
+    unregistered_by TEXT,
+    unregister_justification TEXT,
+    timestamp TEXT NOT NULL
+  )`);
+  
+  // Copy data from old table
+  db.exec(`INSERT INTO signups_new (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp)
+           SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp FROM signups`);
+  
+  // Drop old table and rename new one
+  db.exec('DROP TABLE signups');
+  db.exec('ALTER TABLE signups_new RENAME TO signups');
+  console.log('✓ Migration: Fixed signups table schema');
+} catch (e) {
+  console.log('✓ Signups table schema already correct');
+}
+
 // Referrals table - track who introduced whom
 db.exec(`
   CREATE TABLE IF NOT EXISTS referrals (
