@@ -1059,6 +1059,164 @@ let userId = null;
   }
 });
 
+// GET /api/mvlaws/search - Search laws, articles, and clauses
+app.get('/api/mvlaws/search', (req, res) => {
+  if (!lawsDb) {
+    return res.status(503).json({ error: 'Laws database not available. Set LAWS_DB_PATH environment variable.', success: false });
+  }
+  
+  try {
+    const { 
+      q,                    // search query (keywords)
+      match = 'any',        // match type: 'any' (OR) or 'all' (AND) for multiple keywords
+      category,             // filter by category
+      law_id,              // filter by specific law
+      include_clauses = 'true'  // whether to include clause/sub-article content in search
+    } = req.query;
+    
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({ error: 'Search query must be at least 2 characters', success: false });
+    }
+    
+    // Parse keywords - split by comma or space, filter empty
+    const keywords = q.split(/[,\s]+/).filter(k => k.trim().length > 0).map(k => k.trim().toLowerCase());
+    
+    if (keywords.length === 0) {
+      return res.status(400).json({ error: 'No valid keywords provided', success: false });
+    }
+    
+    // Build search conditions for each keyword
+    const buildKeywordCondition = (field, keywords, matchType) => {
+      const conditions = keywords.map(() => `${field} LIKE ?`);
+      return `(${conditions.join(matchType === 'all' ? ' AND ' : ' OR ')})`;
+    };
+    
+    const keywordParams = keywords.map(k => `%${k}%`);
+    
+    // Search in laws
+    let lawSql = `
+      SELECT id, law_name, category_name, created_at, 'law' as type
+      FROM laws 
+      WHERE 1=1
+    `;
+    const lawParams = [];
+    
+    if (category && category !== 'all') {
+      lawSql += ' AND category_name = ?';
+      lawParams.push(category);
+    }
+    
+    lawSql += ` AND ${buildKeywordCondition('law_name', keywords, match)}`;
+    lawParams.push(...keywordParams);
+    lawSql += ' ORDER BY law_name';
+    
+    const matchedLaws = lawsDb.prepare(lawSql).all(...lawParams);
+    
+    // Get all matching law IDs for article/sub-article filtering
+    const matchedLawIds = matchedLaws.map(l => l.id);
+    
+    // Search in articles
+    let articleSql = `
+      SELECT a.id, a.law_id, a.article_number, a.article_title, l.law_name, 'article' as type
+      FROM articles a
+      JOIN laws l ON a.law_id = l.id
+      WHERE 1=1
+    `;
+    const articleParams = [];
+    
+    if (matchedLawIds.length > 0) {
+      articleSql += ` AND a.law_id IN (${matchedLawIds.map(() => '?').join(',')})`;
+      articleParams.push(...matchedLawIds);
+    }
+    
+    articleSql += ` AND ${buildKeywordCondition('a.article_title', keywords, match)}`;
+    articleParams.push(...keywordParams);
+    articleSql += ' ORDER BY l.law_name, a.article_number';
+    
+    let matchedArticles = [];
+    try {
+      matchedArticles = lawsDb.prepare(articleSql).all(...articleParams);
+    } catch (e) {
+      console.log('Article search error:', e.message);
+    }
+    
+    // Get all matching article IDs for clause filtering
+    const matchedArticleIds = matchedArticles.map(a => a.id);
+    
+    // Search in sub-articles/clauses
+    let clauseResults = [];
+    if (include_clauses === 'true' && matchedArticleIds.length > 0) {
+      let clauseSql = `
+        SELECT sa.id, sa.article_id, sa.sub_article_label, sa.text_content, 
+               a.article_number, a.article_title, l.id as law_id, l.law_name, 'clause' as type
+        FROM sub_articles sa
+        JOIN articles a ON sa.article_id = a.id
+        JOIN laws l ON a.law_id = l.id
+        WHERE sa.article_id IN (${matchedArticleIds.map(() => '?').join(',')})
+      `;
+      const clauseParams = [...matchedArticleIds];
+      
+      clauseSql += ` AND ${buildKeywordCondition('sa.text_content', keywords, match)}`;
+      clauseParams.push(...keywordParams);
+      clauseSql += ' ORDER BY l.law_name, a.article_number, sa.sub_article_label';
+      
+      try {
+        clauseResults = lawsDb.prepare(clauseSql).all(...clauseParams);
+      } catch (e) {
+        console.log('Clause search error:', e.message);
+      }
+    }
+    
+    // Organize results with match context
+    const results = {
+      laws: matchedLaws.map(l => ({
+        ...l,
+        matchContext: keywords.map(k => {
+          if (l.law_name.toLowerCase().includes(k)) {
+            const idx = l.law_name.toLowerCase().indexOf(k);
+            const start = Math.max(0, idx - 30);
+            const end = Math.min(l.law_name.length, idx + k.length + 30);
+            return l.law_name.substring(start, end);
+          }
+          return null;
+        }).filter(Boolean)
+      })),
+      articles: matchedArticles.map(a => ({
+        ...a,
+        matchContext: keywords.map(k => {
+          if (a.article_title && a.article_title.toLowerCase().includes(k)) {
+            const idx = a.article_title.toLowerCase().indexOf(k);
+            const start = Math.max(0, idx - 30);
+            const end = Math.min(a.article_title.length, idx + k.length + 30);
+            return a.article_title.substring(start, end);
+          }
+          return null;
+        }).filter(Boolean)
+      })),
+      clauses: clauseResults.map(c => ({
+        ...c,
+        matchContext: keywords.map(k => {
+          if (c.text_content && c.text_content.toLowerCase().includes(k)) {
+            const idx = c.text_content.toLowerCase().indexOf(k);
+            const start = Math.max(0, idx - 40);
+            const end = Math.min(c.text_content.length, idx + k.length + 40);
+            return '...' + c.text_content.substring(start, end) + '...';
+          }
+          return null;
+        }).filter(Boolean)
+      })),
+      total: matchedLaws.length + matchedArticles.length + clauseResults.length,
+      keywords: keywords,
+      matchType: match
+    };
+    
+    res.json({ ...results, success: true });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Search failed: ' + error.message, success: false });
+  }
+});
+
 // GET /api/mvlaws/stats - Get voting stats
 app.get('/api/mvlaws/stats', (req, res) => {
   if (!lawsDb) {

@@ -78,8 +78,64 @@
             </div>
         </div>
 
+        <!-- Search Bar -->
+        <div class="bg-party-card rounded-xl p-4 mb-6 border border-gray-700">
+            <div class="flex flex-col md:flex-row gap-3">
+                <div class="flex-1 relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                    <input type="text" id="searchInput" 
+                           placeholder="Search laws, articles, clauses... (e.g., 'election' or 'freedom, speech')"
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none"
+                           onkeypress="if(event.key==='Enter') performSearch()">
+                </div>
+                <button onclick="performSearch()" class="bg-party-accent text-black font-bold px-6 py-2 rounded-lg hover:bg-yellow-400 transition">
+                    <i class="fas fa-search mr-2"></i>Search
+                </button>
+                <button onclick="toggleAdvancedSearch()" class="text-gray-400 hover:text-party-accent px-3 py-2">
+                    <i class="fas fa-sliders-h mr-1"></i>Advanced
+                </button>
+            </div>
+            
+            <!-- Advanced Search Options -->
+            <div id="advancedSearchPanel" class="hidden mt-4 pt-4 border-t border-gray-700">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">Match Type</label>
+                        <select id="matchType" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                            <option value="any">Match ANY keyword (OR)</option>
+                            <option value="all">Match ALL keywords (AND)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">Category</label>
+                        <select id="searchCategory" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm block mb-2">Include Clauses</label>
+                        <label class="flex items-center text-white">
+                            <input type="checkbox" id="includeClauses" checked class="mr-2 w-4 h-4 rounded bg-gray-800 border-gray-600">
+                            Search in clause content
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results Info -->
+        <div id="searchInfo" class="hidden mb-4 flex items-center justify-between">
+            <div>
+                <span class="text-gray-400 text-sm">Search results for: </span>
+                <span id="searchKeywords" class="text-party-accent font-bold"></span>
+            </div>
+            <button onclick="clearSearch()" class="text-gray-400 hover:text-white text-sm">
+                <i class="fas fa-times mr-1"></i>Clear Search
+            </button>
+        </div>
+
         <!-- Category Filter -->
-        <div class="mb-6">
+        <div class="mb-6" id="categoryFilterContainer">
             <label class="text-gray-400 text-sm mr-2">Category:</label>
             <select id="categoryFilter" onchange="loadLaws()" class="bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                 <option value="all">All Categories</option>
@@ -132,6 +188,177 @@
             } catch (e) { console.error(e); }
         }
         
+        let isSearchMode = false;
+
+        function toggleAdvancedSearch() {
+            const panel = document.getElementById('advancedSearchPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInfo').classList.add('hidden');
+            document.getElementById('categoryFilterContainer').classList.remove('hidden');
+            isSearchMode = false;
+            loadLaws();
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query.length < 2) {
+                alert('Please enter at least 2 characters to search');
+                return;
+            }
+
+            const matchType = document.getElementById('matchType').value;
+            const category = document.getElementById('searchCategory').value;
+            const includeClauses = document.getElementById('includeClauses').checked;
+
+            document.getElementById('loadingLaws').classList.remove('hidden');
+            document.getElementById('noLaws').classList.add('hidden');
+            document.getElementById('categoryFilterContainer').classList.add('hidden');
+
+            try {
+                const params = new URLSearchParams({
+                    q: query,
+                    match: matchType,
+                    category: category,
+                    include_clauses: includeClauses
+                });
+
+                const res = await fetch(`/api/mvlaws/search?${params}`);
+                const data = await res.json();
+
+                document.getElementById('loadingLaws').classList.add('hidden');
+
+                if (!data.success) {
+                    alert(data.error || 'Search failed');
+                    return;
+                }
+
+                // Show search info
+                document.getElementById('searchInfo').classList.remove('hidden');
+                document.getElementById('searchKeywords').textContent = data.keywords.join(', ');
+                isSearchMode = true;
+
+                // Populate search category dropdown from results
+                if (data.laws && data.laws.length > 0) {
+                    const categories = [...new Set(data.laws.map(l => l.category_name).filter(Boolean))];
+                    const searchCat = document.getElementById('searchCategory');
+                    // Keep "All" option, add categories from results
+                    while (searchCat.children.length > 1) {
+                        searchCat.removeChild(searchCat.lastChild);
+                    }
+                    categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat;
+                        opt.textContent = cat;
+                        searchCat.appendChild(opt);
+                    });
+                }
+
+                // Build results HTML
+                let html = '';
+
+                // Laws section
+                if (data.laws && data.laws.length > 0) {
+                    html += `<div class="mb-6">
+                        <h3 class="text-lg font-bold text-party-accent mb-3">
+                            <i class="fas fa-gavel mr-2"></i>Laws (${data.laws.length})
+                        </h3>
+                        <div class="space-y-3">
+                            ${data.laws.map(law => `
+                                <div class="bg-party-card rounded-lg p-4 border border-gray-700 hover:border-party-accent cursor-pointer transition"
+                                     onclick="viewLaw(${law.id})">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h4 class="font-bold">${escapeHtml(law.law_name)}</h4>
+                                            <span class="text-xs bg-party-accent/20 text-party-accent px-2 py-1 rounded">${escapeHtml(law.category_name || 'Uncategorized')}</span>
+                                        </div>
+                                        <button class="text-party-accent hover:bg-party-accent/20 px-3 py-1 rounded text-sm font-bold">
+                                            Vote <i class="fas fa-chevron-right ml-1"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                // Articles section
+                if (data.articles && data.articles.length > 0) {
+                    html += `<div class="mb-6">
+                        <h3 class="text-lg font-bold text-party-accent mb-3">
+                            <i class="fas fa-file-alt mr-2"></i>Articles (${data.articles.length})
+                        </h3>
+                        <div class="space-y-3">
+                            ${data.articles.map(art => `
+                                <div class="bg-party-card rounded-lg p-4 border border-gray-700 hover:border-party-accent cursor-pointer transition"
+                                     onclick="viewLaw(${art.law_id}, ${art.id})">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h4 class="font-bold">
+                                                <span class="text-party-accent">Article ${art.article_number}:</span> 
+                                                ${escapeHtml(art.article_title || '')}
+                                            </h4>
+                                            <p class="text-gray-500 text-sm">${escapeHtml(art.law_name)}</p>
+                                        </div>
+                                        <button class="text-party-accent hover:bg-party-accent/20 px-3 py-1 rounded text-sm font-bold">
+                                            Vote <i class="fas fa-chevron-right ml-1"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                // Clauses section
+                if (data.clauses && data.clauses.length > 0) {
+                    html += `<div class="mb-6">
+                        <h3 class="text-lg font-bold text-party-accent mb-3">
+                            <i class="fas fa-list-ul mr-2"></i>Clauses (${data.clauses.length})
+                        </h3>
+                        <div class="space-y-3">
+                            ${data.clauses.map(clause => `
+                                <div class="bg-party-card rounded-lg p-4 border border-gray-700 hover:border-party-accent cursor-pointer transition"
+                                     onclick="viewLaw(${clause.law_id}, null, ${clause.id})">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h4 class="font-bold">
+                                                <span class="text-party-accent">${escapeHtml(clause.sub_article_label)}:</span>
+                                                ${escapeHtml(clause.text_content.substring(0, 100))}${clause.text_content.length > 100 ? '...' : ''}
+                                            </h4>
+                                            <p class="text-gray-500 text-sm">Article ${clause.article_number} - ${escapeHtml(clause.law_name)}</p>
+                                        </div>
+                                        <button class="text-party-accent hover:bg-party-accent/20 px-3 py-1 rounded text-sm font-bold">
+                                            Vote <i class="fas fa-chevron-right ml-1"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                // No results
+                if (data.total === 0) {
+                    html = `<div class="text-center py-12">
+                        <i class="fas fa-search text-4xl text-gray-600 mb-4"></i>
+                        <p class="text-gray-500">No results found for "${escapeHtml(query)}"</p>
+                        <p class="text-gray-600 text-sm mt-2">Try different keywords or adjust the advanced search options</p>
+                    </div>`;
+                }
+
+                document.getElementById('lawsContainer').innerHTML = html;
+
+            } catch (e) {
+                console.error('Search error:', e);
+                document.getElementById('loadingLaws').classList.add('hidden');
+                alert('Search failed. Please try again.');
+            }
+        }
+
         async function loadLaws() {
             const category = document.getElementById('categoryFilter').value;
             document.getElementById('loadingLaws').classList.remove('hidden');
@@ -176,7 +403,7 @@
             }
         }
         
-        async function viewLaw(lawId) {
+        async function viewLaw(lawId, articleId = null, clauseId = null) {
             currentLawId = lawId;
             try {
                 const res = await fetch(`/api/mvlaws/${lawId}`);
@@ -231,6 +458,11 @@
                 
                 // Load law-level votes
                 loadLawVotes(lawId);
+
+                // Auto-open article or clause if specified (from search)
+                if (articleId) {
+                    setTimeout(() => viewArticle(articleId, clauseId), 300);
+                }
             } catch (e) { console.error(e); }
         }
         
@@ -304,7 +536,7 @@
             }
         }
         
-        async function viewArticle(articleId) {
+        async function viewArticle(articleId, highlightClauseId = null) {
             currentArticleId = articleId;
             try {
                 const res = await fetch(`/api/mvlaws/${currentLawId}/articles/${articleId}`);
@@ -336,8 +568,10 @@
                     const userVoteClass = userVote ? 
                         (userVote.vote === 'support' ? 'bg-green-600' : userVote.vote === 'oppose' ? 'bg-red-600' : 'bg-gray-600') : '';
                     
+                    const isHighlighted = highlightClauseId === sa.id ? 'ring-2 ring-party-accent' : '';
+                    
                     return `
-                        <div class="bg-gray-800/50 rounded-lg p-4">
+                        <div class="bg-gray-800/50 rounded-lg p-4 ${isHighlighted}" id="clause-${sa.id}">
                             <div class="flex justify-between items-start mb-2">
                                 <span class="font-bold text-party-accent">${escapeHtml(sa.sub_article_label)}</span>
                                 <div class="flex gap-2 text-xs">
@@ -368,6 +602,16 @@
                 document.getElementById('subArticlesContainer').innerHTML = subArticlesHtml.join('');
                 
                 document.getElementById('articleModal').classList.remove('hidden');
+                
+                // Auto-scroll to highlighted clause if from search
+                if (highlightClauseId) {
+                    setTimeout(() => {
+                        const elem = document.getElementById(`clause-${highlightClauseId}`);
+                        if (elem) {
+                            elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 100);
+                }
             } catch (e) { console.error(e); }
         }
         
