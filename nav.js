@@ -44,6 +44,9 @@ function createNavigation() {
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
+                <span id="active-visitors" class="text-gray-400 text-xs ml-2">
+                    <i class="fas fa-users mr-1"></i>—
+                </span>
             </div>
         </div>
     `;
@@ -113,3 +116,41 @@ if (document.readyState === 'loading') {
 } else {
     injectNavigation();
 }
+
+// Visitor tracking
+(function() {
+    let sessionId = sessionStorage.getItem('visitor_session');
+    if (!sessionId) {
+        sessionId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('visitor_session', sessionId);
+    }
+    
+    function updateActiveCount() {
+        fetch('/api/analytics/active')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    const el = document.getElementById('active-visitors');
+                    if (el) el.innerHTML = '<i class="fas fa-users mr-1"></i>' + d.active;
+                }
+            })
+            .catch(() => {});
+    }
+    
+    function heartbeat() {
+        fetch('/api/analytics/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+        }).then(r => r.json()).then(d => {
+            if (d.active_count !== undefined) {
+                const el = document.getElementById('active-visitors');
+                if (el) el.innerHTML = '<i class="fas fa-users mr-1"></i>' + d.active_count;
+            }
+        }).catch(() => {});
+    }
+    
+    heartbeat();
+    setInterval(heartbeat, 30000);
+    setTimeout(updateActiveCount, 2000);
+})();
