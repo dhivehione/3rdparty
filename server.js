@@ -3033,6 +3033,10 @@ app.get('/intro', (req, res) => {
 });
 
 app.get('/how', (req, res) => {
+  res.redirect('/how-it-works');
+});
+
+app.get('/how-it-works', (req, res) => {
   res.sendFile(path.join(__dirname, 'how.html'));
 });
 

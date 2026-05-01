@@ -17,118 +17,107 @@
             }
         }
     </script>
+    <script src="nav.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
-    <!-- Navigation -->
-    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="/" class="flex items-center space-x-2 text-white hover:text-party-accent transition">
-                <span class="text-2xl font-bold text-party-accent">3d</span>
-                <span class="text-sm text-gray-400">Party</span>
-            </a>
-            <div class="hidden md:flex space-x-6 text-sm">
-                <a href="/" class="hover:text-party-accent transition">Home</a>
-                <a href="intro.html" class="hover:text-party-accent transition">The Movement</a>
-                <a href="whitepaper.html" class="hover:text-party-accent transition">Whitepaper</a>
-                <a href="policies.html" class="hover:text-party-accent transition">Policies</a>
-                <a href="join.html" class="hover:text-party-accent transition">Join</a>
-            </div>
-        </div>
-    </nav>
 
     <!-- Content -->
-    <div class="max-w-3xl mx-auto px-4 py-20">
+    <div class="max-w-3xl mx-auto px-4 py-16">
         <a href="/" class="text-gray-400 hover:text-party-accent transition mb-8 inline-flex items-center space-x-2">
             <i class="fas fa-arrow-left"></i>
             <span>Back to home</span>
         </a>
-        
-        <h1 class="text-4xl font-bold mb-4">How the Merit Score Works</h1>
-        <p class="text-gray-400 text-lg mb-12">Yes, there's math. The app handles it.</p>
-        
-        <!-- Merit Score Explanation -->
-        <div class="prose prose-invert max-w-none space-y-8">
+
+        <h1 class="text-4xl font-bold mb-4">How It Works</h1>
+        <p class="text-gray-400 text-lg mb-12">A new kind of politics — built by the people, for the people.</p>
+
+        <!-- Stage 1: The Problem & Solution -->
+        <div class="space-y-8">
             <div class="bg-party-card p-8 rounded-xl border border-gray-700">
-                <h2 class="text-2xl font-bold text-party-accent mb-4">🧠 The Basics</h2>
+                <h2 class="text-2xl font-bold text-party-accent mb-4">🌍 The Problem</h2>
                 <p class="text-gray-300 mb-4">
-                    Your Merit Score is built from three things:
+                    Traditional parties are stuck in the past. Laws written decades ago. Decisions made by a few. Power handed to family and friends.
                 </p>
-                <ul class="list-disc pl-5 text-gray-300 space-y-2">
-                    <li><strong>Skills & Professional Expertise</strong> (lawyers, engineers, doctors — what you bring to the table)</li>
-                    <li><strong>On‑the‑Ground Action</strong> (organizing, cleanups, Círculos, physical work)</li>
-                    <li><strong>Ideas & Proposals</strong> (policy suggestions that get community support)</li>
-                    <li><strong>Donations</strong> to the Live Treasury (with diminishing returns so big money can't buy power)</li>
-                </ul>
-                <p class="text-gray-400 text-sm mt-4">
-                    All contributions are verified by the community. No fake points.
+                <p class="text-gray-300">
+                    We're building something different — a system where every citizen has real power, and no one can buy influence.
                 </p>
             </div>
 
             <div class="bg-party-card p-8 rounded-xl border border-gray-700">
-                <h2 class="text-2xl font-bold text-party-accent mb-4">⚖️ Why This Exists</h2>
-                <div class="space-y-4 text-gray-300">
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">📜</span>
-                        <div>
-                            <h3 class="font-bold mb-1">Laws Should Be Living</h3>
-                            <p>We're often ruled by rules written decades ago for a different world. 
-                            In the 3d Party, laws are living documents — you can directly propose changes when they no longer make sense. 
-                            No more being bound by 100‑year‑old decisions you had no say in.</p>
-                        </div>
+                <h2 class="text-2xl font-bold text-party-accent mb-4">🗳️ Direct Democracy</h2>
+                <p class="text-gray-300 mb-4">
+                    No middlemen. No parliament outsourcing. Every member votes directly on laws, budgets, and rules.
+                </p>
+                <ul class="list-disc pl-5 text-gray-300 space-y-2">
+                    <li>Your voice counts exactly once — no gerrymandering</li>
+                    <li>Laws are living documents you can change when they stop making sense</li>
+                    <li>Decisions made by the many, not the few</li>
+                </ul>
+            </div>
+
+            <div class="bg-party-card p-8 rounded-xl border border-gray-700">
+                <h2 class="text-2xl font-bold text-party-accent mb-4">🎯 The 3% Strategy</h2>
+                <p class="text-gray-300">
+                    We only need <strong>13,000 people</strong> (~3% of the population) to build this new system. Every single member matters. There are no filler names here — you'll know exactly where you stand and what you'll get.
+                </p>
+            </div>
+
+            <!-- Stage 2: How You Contribute -->
+            <div class="bg-party-card p-8 rounded-xl border border-gray-700">
+                <h2 class="text-2xl font-bold text-party-accent mb-4">💡 How You Shape the Future</h2>
+                <p class="text-gray-300 mb-6">
+                    There are many ways to contribute — and every contribution counts:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-party-dark/50 p-4 rounded-lg">
+                        <span class="text-party-accent text-xl">🛠️</span>
+                        <h3 class="font-bold mt-2 mb-1">Your Skills</h3>
+                        <p class="text-sm text-gray-400">Lawyers, engineers, doctors — whatever you bring to the table</p>
                     </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🗳️</span>
-                        <div>
-                            <h3 class="font-bold mb-1">Direct Citizen Voting</h3>
-                            <p>We will not outsource democracy to parliament. 
-                            Every member votes directly on legislation, budgets, and rules. 
-                            No gerrymandering. No middlemen. Your voice counts exactly once.</p>
-                        </div>
+                    <div class="bg-party-dark/50 p-4 rounded-lg">
+                        <span class="text-party-accent text-xl">🤝</span>
+                        <h3 class="font-bold mt-2 mb-1">On-the-Ground Action</h3>
+                        <p class="text-sm text-gray-400">Organizing, cleanups, community work</p>
                     </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🎯</span>
-                        <div>
-                            <h3 class="font-bold mb-1">The 3% Strategy</h3>
-                            <p>We only need <strong>13,000 people</strong> (~3% of the population) to build this new system. 
-                            Every single member is crucial. There are no filler names here — 
-                            you will know exactly where you stand and what you'll get.</p>
-                        </div>
+                    <div class="bg-party-dark/50 p-4 rounded-lg">
+                        <span class="text-party-accent text-xl">💡</span>
+                        <h3 class="font-bold mt-2 mb-1">Ideas & Proposals</h3>
+                        <p class="text-sm text-gray-400">Policy suggestions that get community support</p>
                     </div>
-                    <div class="flex items-start space-x-3">
-                        <span class="text-party-accent mt-1">🔍</span>
-                        <div>
-                            <h3 class="font-bold mb-1">No Insider Connections</h3>
-                            <p>Traditional parties treat members as statistics. Here, your influence is transparent: 
-                            it's your Merit Score. No backroom deals, no family ties, no secret handshakes. 
-                            Just what you actually contribute.</p>
-                        </div>
+                    <div class="bg-party-dark/50 p-4 rounded-lg">
+                        <span class="text-party-accent text-xl">💰</span>
+                        <h3 class="font-bold mt-2 mb-1">Donations</h3>
+                        <p class="text-sm text-gray-400">Support the treasury (no one can buy power)</p>
                     </div>
                 </div>
             </div>
 
+            <!-- Stage 3: Merit Score (simplified explanation) -->
             <div class="bg-party-accent/5 border border-party-accent/30 rounded-xl p-6">
-                <p class="text-party-accent font-bold text-lg mb-2">So how much does this matter?</p>
-                <p class="text-gray-300">
-                    The Merit Score opens doors: funding for your proposals, leadership roles, 
-                    and actual voting weight on some decisions. 
-                    It's designed so that consistent, genuine contributors rise naturally — 
-                    and no one can buy their way to the top.
+                <h2 class="text-2xl font-bold text-party-accent mb-3">🧠 The Merit Score</h2>
+                <p class="text-gray-300 mb-3">
+                    To keep things fair, we track contributions through a Merit Score. Think of it as a transparent way to recognize who's genuinely building the movement.
                 </p>
-                <p class="text-gray-400 text-sm mt-4">
-                    The full algorithm is public and community‑auditable. 
-                    Read the <a href="/whitepaper" class="underline text-party-accent">Whitepaper</a> for the technical details.
+                <p class="text-gray-300 mb-3">
+                    Higher merit opens doors: funding for your proposals, leadership roles, and voting weight on key decisions. But don't worry — the app handles all the math. You just contribute.
+                </p>
+                <p class="text-gray-400 text-sm">
+                    Designed so consistent contributors rise naturally. No one can buy their way to the top.
+                    <a href="/whitepaper" class="underline text-party-accent">Read the Whitepaper</a> for full details.
                 </p>
             </div>
 
             <!-- When We Form Government -->
-            <div class="bg-party-card rounded-xl border border-gray-700 p-8 mt-8">
-                <h2 class="text-3xl font-bold mb-6">When We Form Government – No More Cronyism</h2>
-                <p class="text-gray-300 text-lg leading-relaxed">
-                    When the 3d Party forms government, things will work very differently.<br><br>  
-                    Any qualified member of the movement can <strong>apply</strong> for Cabinet Minister and other high-level positions (ambassadors, heads of independent institutions, etc.) — exactly like applying for a real job.<br><br>  
-                    No more handing top posts to family, friends, or party loyalists.<br><br>  
-                    The entire selection process will be <strong>nationally televised</strong> in an entertaining format: live interviews judged by the country's top experts, with public voting — just like a big TV show. The winner is announced live on TV, and the next day the President must accept them into office.<br><br>  
-                    Once appointed, every minister and high official will go through a <strong>3-month probation period</strong> and regular annual performance appraisals — exactly like any other professional employee. Underperformance means replacement.
+            <div class="bg-party-card rounded-xl border border-gray-700 p-8">
+                <h2 class="text-2xl font-bold mb-4">🏛️ When We Form Government</h2>
+                <p class="text-gray-300 leading-relaxed mb-4">
+                    No more cronyism. Any qualified member can apply for Cabinet Minister and other high-level positions — exactly like applying for a real job.
+                </p>
+                <p class="text-gray-300 leading-relaxed mb-4">
+                    The selection process will be nationally televised: live interviews judged by top experts, with public voting. The winner is announced live on TV.
+                </p>
+                <p class="text-gray-300 leading-relaxed">
+                    Every minister goes through a 3-month probation and annual performance reviews — just like any professional employee.
                 </p>
             </div>
 
@@ -140,12 +129,12 @@
             </div>
         </div>
     </div>
-    
+
     <script>
-        // Fetch member count for the button line
-        fetch('/api/signups', { headers: { 'Authorization': 'Bearer guest' } })
+        // Fetch member count
+        fetch('/api/wall-stats')
             .then(r => r.json())
-            .then(d => { if (d.success) document.getElementById('memberCount').textContent = d.total; })
+            .then(d => { if (d.success) document.getElementById('memberCount').textContent = d.members; })
             .catch(() => {});
     </script>
 </body>

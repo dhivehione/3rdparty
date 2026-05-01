@@ -5,8 +5,7 @@ function getPageName() {
     const path = window.location.pathname;
     if (path === '/' || path === '/index.html') return 'home';
     if (path.includes('intro')) return 'intro';
-    if (path.includes('how') && !path.includes('how-it-works')) return 'how';
-    if (path.includes('how-it-works')) return 'how-it-works';
+    if (path.includes('how')) return 'how-it-works';
     if (path.includes('whitepaper')) return 'whitepaper';
     if (path.includes('laws') && !path.includes('law-stats')) return 'laws';
     if (path.includes('law-stats')) return 'law-stats';
