@@ -6,5 +6,15 @@
   },
   "volumes": {
     "data": "/app/data"
+  },
+  "env": {
+    "LAWS_DB_PATH": {
+      "key": "LAWS_DB_PATH",
+      "value": "data/laws.db"
+    },
+    "ADMIN_PASSWORD": {
+      "key": "ADMIN_PASSWORD",
+      "value": ""
+    }
   }
 }

@@ -29,8 +29,8 @@ if [ "$LOCAL_COMMITS" -gt 0 ]; then
             echo "Pushing $AHEAD commit(s) to GitHub..."
             git push 2>&1 || {
                 echo "WARNING: GitHub push failed."
-                echo "To fix, update your remote with a token:"
-                echo "  git remote set-url origin https://GITHUB_TOKEN@github.com/dhivehione/3rdparty.git"
+                echo "To fix, add your GitHub token to git remote:"
+                echo "  git remote set-url origin https://YOUR_TOKEN@github.com/user/repo.git"
             }
         else
             echo "Branch is up-to-date with remote."

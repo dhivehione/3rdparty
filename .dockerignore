@@ -5,5 +5,8 @@ npm-debug.log
 .env
 .DS_Store
 *.md
+build.sh
+Dockerfile
+caprover.json
 !.dockerignore
 !.gitignore

@@ -389,7 +389,7 @@ app.get('/api/analytics/active', (req, res) => {
 });
 
 // ==================== AUTH MIDDLEWARE ====================
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '3dparty2024admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CHANGE_ME_via_CAPROVER_ENV';
 
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -1625,13 +1625,13 @@ app.post('/api/user/login', (req, res) => {
   
   if (username && password) {
     // Username + password login
-    // username can be: NID, custom username, or name
+    // username can be: NID or custom username
     // password is: phone number
     user = db.prepare(`
       SELECT * FROM signups 
-      WHERE ((username = ?) OR (nid = ?) OR (name = ?)) 
+      WHERE (username = ? OR nid = ?) 
       AND phone = ? AND is_verified = 1
-    `).get(username.trim(), username.trim(), username.trim(), password);
+    `).get(username.trim(), username.trim(), password);
   } else if (phone && nid) {
     // Phone + NID login (original method)
     user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(phone, nid);
@@ -2114,6 +2114,7 @@ app.put('/api/user/profile', userAuth, (req, res) => {
         initial_merit_estimate: updatedUser.initial_merit_estimate,
         timestamp: updatedUser.timestamp
       }
+    });
     });
   } catch (error) {
     console.error('Update profile error:', error);
