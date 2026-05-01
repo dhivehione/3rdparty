@@ -358,12 +358,12 @@
                     allSignups = result.signups;
                     updateStats(result);
                     applyFilter();
+                
+                    // Also load leadership data
+                    await loadLeadershipData();
                 } else {
                     logout();
                 }
-                
-                // Also load leadership data
-                await loadLeadershipData();
             } catch (error) {
                 console.error('Error fetching data:', error);
             }

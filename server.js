@@ -445,6 +445,11 @@ if (demoWallPosts.cnt === 0) {
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// Favicon handler
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -1684,7 +1689,10 @@ app.post('/api/signup', (req, res) => {
         nid: user.nid,
         email: user.email,
         island: user.island,
-        contribution_type: user.contribution_type,
+        contribution_type: user.contribution_type ? (() => {
+          try { return JSON.parse(user.contribution_type); }
+          catch(e) { return [user.contribution_type]; }
+        })() : [],
         donation_amount: user.donation_amount,
         initial_merit_estimate: user.initial_merit_estimate,
         timestamp: user.timestamp
@@ -1753,7 +1761,10 @@ app.get('/api/signups', adminAuth, (req, res) => {
     
     const parsedSignups = signups.map(s => ({
       ...s,
-      contribution_type: s.contribution_type ? JSON.parse(s.contribution_type) : []
+      contribution_type: s.contribution_type ? (() => {
+        try { return JSON.parse(s.contribution_type); }
+        catch(e) { return [s.contribution_type]; }
+      })() : []
     }));
     
     res.json({ 
@@ -1874,7 +1885,10 @@ app.post('/api/user/login', (req, res) => {
         nid: user.nid,
         email: user.email,
         island: user.island,
-        contribution_type: user.contribution_type ? JSON.parse(user.contribution_type) : [],
+        contribution_type: user.contribution_type ? (() => {
+          try { return JSON.parse(user.contribution_type); }
+          catch(e) { return [user.contribution_type]; }
+        })() : [],
         donation_amount: user.donation_amount,
         initial_merit_estimate: user.initial_merit_estimate,
         timestamp: user.timestamp
@@ -2261,7 +2275,10 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       nid: user.nid,
       email: user.email,
       island: user.island,
-      contribution_type: user.contribution_type ? JSON.parse(user.contribution_type) : [],
+      contribution_type: user.contribution_type ? (() => {
+        try { return JSON.parse(user.contribution_type); }
+        catch(e) { return [user.contribution_type]; }
+      })() : [],
       donation_amount: user.donation_amount,
       initial_merit_estimate: user.initial_merit_estimate,
       timestamp: user.timestamp
@@ -2324,7 +2341,10 @@ app.put('/api/user/profile', userAuth, (req, res) => {
         nid: updatedUser.nid,
         email: updatedUser.email,
         island: updatedUser.island,
-        contribution_type: updatedUser.contribution_type ? JSON.parse(updatedUser.contribution_type) : [],
+        contribution_type: updatedUser.contribution_type ? (() => {
+          try { return JSON.parse(updatedUser.contribution_type); }
+          catch(e) { return [updatedUser.contribution_type]; }
+        })() : [],
         donation_amount: updatedUser.donation_amount,
         initial_merit_estimate: updatedUser.initial_merit_estimate,
         timestamp: updatedUser.timestamp
