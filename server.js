@@ -65,6 +65,7 @@ db.exec(`
     phone TEXT NOT NULL,
     nid TEXT NOT NULL,
     name TEXT,
+    username TEXT,
     email TEXT,
     island TEXT,
     contribution_type TEXT,
@@ -1172,7 +1173,7 @@ app.get('/api/wall-stats', (req, res) => {
 // ==================== API ENDPOINTS ====================
 // POST /api/signup - New signup
 app.post('/api/signup', (req, res) => {
-  const { phone, nid, name, email, island, contribution_types, donation_amount } = req.body;
+  const { phone, nid, name, username, email, island, contribution_types, donation_amount } = req.body;
   
   // Validate mandatory fields
   if (!phone || !nid) {
@@ -1180,6 +1181,17 @@ app.post('/api/signup', (req, res) => {
       error: 'Phone and NID are mandatory — even insurance agents need these.',
       success: false 
     });
+  }
+
+  // Check for duplicate username if provided
+  if (username) {
+    const existingUsername = db.prepare('SELECT id FROM signups WHERE username = ?').get(username.trim());
+    if (existingUsername) {
+      return res.status(409).json({ 
+        error: 'Username already taken. Choose a different one.',
+        success: false 
+      });
+    }
   }
   
   // Validate contribution_types is array if provided
@@ -1260,12 +1272,13 @@ app.post('/api/signup', (req, res) => {
     const timestamp = new Date().toISOString();
     const contributionTypeJson = JSON.stringify(typesArray);
     const stmt = db.prepare(
-      'INSERT INTO signups (phone, nid, name, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
       phone, 
       nid, 
-      name || null, 
+      name || null,
+      username ? username.trim() : null, 
       email || null, 
       island || null, 
       contributionTypeJson, 
@@ -1405,22 +1418,36 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// POST /api/user/login - User login with phone + NID
+// POST /api/user/login - User login with phone + NID OR username + password
 app.post('/api/user/login', (req, res) => {
-  const { phone, nid } = req.body;
+  const { phone, nid, username, password } = req.body;
   
-  if (!phone || !nid) {
-    return res.status(400).json({ error: 'Phone and NID required', success: false });
+  // Determine login method
+  let user;
+  
+  if (username && password) {
+    // Username + password login
+    // username can be: NID, custom username, or name
+    // password is: phone number
+    user = db.prepare(`
+      SELECT * FROM signups 
+      WHERE ((username = ?) OR (nid = ?) OR (name = ?)) 
+      AND phone = ? AND is_verified = 1
+    `).get(username.trim(), username.trim(), username.trim(), password);
+  } else if (phone && nid) {
+    // Phone + NID login (original method)
+    user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(phone, nid);
+  } else {
+    return res.status(400).json({ error: 'Login requires either (phone + nid) or (username + password)', success: false });
+  }
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid credentials or not registered', success: false });
   }
   
   try {
-    const user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(phone, nid);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials or not registered', success: false });
-    }
-    
     // Generate auth token
-    const authToken = Buffer.from(`${phone}:${nid}:${Date.now()}`).toString('base64');
+    const authToken = Buffer.from(`${user.phone}:${user.nid}:${Date.now()}`).toString('base64');
     db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, user.id);
     
     res.json({ 
@@ -1430,6 +1457,7 @@ app.post('/api/user/login', (req, res) => {
         id: user.id,
         phone: user.phone,
         name: user.name,
+        username: user.username,
         nid: user.nid,
         email: user.email,
         island: user.island,
