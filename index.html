@@ -25,44 +25,9 @@
             }
         }
     </script>
+    <script src="nav.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
-    
-    <!-- Navigation -->
-    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <a href="/" class="flex items-center space-x-2">
-                    <span class="text-2xl font-bold text-party-accent">3d</span>
-                    <span class="text-sm text-gray-400 hidden sm:inline">Party</span>
-                </a>
-            </div>
-            <div class="flex items-center space-x-4 text-sm">
-                <span id="active-visitors" class="text-xs text-party-muted hidden md:inline"><i class="fas fa-users mr-1"></i>--</span>
-                <a href="/how" class="hover:text-party-accent transition hidden sm:inline">How</a>
-                <div class="relative inline-block" id="more-menu-container">
-                    <button onclick="document.getElementById('more-menu').classList.toggle('hidden')" class="hover:text-party-accent transition cursor-pointer">
-                        More <i class="fas fa-chevron-down text-xs"></i>
-                    </button>
-                    <div id="more-menu" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-lg py-2 z-50">
-                        <a href="/intro" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">The Movement</a>
-                        <a href="/leadership" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Leadership</a>
-                        <a href="/faq" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">FAQ</a>
-                        <hr class="my-2 border-gray-700">
-                        <a href="whitepaper.html" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Whitepaper</a>
-                        <a href="policies.html" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Policies</a>
-                        <a href="legislature.html" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Legislature</a>
-                        <a href="/laws" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Laws</a>
-                        <a href="/law-stats" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Law Stats</a>
-                        <a href="proposals.html" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">Vote</a>
-                        <a href="wall.html" class="block px-4 py-2 hover:bg-gray-800 hover:text-party-accent">The Wall</a>
-                    </div>
-                </div>
-                <a href="/profile" class="hover:text-party-accent transition">Profile</a>
-                <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition">Join</a>
-            </div>
-        </div>
-    </nav>
 
     <!-- Hero Section -->
     <section class="relative py-16 md:py-24 px-4 overflow-hidden">
@@ -90,6 +55,23 @@
                 <br class="hidden md:block"><span class="text-sm">(none of them insurance agents, we checked)</span>
             </p>
             
+            <!-- Motivational Line -->
+            <div class="bg-party-accent/10 border border-party-accent/30 rounded-full px-6 py-3 inline-block mb-8">
+                <span class="text-party-accent font-bold">💪 Every Member Matters</span>
+                <span class="text-gray-300 ml-2">— We only need 3% of the population (~13,000) to win</span>
+            </div>
+            
+            <!-- Treasury Counter -->
+            <div class="bg-party-card/50 backdrop-blur rounded-xl p-4 inline-block mb-8 ml-4">
+                <div class="flex items-center space-x-4">
+                    <div class="text-3xl">💰</div>
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Live Treasury</div>
+                        <div class="text-2xl font-bold text-party-accent" id="treasuryCount">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            
             <button onclick="document.getElementById('contribution').scrollIntoView({behavior:'smooth'})" 
                     class="bg-party-accent text-party-dark px-10 py-5 rounded-xl font-bold text-lg hover:scale-105 transform transition inline-flex items-center space-x-3 shadow-2xl shadow-party-accent/20">
                 <span>JOIN THE 3D PARTY</span>
@@ -111,7 +93,7 @@
                 <!-- Skills Card -->
                 <div onclick="selectContribution('skills')" 
                      class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
-                    <div class="text-4xl mb-4">🧠</div>
+                    <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-brain"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Skills & Expertise</h3>
                     <p class="text-gray-400 text-sm">Lawyers, designers, teachers, engineers — we need brains.</p>
                 </div>
@@ -119,7 +101,7 @@
                 <!-- Action Card -->
                 <div onclick="selectContribution('action')" 
                      class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
-                    <div class="text-4xl mb-4">🏃</div>
+                    <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-running"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">On-the-Ground Action</h3>
                     <p class="text-gray-400 text-sm">Events, cleanups, organizing. Less talking, more doing.</p>
                 </div>
@@ -127,7 +109,7 @@
                 <!-- Ideas Card -->
                 <div onclick="selectContribution('ideas')" 
                      class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
-                    <div class="text-4xl mb-4">💡</div>
+                    <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-lightbulb"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Ideas & Proposals</h3>
                     <p class="text-gray-400 text-sm">Policy suggestions. Actual bridge-building (not metaphors).</p>
                 </div>
@@ -135,7 +117,7 @@
                 <!-- Donation Card -->
                 <div onclick="selectContribution('donation')" 
                      class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
-                    <div class="text-4xl mb-4">💰</div>
+                    <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-hand-holding-usd"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Support & Donations</h3>
                     <p class="text-gray-400 text-sm">Treasury help. Your contribution counts.</p>
                 </div>
@@ -149,9 +131,13 @@
                         <div>
                             <h3 class="text-xl font-bold text-party-accent mb-3">Why this matters</h3>
                             
+                            <p class="bg-party-accent/10 border border-party-accent/20 rounded-lg p-4 text-white font-medium leading-relaxed mb-4">
+                                <i class="fas fa-info-circle text-party-accent mr-2"></i>
+                                We don't use insider connections or party bosses — your Merit Score is the only fair way to gain influence and rise.
+                            </p>
+                            
                             <p class="text-gray-300 leading-relaxed mb-4">
-                                We don't have party bosses or insider connections. 
-                                Your <span class="text-party-accent font-bold">Merit Score</span> is the only path to influence — built from real contributions (skills, effort, donations, physical work).
+                                Your <span class="text-party-accent font-bold">Merit Score</span> is built from real contributions (skills, effort, donations, physical work).
                             </p>
                             
                             <div class="space-y-3 text-gray-300 leading-relaxed mb-4">
@@ -182,35 +168,121 @@
                                 <span class="text-2xl font-bold text-party-accent" id="estimatedScore">—</span>
                             </div>
                             
-                            <button onclick="proceedToSignup()" 
-                                    class="w-full bg-party-accent text-party-dark py-4 rounded-xl font-bold text-lg hover:scale-[1.02] transform transition">
-                                Continue to Signup →
-                            </button>
+                <button onclick="proceedToSignup()" 
+                        class="w-full bg-party-accent text-party-dark py-4 rounded-xl font-bold text-lg hover:scale-[1.02] transform transition">
+                    Continue to Signup →
+                </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Footer -->
-    <footer class="border-t border-gray-800 py-12 px-4">
-        <div class="max-w-6xl mx-auto text-center">
-            <div class="text-2xl font-bold text-party-accent mb-4">3d Party</div>
-            <p class="text-gray-500 text-sm mb-4">The actual third option. Still not insurance.</p>
-<div class="flex justify-center gap-6 text-sm">
-                <a href="/intro" class="text-gray-400 hover:text-party-accent">The Movement</a>
-                <a href="/how" class="text-gray-400 hover:text-party-accent">How It Works</a>
-                <a href="/whitepaper" class="text-gray-400 hover:text-party-accent">Whitepaper</a>
-                <a href="/policies" class="text-gray-400 hover:text-party-accent">Policies</a>
-                <a href="/legislature" class="text-gray-400 hover:text-party-accent">Legislature</a>
-                <a href="/law-stats" class="text-gray-400 hover:text-party-accent">Law Stats</a>
-                <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
+        <!-- Live Activity Teaser -->
+        <section class="py-12 px-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-2xl font-bold text-center mb-8">
+                    <span class="text-party-accent">Live Activity</span> — See what's happening
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Recent Wall Posts -->
+                    <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4">
+                            <i class="fas fa-comments text-party-accent mr-2"></i>Recent Posts
+                        </h3>
+                        <div id="recentPosts" class="space-y-3">
+                            <div class="text-center py-4 text-gray-500">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="/wall" class="text-party-accent hover:underline text-sm">View All Posts →</a>
+                        </div>
+                    </div>
+
+                    <!-- Recent Law Votes -->
+                    <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4">
+                            <i class="fas fa-gavel text-party-accent mr-2"></i>Recent Votes
+                        </h3>
+                        <div id="recentVotes" class="space-y-3">
+                            <div class="text-center py-4 text-gray-500">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="/law-stats" class="text-party-accent hover:underline text-sm">View All Stats →</a>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p class="text-gray-600 text-xs mt-6">© 2024 3d Party Maldives</p>
-        </div>
-    </footer>
+        </section>
 
+        <script>
+            // Load recent activity
+            async function loadRecentActivity() {
+                try {
+                    const wallRes = await fetch('/api/wall?limit=3');
+                    const wallData = await wallRes.json();
+                    if (wallData.posts && wallData.posts.length > 0) {
+                        document.getElementById('recentPosts').innerHTML = wallData.posts.map(p => `
+                            <div class="bg-gray-800/50 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="font-bold text-party-accent text-sm">${p.nickname}</span>
+                                    <span class="text-gray-500 text-xs">${formatTime(p.timestamp)}</span>
+                                </div>
+                                <p class="text-gray-300 text-sm">${escapeHtml(p.message).substring(0, 100)}${p.message.length > 100 ? '...' : ''}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        document.getElementById('recentPosts').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No posts yet. Be the first!</div>';
+                    }
+                } catch (e) {
+                    document.getElementById('recentPosts').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Could not load posts</div>';
+                }
+
+                try {
+                    const votesRes = await fetch('/api/mvlaws/recent-votes');
+                    const votesData = await votesRes.json();
+                    if (votesData.success && votesData.votes && votesData.votes.length > 0) {
+                        document.getElementById('recentVotes').innerHTML = votesData.votes.slice(0, 3).map(v => `
+                            <div class="bg-gray-800/50 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="font-bold text-party-accent text-sm">Article ${v.article_number}</span>
+                                    <span class="text-gray-500 text-xs">${formatTime(v.voted_at)}</span>
+                                </div>
+                                <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${v.article_title || ''}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No votes yet. Start voting!</div>';
+                    }
+                } catch (e) {
+                    document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Could not load votes</div>';
+                }
+            }
+
+            function formatTime(isoString) {
+                const date = new Date(isoString);
+                const now = new Date();
+                const diff = now - date;
+                if (diff < 60000) return 'Just now';
+                if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+                if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+                return Math.floor(diff / 86400000) + 'd ago';
+            }
+
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            loadRecentActivity();
+    </script>
+    
     <script>
         let selectedContribution = null;
         
@@ -227,7 +299,31 @@
             }
         }
         
+        // Fetch treasury count
+        async function fetchTreasury() {
+            try {
+                const response = await fetch('/api/wall-stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        document.getElementById('treasuryCount').textContent = 'MVR ' + (data.treasury || 0).toLocaleString();
+                    }
+                }
+            } catch (e) {
+                document.getElementById('treasuryCount').textContent = 'MVR 0';
+            }
+        }
+        
         fetchMemberCount();
+        fetchTreasury();
+        
+        // Merit score estimates for each contribution type
+        const meritScores = {
+            'skills': 250,
+            'action': 180,
+            'ideas': 200,
+            'donation': 100
+        };
         
         function selectContribution(type) {
             // Remove previous selections
@@ -241,8 +337,9 @@
             // Set contribution type
             selectedContribution = type;
             
-            // Show explanation
+            // Show explanation with merit score
             document.getElementById('meritExplanation').classList.remove('hidden');
+            document.getElementById('estimatedScore').textContent = meritScores[type] || '—';
             document.getElementById('meritExplanation').scrollIntoView({ behavior: 'smooth' });
         }
         
@@ -255,6 +352,68 @@
             // Redirect to signup page
             window.location.href = `/join?type=${selectedContribution}`;
         }
+        
+        // Load recent activity
+        async function loadRecentActivity() {
+            try {
+                const wallRes = await fetch('/api/wall?limit=3');
+                const wallData = await wallRes.json();
+                if (wallData.posts && wallData.posts.length > 0) {
+                    document.getElementById('recentPosts').innerHTML = wallData.posts.map(p => `
+                        <div class="bg-gray-800/50 rounded-lg p-3">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-party-accent text-sm">${p.nickname}</span>
+                                <span class="text-gray-500 text-xs">${formatTime(p.timestamp)}</span>
+                            </div>
+                            <p class="text-gray-300 text-sm">${escapeHtml(p.message).substring(0, 100)}${p.message.length > 100 ? '...' : ''}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('recentPosts').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No posts yet. Be the first!</div>';
+                }
+            } catch (e) {
+                document.getElementById('recentPosts').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Could not load posts</div>';
+            }
+
+            try {
+                const votesRes = await fetch('/api/mvlaws/recent-votes');
+                const votesData = await votesRes.json();
+                if (votesData.success && votesData.votes && votesData.votes.length > 0) {
+                    document.getElementById('recentVotes').innerHTML = votesData.votes.slice(0, 3).map(v => `
+                        <div class="bg-gray-800/50 rounded-lg p-3">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-party-accent text-sm">Article ${v.article_number}</span>
+                                <span class="text-gray-500 text-xs">${formatTime(v.voted_at)}</span>
+                            </div>
+                            <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${escapeHtml(v.article_title || '')}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">No votes yet. Start voting!</div>';
+                }
+            } catch (e) {
+                document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Could not load votes</div>';
+            }
+        }
+        
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+            return Math.floor(diff / 86400000) + 'd ago';
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadRecentActivity();
     </script>
     
     <!-- Simple Analytics -->

@@ -399,6 +399,48 @@ if (existingSOPs.cnt === 0) {
 
 console.log('✓ Leadership structure tables initialized');
 
+// ==================== ADD DEMO DATA ====================
+// Add demo proposals if table is empty
+const demoProposals = db.prepare('SELECT COUNT(*) as cnt FROM proposals').get();
+if (demoProposals.cnt === 0) {
+  const now = new Date().toISOString();
+  const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  
+  const demoData = [
+    { title: 'Establish Free Public Wi-Fi in All Islands', description: 'Provide free internet access to all inhabited islands in Maldives, starting with the most underserved regions. This will help bridge the digital divide and enable remote education and work opportunities.', category: 'infrastructure' },
+    { title: 'Ban Single-Use Plastics by 2025', description: 'Phase out all single-use plastic bags, bottles, and packaging by December 2025. Replace with biodegradable alternatives. Exceptions for medical and essential uses.', category: 'environment' },
+    { title: 'Mandatory Financial Literacy Education', description: 'Introduce financial literacy as a mandatory subject in secondary schools. Topics: budgeting, saving, investing, loans, and avoiding predatory lending.', category: 'education' },
+    { title: 'Remote Work Visa for Digital Nomads', description: 'Create a special visa category for remote workers and digital nomads, allowing them to live in Maldives for 6-12 months while working for foreign employers.', category: 'economy' },
+    { title: 'Protect Coral Reefs with AI Monitoring', description: 'Deploy AI-powered monitoring systems to track coral reef health in real-time. Automatic alerts for bleaching events, illegal fishing, and pollution. Immediate response teams.', category: 'environment' }
+  ];
+  
+  const insertProp = db.prepare('INSERT INTO proposals (title, description, category, created_by_nickname, status, created_at, ends_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  demoData.forEach(d => {
+    insertProp.run(d.title, d.description, d.category, 'DemoBot', 'active', now, futureDate);
+  });
+  console.log('✓ Demo proposals added');
+}
+
+// Add demo wall posts if table is empty
+const demoWallPosts = db.prepare('SELECT COUNT(*) as cnt FROM wall_posts').get();
+if (demoWallPosts.cnt === 0) {
+  const now = new Date().toISOString();
+  
+  const demoPosts = [
+    { nickname: 'Aisha from Fuvahmulah', message: 'Just joined! Excited to be part of building a better Maldives. The merit system is so fair — finally a party where everyone has a voice!' },
+    { nickname: 'Mohamed from Male', message: 'The live treasury idea is brilliant. Knowing exactly where every rufiyaa goes builds so much trust. Already donated 500 MVR!' },
+    { nickname: 'Fathimath from Addu', message: 'Can we propose a law to fix the garbage collection in Addu? The current system really needs an upgrade.' },
+    { nickname: 'Ali from Kulhudhuffushi', message: 'Love the 3% goal! Told 5 friends today. If we each bring 5 people, we hit 13,000 in no time 🚀' },
+    { nickname: 'Hassan from Thinadhoo', message: 'The whitepaper is incredible. Finally a political party that explains everything transparently. No more hidden agendas!' }
+  ];
+  
+  const insertPost = db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)');
+  demoPosts.forEach(p => {
+    insertPost.run(p.nickname, p.message, now);
+  });
+  console.log('✓ Demo wall posts added');
+}
+
 // ==================== MIDDLEWARE ====================
 app.use(express.json());
 app.use(express.static(__dirname));
