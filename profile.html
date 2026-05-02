@@ -956,7 +956,7 @@
                 searchResultsList.innerHTML = data.results.map((r, idx) => {
                     const name = r.name || r.full_name || r.display_name || 'Unknown';
                     const addr = r.address || r.street || r.ward || r.location || r.house_name || r.building || '';
-                    const isl = r.island || r.atoll || r.city || '';
+                    const isl = r.island_name || r.island || r.atoll || r.city || '';
                     const parts = [name, addr, isl].filter(p => p);
                     console.log('[Search] result', idx, 'parts:', parts, 'raw:', r);
                     return `
@@ -995,7 +995,7 @@
                     id: ++pendingEnrollmentIdCounter,
                     name: r.name || r.full_name || '',
                     address: r.address || r.street || r.ward || r.location || r.house_name || r.building || '',
-                    island: r.island || r.atoll || r.city || ''
+                    island: r.island_name || r.island || r.atoll || r.city || ''
                 };
                 console.log('[Pending] created entry:', entry);
 
