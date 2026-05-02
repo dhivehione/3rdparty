@@ -713,32 +713,23 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     return '*' + val + '*';
   };
 
-  // Build query params for external directory service (GET /api/public/search/)
-  const queryParams = new URLSearchParams();
-  queryParams.set('limit', '10');
-  // Pass API key as query param per schema (the X-API-Key header triggers a 500 on their Django backend)
-  queryParams.set('api_key', apiKey);
-
-  if (query) queryParams.set('q', w(query));
-  if (name) queryParams.set('name', w(name));
-  if (island) queryParams.set('island', w(island));
-  // The public search API has no dedicated address param; fold address into the general q param.
-  if (address) {
-    const existingQ = queryParams.get('q') || '';
-    queryParams.set('q', existingQ ? `${existingQ} ${w(address)}` : w(address));
-  }
-
-  const path = `/api/public/search/?${queryParams.toString()}`;
-  const url = `https://${apiHost}${path}`;
-
-  console.log(`[Directory Search] ${url.replace(apiKey, '***REDACTED***')}`);
+  // Build JSON payload for the working external directory endpoint
+  const searchPayload = JSON.stringify({
+    query: w(query),
+    name: w(name),
+    island: w(island),
+    address: w(address),
+    page_size: 10
+  });
 
   const options = {
     hostname: apiHost,
-    path: path,
-    method: 'GET',
+    path: '/api/mydir/advanced_search/',
+    method: 'POST',
     headers: {
-      'Accept': 'application/json'
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(searchPayload),
+      'Authorization': `Api-Key ${apiKey}`
     },
     timeout: 10000
   };
@@ -751,7 +742,7 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     });
 
     proxyRes.on('end', () => {
-      console.log(`[Directory Search] status=${proxyRes.statusCode} body=${data.substring(0, 500)}`);
+      console.log(`[Directory Search] status=${proxyRes.statusCode}`);
 
       if (proxyRes.statusCode >= 400) {
         return res.status(502).json({
@@ -765,7 +756,7 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
         res.json({
           success: true,
           results: parsed.results || [],
-          total_count: parsed.count || 0,
+          total_count: parsed.total_count || 0,
           rate_limit: {
             remaining_daily: rateCheck.remaining,
             reset_in_seconds: rateCheck.resetIn > 0 ? Math.ceil(rateCheck.resetIn / 1000) : null
@@ -787,6 +778,7 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     res.status(504).json({ error: 'Directory service timeout', success: false });
   });
 
+  proxyReq.write(searchPayload);
   proxyReq.end();
 });
 
