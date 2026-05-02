@@ -61,8 +61,12 @@ echo "Created version.txt"
 
 echo "Building Docker image: $IMAGE_NAME:$TAG"
 
-# Build the Docker image
-docker build -t $IMAGE_NAME:$TAG .
+# Build with BuildKit cache for faster rebuilds
+docker buildx build --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max -t $IMAGE_NAME:$TAG .
+
+# Rotate cache to prevent unbounded growth
+rm -rf /tmp/.buildx-cache
+mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
 # Tag as latest if not already
 docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:latest

@@ -1,11 +1,11 @@
-FROM node:22
+FROM node:22-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
 
-# Rebuild better-sqlite3 to match container's glibc
-RUN npm install && npm rebuild better-sqlite3
+ENV NODE_ENV=production
+RUN npm ci --only=production && npm cache clean --force
 
 COPY . .
 
