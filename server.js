@@ -542,10 +542,9 @@ function checkEnrollRateLimit(ip) {
   return { allowed: true, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: 0 };
 }
 
-// POST /api/enroll/lookup - Hidden endpoint to search maldivesedirectory.com
-// Used for enrolling friends and family - rate limited
-// Accepts optional 'token' parameter for authenticated access (full data)
-app.post('/api/enroll/lookup', (req, res) => {
+// POST /api/enroll/lookup - Search maldivesedirectory.com for members
+// Used for enrolling friends and family - requires auth, rate limited
+app.post('/api/enroll/lookup', userAuth, (req, res) => {
   const ip = getClientIp(req);
   const rateCheck = checkEnrollRateLimit(ip);
   
@@ -558,7 +557,7 @@ app.post('/api/enroll/lookup', (req, res) => {
     });
   }
   
-  const { query, name, island, address, token } = req.body;
+  const { query, name, island, address } = req.body;
   
   if (!query && !name && !island && !address) {
     return res.status(400).json({ 
@@ -576,15 +575,16 @@ app.post('/api/enroll/lookup', (req, res) => {
     page_size: 10
   });
   
+  const apiKey = process.env.DIRECTORY_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'Directory service not configured', success: false });
+  }
+  
   const headers = {
     'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(searchPayload)
+    'Content-Length': Buffer.byteLength(searchPayload),
+    'Authorization': `Api-Key ${apiKey}`
   };
-  
-  // If token provided (placeholder for now), use it for authenticated access
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   
   const options = {
     hostname: process.env.DIRECTORY_API_HOST || 'www.maldivesedirectory.com',

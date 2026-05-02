@@ -119,7 +119,7 @@
                     <input type="tel" id="loginPhone" placeholder="7-digit number" 
                            class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-3 text-white">
                 </div>
-                <button onclick="loginWithPhone()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                <button onclick="loginWithPhoneAPI()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
                     Sign In
                 </button>
             </div>
@@ -227,6 +227,34 @@
                             <div class="text-gray-500 text-xs">Total Earned</div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Directory Search -->
+                <div class="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-600">
+                    <h3 class="text-lg font-bold text-gray-300 mb-2">
+                        <i class="fas fa-search mr-2"></i>Search Maldives E-Directory
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">Find your friends and family by address and island to auto-fill their details.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Address / Street</label>
+                            <input type="text" id="searchAddress" placeholder="Street address..."
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Island</label>
+                            <input type="text" id="searchIsland" placeholder="Island name..."
+                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                    </div>
+                    <button onclick="searchDirectory()" class="bg-party-secondary text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-500 transition text-sm">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                    <div id="searchResults" class="mt-4 hidden">
+                        <p class="text-gray-400 text-sm mb-2">Select a person to auto-fill the form below:</p>
+                        <div id="searchResultsList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                    </div>
+                    <div id="searchError" class="mt-3 text-red-400 text-sm hidden"></div>
                 </div>
 
                 <!-- Enrollment Form -->
@@ -874,5 +902,93 @@
             }
         }
 
+        // ==================== DIRECTORY SEARCH ====================
+
+        async function searchDirectory() {
+            const address = document.getElementById('searchAddress').value.trim();
+            const island = document.getElementById('searchIsland').value.trim();
+
+            if (!address && !island) {
+                alert('Please enter an address or island to search');
+                return;
+            }
+
+            const searchResults = document.getElementById('searchResults');
+            const searchResultsList = document.getElementById('searchResultsList');
+            const searchError = document.getElementById('searchError');
+
+            searchResults.classList.add('hidden');
+            searchError.classList.add('hidden');
+            searchError.textContent = '';
+
+            try {
+                const res = await fetch('/api/enroll/lookup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ address, island })
+                });
+
+                const data = await res.json();
+
+                if (!data.success) {
+                    searchError.textContent = data.error || 'Search failed';
+                    searchError.classList.remove('hidden');
+                    return;
+                }
+
+                if (!data.results || data.results.length === 0) {
+                    searchError.textContent = 'No results found. Try different search terms or fill the form manually.';
+                    searchError.classList.remove('hidden');
+                    return;
+                }
+
+                searchResultsList.innerHTML = data.results.map((r, idx) => {
+                    const name = r.name || r.full_name || 'Unknown';
+                    const addr = r.address || r.street || '';
+                    const isl = r.island || r.atoll || '';
+                    const phone = r.phone || r.mobile || r.telephone || '';
+                    return `
+                        <div onclick="selectDirectoryResult(${idx})"
+                             class="cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition"
+                             data-idx="${idx}">
+                            <div class="font-bold text-sm">${escapeHtml(name)}</div>
+                            <div class="text-gray-400 text-xs">${escapeHtml(addr)}${addr && isl ? ', ' : ''}${escapeHtml(isl)}</div>
+                            ${phone ? `<div class="text-gray-500 text-xs">${escapeHtml(phone)}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+                window.directoryResults = data.results;
+                searchResults.classList.remove('hidden');
+
+            } catch (e) {
+                searchError.textContent = 'Error searching directory. Please try again.';
+                searchError.classList.remove('hidden');
+            }
+        }
+
+        function selectDirectoryResult(idx) {
+            const r = window.directoryResults[idx];
+            if (!r) return;
+
+            document.getElementById('enrollName').value = r.name || r.full_name || '';
+            document.getElementById('enrollIsland').value = r.island || r.atoll || '';
+            const phoneVal = (r.phone || r.mobile || r.telephone || '').replace(/\D/g, '');
+            document.getElementById('enrollPhone').value = phoneVal.length >= 7 ? phoneVal.slice(-7) : phoneVal;
+
+            document.querySelectorAll('#searchResultsList > div').forEach(div => {
+                div.classList.remove('border-party-accent', 'bg-party-accent/10');
+            });
+            const selected = document.querySelector(`#searchResultsList div[data-idx="${idx}"]`);
+            if (selected) {
+                selected.classList.add('border-party-accent', 'bg-party-accent/10');
+            }
+
+            alert(`Selected: ${r.name || r.full_name || 'Unknown'}. Please fill in the remaining required fields (NID, Relation) and click Enroll.`);
+        }
+    </script>
 </body>
 </html>
