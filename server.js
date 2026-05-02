@@ -3045,15 +3045,12 @@ app.post('/api/donate', upload.single('slip'), (req, res) => {
     const result = stmt.run(phone || null, nid || null, donationAmount, req.file.filename, remarks || null, createdAt);
     
     // Log the pending donation for admin review
-    db.prepare(`
-      INSERT INTO activity_log (user_id, action, details, timestamp)
-      VALUES (?, ?, ?, ?)
-    `).run(
-      null,
-      'donation_pending',
-      JSON.stringify({ phone, nid, amount: donationAmount, slip: req.file.filename }),
-      createdAt
-    );
+    logActivity('donation_pending', null, null, {
+      phone: phone ? phone.substring(0, 3) + 'xxxx' : null,
+      nid: nid ? nid.substring(0, 2) + 'xxxxx' : null,
+      amount: donationAmount,
+      slip: req.file.filename
+    }, req);
     
     res.json({ success: true, message: 'Donation submitted for verification' });
   } catch (error) {
@@ -3093,15 +3090,7 @@ app.post('/api/admin/proposals/:id/status', adminAuth, (req, res) => {
     stmt.run(status, new Date().toISOString(), proposalId);
     
     // Log the action
-    db.prepare(`
-      INSERT INTO activity_log (user_id, action, details, timestamp)
-      VALUES (?, ?, ?, ?)
-    `).run(
-      null,
-      'proposal_status_change',
-      JSON.stringify({ proposal_id: proposalId, status, feedback }),
-      new Date().toISOString()
-    );
+    logActivity('proposal_status_change', null, proposalId, { status, feedback }, req);
     
     res.json({ success: true, message: `Proposal ${status}` });
   } catch (error) {
@@ -3115,7 +3104,7 @@ app.post('/api/admin/proposals/:id/status', adminAuth, (req, res) => {
 app.get('/api/admin/proposals', adminAuth, (req, res) => {
   try {
     const proposals = db.prepare(`
-      SELECT p.*, 
+      SELECT p.*,
              (SELECT COUNT(*) FROM votes WHERE proposal_id = p.id) as vote_count
       FROM proposals p
       ORDER BY p.created_at DESC
@@ -3123,6 +3112,42 @@ app.get('/api/admin/proposals', adminAuth, (req, res) => {
     res.json({ proposals, success: true });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch proposals', success: false });
+  }
+});
+
+// PUT /api/admin/proposals/:id - Edit a proposal (admin only)
+app.put('/api/admin/proposals/:id', adminAuth, (req, res) => {
+  const proposalId = parseInt(req.params.id);
+  const { title, description, category } = req.body;
+
+  if (!title || title.trim().length < 5) {
+    return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
+  }
+
+  if (!description || description.trim().length < 20) {
+    return res.status(400).json({ error: 'Description must be at least 20 characters', success: false });
+  }
+
+  try {
+    const existing = db.prepare('SELECT id FROM proposals WHERE id = ?').get(proposalId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Proposal not found', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE proposals
+      SET title = ?, description = ?, category = ?, updated_at = ?
+      WHERE id = ?
+    `).run(title.trim().substring(0, 200), description.trim().substring(0, 2000), category || 'general', now, proposalId);
+
+    // Log the action
+    logActivity('proposal_edited', null, proposalId, { title: title.trim() }, req);
+
+    res.json({ success: true, message: 'Proposal updated' });
+  } catch (error) {
+    console.error('Proposal edit error:', error);
+    res.status(500).json({ error: 'Could not update proposal', success: false });
   }
 });
 
@@ -3295,6 +3320,14 @@ migrations.forEach(m => {
     // Column exists or other error - ignore
   }
 });
+
+// Add updated_at to proposals if missing
+try {
+  db.exec(`ALTER TABLE proposals ADD COLUMN updated_at TEXT`);
+  console.log(`✓ Migration: Added updated_at to proposals`);
+} catch (e) {
+  // Column exists or other error - ignore
+}
 
 // ==================== START SERVER ====================
 let version = 'unknown';

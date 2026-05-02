@@ -333,6 +333,53 @@
         </div>
     </div>
 
+    <!-- Edit Proposal Modal -->
+    <div id="editProposalModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+        <div class="bg-party-card p-6 rounded-xl border border-gray-700 max-w-lg w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-party-accent">Edit Proposal</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editProposalForm" class="space-y-4">
+                <input type="hidden" id="editProposalId">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Title</label>
+                    <input type="text" id="editProposalTitle" required maxlength="200"
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Category</label>
+                    <select id="editProposalCategory"
+                            class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                        <option value="general">General</option>
+                        <option value="infrastructure">Infrastructure</option>
+                        <option value="environment">Environment</option>
+                        <option value="education">Education</option>
+                        <option value="economy">Economy</option>
+                        <option value="health">Health</option>
+                        <option value="governance">Governance</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <textarea id="editProposalDescription" required rows="5" maxlength="2000"
+                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
+                        <i class="fas fa-save mr-2"></i>Save Changes
+                    </button>
+                    <button type="button" onclick="closeEditModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+            <p id="editProposalError" class="text-red-400 text-sm mt-4 hidden"></p>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('3dparty_admin_token');
         let allSignups = [];
@@ -936,26 +983,29 @@
         async function loadProposalsAdmin() {
             const container = document.getElementById('proposalsAdminList');
             container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-            
+
             try {
                 const res = await fetch('/api/admin/proposals', {
-                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                    headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 const data = await res.json();
-                
+
                 if (data.success && data.proposals) {
                     container.innerHTML = data.proposals.map(p => `
                         <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
                             <div class="flex justify-between items-start mb-2">
                                 <div>
-                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${p.title}</h3>
-                                    <span class="text-xs text-gray-400">${p.category} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
+                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${escapeHtml(p.title)}</h3>
+                                    <span class="text-xs text-gray-400">${escapeHtml(p.category)} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
                                 </div>
                                 <span class="text-xs px-2 py-1 rounded ${getStatusColor(p.status)}">${p.status}</span>
                             </div>
-                            <p class="text-gray-400 text-sm mb-3">${p.description.substring(0, 150)}${p.description.length > 150 ? '...' : ''}</p>
-                            ${p.status === 'active' ? `
-                                <div class="flex gap-2">
+                            <p class="text-gray-400 text-sm mb-3">${escapeHtml(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="openEditProposal(${p.id}, '${encodeURIComponent(p.title)}', '${encodeURIComponent(p.description)}', '${encodeURIComponent(p.category)}')" class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded text-sm hover:bg-blue-500/30">
+                                    <i class="fas fa-edit mr-1"></i>Edit
+                                </button>
+                                ${p.status === 'active' ? `
                                     <button onclick="updateProposalStatus(${p.id}, 'approved')" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
                                         <i class="fas fa-check mr-1"></i>Approve
                                     </button>
@@ -965,12 +1015,12 @@
                                     <button onclick="updateProposalStatus(${p.id}, 'postponed')" class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded text-sm hover:bg-yellow-500/30">
                                         <i class="fas fa-pause mr-1"></i>Postpone
                                     </button>
-                                </div>
-                            ` : `
-                                <div class="text-sm text-gray-500">
-                                    ${p.status === 'approved' ? '✓ Approved' : p.status === 'rejected' ? '✗ Rejected' : '⏸ Postponed'}
-                                </div>
-                            `}
+                                ` : `
+                                    <button onclick="updateProposalStatus(${p.id}, 'active')" class="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-600">
+                                        <i class="fas fa-undo mr-1"></i>Re-open
+                                    </button>
+                                `}
+                            </div>
                         </div>
                     `).join('');
                 } else {
@@ -990,20 +1040,26 @@
             }
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         async function updateProposalStatus(proposalId, status) {
             const feedback = status === 'rejected' ? prompt('Reason for rejection:') : '';
-            
+
             try {
                 const res = await fetch(`/api/admin/proposals/${proposalId}/status`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken')
+                        'Authorization': 'Bearer ' + authToken
                     },
                     body: JSON.stringify({ status, feedback })
                 });
                 const data = await res.json();
-                
+
                 if (data.success) {
                     alert('Proposal ' + status + '!');
                     loadProposalsAdmin();
@@ -1015,6 +1071,63 @@
             }
         }
 
+        // ==================== PROPOSAL EDITING ====================
+        function openEditProposal(id, title, description, category) {
+            document.getElementById('editProposalId').value = id;
+            document.getElementById('editProposalTitle').value = decodeURIComponent(title);
+            document.getElementById('editProposalDescription').value = decodeURIComponent(description);
+            document.getElementById('editProposalCategory').value = decodeURIComponent(category);
+            document.getElementById('editProposalError').classList.add('hidden');
+            document.getElementById('editProposalModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editProposalModal').classList.add('hidden');
+        }
+
+        document.getElementById('editProposalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editProposalId').value;
+            const title = document.getElementById('editProposalTitle').value.trim();
+            const description = document.getElementById('editProposalDescription').value.trim();
+            const category = document.getElementById('editProposalCategory').value;
+
+            if (title.length < 5) {
+                document.getElementById('editProposalError').textContent = 'Title must be at least 5 characters';
+                document.getElementById('editProposalError').classList.remove('hidden');
+                return;
+            }
+
+            if (description.length < 20) {
+                document.getElementById('editProposalError').textContent = 'Description must be at least 20 characters';
+                document.getElementById('editProposalError').classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/proposals/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ title, description, category })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    closeEditModal();
+                    loadProposalsAdmin();
+                } else {
+                    document.getElementById('editProposalError').textContent = data.error || 'Failed to save';
+                    document.getElementById('editProposalError').classList.remove('hidden');
+                }
+            } catch (err) {
+                document.getElementById('editProposalError').textContent = 'Network error';
+                document.getElementById('editProposalError').classList.remove('hidden');
+            }
+        });
+
         // ==================== DONATION VERIFICATION ====================
         async function loadPendingDonations() {
             const container = document.getElementById('donationsList');
@@ -1022,7 +1135,7 @@
             
             try {
                 const res = await fetch('/api/admin/donations/pending', {
-                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                    headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 const data = await res.json();
                 
@@ -1064,7 +1177,7 @@
             try {
                 const res = await fetch(`/api/admin/donations/${donationId}/verify`, {
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken') }
+                    headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 const data = await res.json();
                 
@@ -1089,7 +1202,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + sessionStorage.getItem('adminToken')
+                        'Authorization': 'Bearer ' + authToken
                     },
                     body: JSON.stringify({ reason })
                 });
