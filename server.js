@@ -753,6 +753,11 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
 
       try {
         const parsed = JSON.parse(data);
+        if (parsed.results && parsed.results.length > 0) {
+          const first = parsed.results[0];
+          console.log('[Directory Search] sample result keys:', Object.keys(first));
+          console.log('[Directory Search] sample result:', JSON.stringify(first).substring(0, 800));
+        }
         res.json({
           success: true,
           results: parsed.results || [],
