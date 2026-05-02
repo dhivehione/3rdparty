@@ -676,20 +676,21 @@ function checkEnrollRateLimit(ip) {
 }
 
 // POST /api/enroll/lookup - Search external directory for members
+// Proxies to external directory API: GET /api/public/search/
 // Used for enrolling friends and family - requires auth, rate limited
 app.post('/api/enroll/lookup', userAuth, (req, res) => {
   const ip = getClientIp(req);
   const rateCheck = checkEnrollRateLimit(ip);
-  
+
   if (!rateCheck.allowed) {
-    return res.status(429).json({ 
+    return res.status(429).json({
       error: 'Rate limit exceeded. Try again later.',
       retry_after_seconds: Math.ceil(rateCheck.resetIn / 1000),
       remaining_daily: 0,
-      success: false 
+      success: false
     });
   }
-  
+
   const { query, name, island, address } = req.body;
 
   if (!query && !name && !island && !address) {
@@ -699,56 +700,67 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     });
   }
 
-  // Helper: add wildcard for prefix matching unless user already supplied one
+  // Wildcard helper: allow * anywhere in the value.
+  // If user supplies no wildcard, append * for prefix matching.
   const w = (val) => {
     if (!val) return '';
     if (val.includes('*')) return val;
     return val + '*';
   };
 
-  // Build search payload for external directory service
-  const searchPayload = JSON.stringify({
-    query: w(query),
-    name: w(name),
-    island: w(island),
-    address: w(address),
-    page_size: 10
-  });
-  
   const apiKey = (process.env.DIRECTORY_API_KEY || '').trim();
   const apiHost = (process.env.DIRECTORY_API_HOST || '').trim();
   if (!apiKey || !apiHost) {
     return res.status(503).json({ error: 'Directory service not configured', success: false });
   }
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(searchPayload),
-    'Authorization': `Api-Key ${apiKey}`
-  };
-  
+
+  // Build query params for external directory service (GET /api/public/search/)
+  const queryParams = new URLSearchParams();
+  queryParams.set('limit', '10');
+
+  if (query) {
+    queryParams.set('q', w(query));
+  }
+  if (name) {
+    queryParams.set('name', w(name));
+  }
+  if (island) {
+    queryParams.set('island', w(island));
+  }
+  // The public search API has no dedicated address param; fold address into the general q param.
+  if (address) {
+    const existingQ = queryParams.get('q') || '';
+    const addrWild = w(address);
+    queryParams.set('q', existingQ ? `${existingQ} ${addrWild}` : addrWild);
+  }
+
+  const path = `/api/public/search/?${queryParams.toString()}`;
+
   const options = {
     hostname: apiHost,
-    path: '/api/mydir/advanced_search/',
-    method: 'POST',
-    headers: headers,
+    path: path,
+    method: 'GET',
+    headers: {
+      'X-API-Key': apiKey,
+      'Accept': 'application/json'
+    },
     timeout: 10000
   };
-  
+
   const proxyReq = https.request(options, (proxyRes) => {
     let data = '';
-    
+
     proxyRes.on('data', (chunk) => {
       data += chunk;
     });
-    
+
     proxyRes.on('end', () => {
       try {
         const parsed = JSON.parse(data);
         res.json({
           success: true,
           results: parsed.results || [],
-          total_count: parsed.total_count || 0,
+          total_count: parsed.count || 0,
           rate_limit: {
             remaining_daily: rateCheck.remaining,
             reset_in_seconds: rateCheck.resetIn > 0 ? Math.ceil(rateCheck.resetIn / 1000) : null
@@ -759,17 +771,16 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
       }
     });
   });
-  
+
   proxyReq.on('error', (e) => {
     res.status(502).json({ error: 'Directory service unavailable: ' + e.message, success: false });
   });
-  
+
   proxyReq.on('timeout', () => {
     proxyReq.destroy();
     res.status(504).json({ error: 'Directory service timeout', success: false });
   });
-  
-  proxyReq.write(searchPayload);
+
   proxyReq.end();
 });
 
