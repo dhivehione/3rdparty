@@ -3,6 +3,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -669,6 +670,11 @@ if (demoWallPosts.cnt === 0) {
   console.log('✓ Demo wall posts added');
 }
 
+// ==================== SECURITY HELPERS ====================
+function sanitizeHTML(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+}
+
 // ==================== MIDDLEWARE ====================
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -679,9 +685,17 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('X-Frame-Options', 'DENY');
+  res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -890,11 +904,20 @@ app.get('/api/analytics/active', (req, res) => {
 });
 
 // ==================== AUTH MIDDLEWARE ====================
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CHANGE_ME_via_CAPROVER_ENV';
+if (!process.env.ADMIN_PASSWORD) {
+  console.error('FATAL: ADMIN_PASSWORD environment variable must be set');
+  process.exit(1);
+}
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const adminSessions = new Map();
 
 function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Nice try, insurance agent. Wrong password.' });
+  }
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  if (!adminSessions.has(token)) {
     return res.status(401).json({ error: 'Nice try, insurance agent. Wrong password.' });
   }
   next();
@@ -904,7 +927,7 @@ function adminAuth(req, res, next) {
 // GET /api/wall - Get all posts
 app.get('/api/wall', (req, res) => {
   try {
-    const posts = db.prepare(`SELECT * FROM wall_posts WHERE is_approved = 1 ORDER BY timestamp DESC LIMIT ${getSettings().wall_posts_limit}`).all();
+    const posts = db.prepare(`SELECT * FROM wall_posts WHERE is_approved = 1 ORDER BY timestamp DESC LIMIT ?`).all(getSettings().wall_posts_limit);
     const count = db.prepare('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1').get();
     res.json({ posts, total: count.total, success: true });
   } catch (error) {
@@ -981,10 +1004,10 @@ app.post('/api/proposals', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
-      title.trim().substring(0, settings.proposal_title_max_length),
-      description.trim().substring(0, settings.proposal_description_max_length),
+      sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
+      sanitizeHTML(description.trim().substring(0, settings.proposal_description_max_length)),
       category || 'general',
-      nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous',
+      sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
       endsAt
     );
@@ -1157,11 +1180,11 @@ app.post('/api/ranked-proposals', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
-      title.trim().substring(0, settings.proposal_title_max_length),
-      description.trim().substring(0, settings.proposal_description_max_length),
+      sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
+      sanitizeHTML(description.trim().substring(0, settings.proposal_description_max_length)),
       category || 'election',
-      JSON.stringify(options.map(o => o.trim()).filter(o => o)),
-      nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous',
+      JSON.stringify(options.map(o => sanitizeHTML(o.trim())).filter(o => o)),
+      sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
       endsAt
     );
@@ -1360,7 +1383,7 @@ app.get('/api/mvlaws/search', (req, res) => {
       return `(${conditions.join(matchType === 'all' ? ' AND ' : ' OR ')})`;
     };
     
-    const keywordParams = keywords.map(k => `%${k}%`);
+    const keywordParams = keywords.map(k => `%${k.replace(/[%_]/g, '\\$&')}%`);
     
     let lawSql = `SELECT id, law_name, category_name, created_at, 'law' as type FROM laws WHERE 1=1`;
     const lawParams = [];
@@ -1777,8 +1800,10 @@ app.post('/api/wall', (req, res) => {
   
   try {
     const timestamp = new Date().toISOString();
+    const cleanedNickname = sanitizeHTML(nickname.trim().substring(0, getSettings().nickname_max_length));
+    const cleanedMessage = sanitizeHTML(message.trim().substring(0, getSettings().wall_post_max_length));
     const stmt = db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)');
-    const result = stmt.run(nickname.trim().substring(0, getSettings().nickname_max_length), message.trim().substring(0, getSettings().wall_post_max_length), timestamp);
+    const result = stmt.run(cleanedNickname, cleanedMessage, timestamp);
     
     res.status(201).json({ 
       message: 'Posted! Thanks for your support.',
@@ -1933,9 +1958,9 @@ app.post('/api/signup', (req, res) => {
        timestamp
      );
     
-     // Auto-login after signup
-     const authToken = Buffer.from(`${cleanedPhone}:${nid}:${Date.now()}`).toString('base64');
-     db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
+      // Auto-login after signup
+      const authToken = crypto.randomBytes(32).toString('hex');
+      db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
     
     // Check for pending referrals
     const pendingReferral = db.prepare(`
@@ -1987,7 +2012,7 @@ app.post('/api/signup', (req, res) => {
     const progressMsg = `[size=${memberCount}] [progress=${percentComplete}%]`;
     
     // Auto-post to welcome thread
-    const displayName = name || username || 'A new member';
+    const displayName = sanitizeHTML(name || username || 'A new member');
     const welcomeMsg = `🌴 ${displayName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`;
     try {
       db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
@@ -2199,9 +2224,11 @@ app.delete('/api/signups', adminAuth, (req, res) => {
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    adminSessions.set(sessionToken, { createdAt: Date.now() });
     res.json({ 
       success: true, 
-      token: ADMIN_PASSWORD,
+      token: sessionToken,
       message: 'Welcome back. The insurance agents are still locked out.'
     });
   } else {
@@ -2268,7 +2295,7 @@ app.post('/api/user/login', (req, res) => {
   
   try {
     // Generate auth token
-    const authToken = Buffer.from(`${user.phone}:${user.nid}:${Date.now()}`).toString('base64');
+    const authToken = crypto.randomBytes(32).toString('hex');
     const lastLogin = new Date().toISOString();
     db.prepare('UPDATE signups SET auth_token = ?, last_login = ? WHERE id = ?').run(authToken, lastLogin, user.id);
     
@@ -3858,6 +3885,5 @@ app.listen(PORT, () => {
   console.log(`\n🏷️  Version: ${version}`);
   console.log(`🎉 3d Party running at http://localhost:${PORT}`);
   console.log(`📊 Admin: http://localhost:${PORT}/admin`);
-  console.log(`🔑 Password: ${ADMIN_PASSWORD}`);
   console.log(`💡 "No, we are not doing 3rd party insurance."\n`);
 });
