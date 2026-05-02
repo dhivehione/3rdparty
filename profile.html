@@ -479,6 +479,7 @@
                     authToken = data.token;
                     localStorage.setItem('authToken', authToken);
                     localStorage.setItem('userPhone', data.user.phone);
+                    localStorage.setItem('3dparty_last_login', new Date().toISOString());
                     showProfile();
                 } else {
                     alert(data.error || 'Login failed');
@@ -500,6 +501,7 @@
             authToken = null;
             localStorage.removeItem('authToken');
             localStorage.removeItem('userPhone');
+            localStorage.setItem('3dparty_last_login', new Date().toISOString());
             document.getElementById('loginSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
             resetLoginSection();

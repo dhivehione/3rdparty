@@ -140,6 +140,14 @@ signupMigrations.forEach(m => {
   }
 });
 
+// Migration: Add last_login column for tracking user visits
+try {
+  db.exec(`ALTER TABLE signups ADD COLUMN last_login TEXT`);
+  console.log(`✓ Migration: Added last_login to signups`);
+} catch (e) {
+  // Column already exists or other error - ignore
+}
+
 // Fix signups table schema - remove CHECK constraint if it exists
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS signups_new (
@@ -1778,6 +1786,16 @@ app.post('/api/signup', (req, res) => {
       has_username: !!username
     }, req);
     
+    // Auto-post welcome message to the wall
+    const displayName = name || username || 'A new member';
+    const welcomeMsg = `${displayName} joined the movement! Welcome, friend! 🌍`;
+    try {
+      db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)')
+        .run('3d Party System', welcomeMsg, timestamp);
+    } catch (e) {
+      console.log('Could not post welcome to wall:', e.message);
+    }
+    
     // Get the user data to return
     const user = db.prepare('SELECT * FROM signups WHERE id = ?').get(result.lastInsertRowid);
     
@@ -1852,6 +1870,35 @@ app.get('/api/signups/count', (req, res) => {
     res.json({ total: count.total, success: true });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch count', success: false });
+  }
+});
+
+// GET /api/stats/new-joins - Get number of new members since last visit
+// Query param: last_login (ISO timestamp)
+app.get('/api/stats/new-joins', (req, res) => {
+  const { last_login } = req.query;
+  
+  if (!last_login) {
+    return res.status(400).json({ error: 'last_login parameter required', success: false });
+  }
+  
+  try {
+    const sinceDate = last_login.replace(/'/g, "''");
+    const newJoins = db.prepare(`
+      SELECT COUNT(*) as total FROM signups 
+      WHERE timestamp > ?
+    `).get(sinceDate);
+    
+    const totalMembers = db.prepare('SELECT COUNT(*) as total FROM signups').get();
+    
+    res.json({
+      new_joins: newJoins.total,
+      total_members: totalMembers.total,
+      success: true
+    });
+  } catch (error) {
+    console.error('New joins stats error:', error);
+    res.status(500).json({ error: 'Could not fetch stats', success: false });
   }
 });
 
@@ -1976,7 +2023,8 @@ app.post('/api/user/login', (req, res) => {
   try {
     // Generate auth token
     const authToken = Buffer.from(`${user.phone}:${user.nid}:${Date.now()}`).toString('base64');
-    db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, user.id);
+    const lastLogin = new Date().toISOString();
+    db.prepare('UPDATE signups SET auth_token = ?, last_login = ? WHERE id = ?').run(authToken, lastLogin, user.id);
     
     res.json({ 
       success: true, 

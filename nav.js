@@ -52,6 +52,9 @@ function createNavigation() {
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
                 </span>
+                <span id="new-joins-notification" class="text-green-400 text-xs ml-2 hidden">
+                    <i class="fas fa-user-plus mr-1"></i><span></span>
+                </span>
             </div>
         </div>
     `;
@@ -130,6 +133,11 @@ if (document.readyState === 'loading') {
         sessionStorage.setItem('visitor_session', sessionId);
     }
     
+    // Initialize first-visit timestamp for non-logged-in users
+    if (!localStorage.getItem('3dparty_last_login')) {
+        localStorage.setItem('3dparty_last_login', new Date().toISOString());
+    }
+    
     function updateActiveCount() {
         fetch('/api/analytics/active')
             .then(r => r.json())
@@ -155,7 +163,27 @@ if (document.readyState === 'loading') {
         }).catch(() => {});
     }
     
+    function checkNewJoins() {
+        const lastLogin = localStorage.getItem('3dparty_last_login');
+        if (!lastLogin) return;
+        
+        fetch(`/api/stats/new-joins?last_login=${encodeURIComponent(lastLogin)}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.success && d.new_joins > 0) {
+                    const el = document.getElementById('new-joins-notification');
+                    const span = el?.querySelector('span');
+                    if (el && span) {
+                        span.textContent = `${d.new_joins} joined since your last visit`;
+                        el.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+    
     heartbeat();
     setInterval(heartbeat, 30000);
     setTimeout(updateActiveCount, 2000);
+    setTimeout(checkNewJoins, 3000);
 })();
