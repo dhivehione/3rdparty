@@ -51,6 +51,7 @@ function createNavigation() {
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
                 <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
+                <a href="/profile" id="profile-nav-link" class="hover:text-party-accent transition ${currentPage === 'profile' ? 'text-party-accent font-bold' : 'text-gray-300'}" style="display:none"><i class="fas fa-user mr-1"></i>Profile</a>
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
                 </span>
@@ -120,12 +121,28 @@ function injectNavigation() {
     }
 }
 
+function updateProfileLink() {
+    const link = document.getElementById('profile-nav-link');
+    if (link) {
+        link.style.display = localStorage.getItem('authToken') ? 'inline' : 'none';
+    }
+}
+
 // Auto-inject navigation when script loads
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectNavigation);
+    document.addEventListener('DOMContentLoaded', () => {
+        injectNavigation();
+        updateProfileLink();
+    });
 } else {
     injectNavigation();
+    updateProfileLink();
 }
+
+// Listen for auth changes from other tabs/windows
+window.addEventListener('storage', (e) => {
+    if (e.key === 'authToken') updateProfileLink();
+});
 
 // Visitor tracking
 (function() {

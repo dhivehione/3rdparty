@@ -161,7 +161,30 @@
                 <!-- View Details -->
                 <div id="userDetails" class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 </div>
-                <div class="mt-4 pt-4 border-t border-gray-700 text-right">
+                <div class="mt-4 pt-4 border-t border-gray-700 flex justify-between items-center">
+                    <div>
+                        <button onclick="togglePasswordForm()" class="text-gray-400 hover:text-party-accent text-sm">
+                            <i class="fas fa-key mr-1"></i>Update Password
+                        </button>
+                        <div id="passwordForm" class="hidden mt-3 space-y-3 bg-gray-800/50 rounded-lg p-4">
+                            <div>
+                                <label class="block text-gray-400 text-xs mb-1">Current Password</label>
+                                <input type="password" id="currentPassword" class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" placeholder="Your phone number or current password">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-xs mb-1">New Password</label>
+                                <input type="password" id="newPassword" class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" placeholder="At least 4 characters">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-xs mb-1">Confirm New Password</label>
+                                <input type="password" id="confirmPassword" class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm" placeholder="Repeat new password">
+                            </div>
+                            <div id="passwordMessage" class="text-sm hidden"></div>
+                            <button onclick="changePassword()" class="px-4 py-2 bg-party-accent text-black font-bold rounded-lg hover:bg-yellow-400 text-sm">
+                                <i class="fas fa-save mr-1"></i>Update Password
+                            </button>
+                        </div>
+                    </div>
                     <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">
                         <i class="fas fa-sign-out-alt mr-1"></i>Logout
                     </button>
@@ -197,6 +220,21 @@
                     Law-level votes don't add to merit score because voting on 1 law = voting on ~100 clauses.<br>
                     Each vote counts as one action regardless of scope.
                 </p>
+            </div>
+
+            <!-- My Proposals Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-file-alt mr-2"></i>My Proposals
+                </h2>
+                <p class="text-gray-400 text-sm mb-4">Proposals and elections you've created.</p>
+                <div id="myProposalsContainer" class="space-y-3">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+                <div id="noMyProposals" class="hidden text-center py-6 text-gray-500">
+                    <p>You haven't created any proposals yet.</p>
+                    <a href="/proposals" class="text-party-accent hover:underline text-sm">Create one →</a>
+                </div>
             </div>
             
             <!-- Enroll Family & Friends Section -->
@@ -429,6 +467,19 @@
                 </div>
             </div>
 
+            <!-- Activity Log Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-history mr-2"></i>Activity Log
+                </h2>
+                <div id="activityLogContainer" class="space-y-2">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+                <div id="noActivityLog" class="hidden text-center py-6 text-gray-500">
+                    <p>No activity yet.</p>
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -481,6 +532,7 @@
                     localStorage.setItem('authToken', authToken);
                     localStorage.setItem('userPhone', data.user.phone);
                     localStorage.setItem('3dparty_last_login', new Date().toISOString());
+                    if (typeof updateProfileLink === 'function') updateProfileLink();
                     showProfile();
                 } else {
                     alert(data.error || 'Login failed');
@@ -503,6 +555,7 @@
             localStorage.removeItem('authToken');
             localStorage.removeItem('userPhone');
             localStorage.setItem('3dparty_last_login', new Date().toISOString());
+            if (typeof updateProfileLink === 'function') updateProfileLink();
             document.getElementById('loginSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
             resetLoginSection();
@@ -568,6 +621,10 @@
                     <div>
                         <div class="text-gray-500 text-xs">Contribution</div>
                         <div class="font-bold capitalize">${Array.isArray(user.contribution_type) ? user.contribution_type.join(', ') : 'Supporter'}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 text-xs">Last Login</div>
+                        <div class="font-bold text-sm">${user.last_login ? new Date(user.last_login).toLocaleString() : '—'}</div>
                     </div>
                 `;
                 document.getElementById('userDetails').innerHTML = detailsHtml;
@@ -635,6 +692,12 @@
                 // Load referrals
                 loadReferrals();
 
+                // Load my proposals
+                loadMyProposals();
+
+                // Load activity log
+                loadActivityLog();
+
             } catch (e) {
                 console.error(e);
                 logout();
@@ -680,6 +743,140 @@
         // Check auth on load
         if (authToken) {
             showProfile();
+        }
+
+        // ==================== PASSWORD FUNCTIONS ====================
+
+        function togglePasswordForm() {
+            const form = document.getElementById('passwordForm');
+            form.classList.toggle('hidden');
+            document.getElementById('passwordMessage').classList.add('hidden');
+        }
+
+        async function changePassword() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            const msg = document.getElementById('passwordMessage');
+
+            if (!current) { msg.textContent = 'Please enter your current password'; msg.className = 'text-sm text-red-400'; msg.classList.remove('hidden'); return; }
+            if (newPass.length < 4) { msg.textContent = 'New password must be at least 4 characters'; msg.className = 'text-sm text-red-400'; msg.classList.remove('hidden'); return; }
+            if (newPass !== confirm) { msg.textContent = 'Passwords do not match'; msg.className = 'text-sm text-red-400'; msg.classList.remove('hidden'); return; }
+
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ current_password: current, new_password: newPass })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msg.textContent = 'Password updated successfully!';
+                    msg.className = 'text-sm text-green-400';
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    msg.textContent = data.error || 'Failed to update password';
+                    msg.className = 'text-sm text-red-400';
+                }
+                msg.classList.remove('hidden');
+            } catch (e) {
+                msg.textContent = 'Error updating password';
+                msg.className = 'text-sm text-red-400';
+                msg.classList.remove('hidden');
+            }
+        }
+
+        // ==================== MY PROPOSALS ====================
+
+        async function loadMyProposals() {
+            if (!authToken) return;
+            try {
+                const res = await fetch('/api/user/proposals', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                const container = document.getElementById('myProposalsContainer');
+                const noData = document.getElementById('noMyProposals');
+
+                if (!data.success) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Could not load proposals.</p>';
+                    return;
+                }
+
+                const all = [...(data.proposals || []), ...(data.ranked_proposals || [])];
+                if (all.length === 0) {
+                    container.innerHTML = '';
+                    noData.classList.remove('hidden');
+                    return;
+                }
+
+                noData.classList.add('hidden');
+                container.innerHTML = all.map(p => {
+                    const type = data.proposals.includes(p) ? 'Yes/No' : 'Ranked';
+                    const statusColor = p.status === 'active' ? 'text-green-400' : 'text-gray-400';
+                    return `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
+                            <div>
+                                <span class="font-bold text-sm">${escapeHtml(p.title)}</span>
+                                <span class="text-gray-500 text-xs ml-2">[${type}]</span>
+                                <span class="text-gray-500 text-xs ml-2">${escapeHtml(p.category || 'general')}</span>
+                            </div>
+                            <span class="px-2 py-1 rounded text-xs font-bold ${statusColor}">${p.status}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading proposals:', e);
+                document.getElementById('myProposalsContainer').innerHTML = '<p class="text-gray-500 text-sm">Error loading proposals.</p>';
+            }
+        }
+
+        // ==================== ACTIVITY LOG ====================
+
+        async function loadActivityLog() {
+            if (!authToken) return;
+            try {
+                const res = await fetch('/api/user/activity-log', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                const container = document.getElementById('activityLogContainer');
+                const noData = document.getElementById('noActivityLog');
+
+                if (!data.success || !data.logs || data.logs.length === 0) {
+                    container.innerHTML = '';
+                    noData.classList.remove('hidden');
+                    return;
+                }
+
+                noData.classList.add('hidden');
+                const actionLabels = {
+                    'user_login': 'Logged in',
+                    'user_logout': 'Logged out',
+                    'password_change': 'Changed password',
+                    'profile_update': 'Updated profile',
+                    'proposal_created': 'Created proposal'
+                };
+
+                container.innerHTML = data.logs.map(log => {
+                    const label = actionLabels[log.action_type] || log.action_type.replace(/_/g, ' ');
+                    const details = log.details ? (() => { try { return JSON.parse(log.details); } catch(e) { return log.details; } })() : null;
+                    return `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg px-4 py-2">
+                            <div>
+                                <span class="text-sm text-gray-300 capitalize">${label}</span>
+                                ${details ? `<span class="text-gray-500 text-xs ml-2">${typeof details === 'object' ? JSON.stringify(details) : details}</span>` : ''}
+                            </div>
+                            <span class="text-gray-500 text-xs">${new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading activity log:', e);
+                document.getElementById('activityLogContainer').innerHTML = '<p class="text-gray-500 text-sm">Error loading activity log.</p>';
+            }
         }
 
         // ==================== LEADERSHIP FUNCTIONS ====================

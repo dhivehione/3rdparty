@@ -29,7 +29,8 @@ const DEFAULT_SETTINGS = {
   merit_donation: 100,
   donation_bonus_per_100: 5,
   max_upload_bytes: 5 * 1024 * 1024,
-  target_members: 13000
+  target_members: 13000,
+  target_treasury: 13000
 };
 
 function getSettings() {
@@ -692,6 +693,24 @@ if (demoWallPosts.cnt === 0) {
   console.log('✓ Demo wall posts added');
 }
 
+// Migration: Add password_hash to signups for password-based login
+try {
+  db.exec('ALTER TABLE signups ADD COLUMN password_hash TEXT');
+  console.log('✓ Migration: Added password_hash to signups');
+} catch (e) {}
+
+// Migration: Add created_by_user_id to proposals for tracking who created what
+try {
+  db.exec('ALTER TABLE proposals ADD COLUMN created_by_user_id INTEGER REFERENCES signups(id)');
+  console.log('✓ Migration: Added created_by_user_id to proposals');
+} catch (e) {}
+
+// Migration: Add created_by_user_id to ranked_proposals
+try {
+  db.exec('ALTER TABLE ranked_proposals ADD COLUMN created_by_user_id INTEGER REFERENCES signups(id)');
+  console.log('✓ Migration: Added created_by_user_id to ranked_proposals');
+} catch (e) {}
+
 // ==================== SECURITY HELPERS ====================
 function sanitizeHTML(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
@@ -1012,6 +1031,17 @@ app.get('/api/proposals', (req, res) => {
 app.post('/api/proposals', (req, res) => {
   const { title, description, category, nickname } = req.body;
   
+  // Check if user is authenticated (for tracking who created it)
+  let userId = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    try {
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+      if (user) userId = user.id;
+    } catch (e) {}
+  }
+  
   if (!title || title.trim().length < 5) {
     return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
   }
@@ -1026,8 +1056,8 @@ app.post('/api/proposals', (req, res) => {
     const endsAt = new Date(Date.now() + settings.proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
     
     const stmt = db.prepare(`
-      INSERT INTO proposals (title, description, category, created_by_nickname, created_at, ends_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO proposals (title, description, category, created_by_nickname, created_at, ends_at, created_by_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
@@ -1035,9 +1065,11 @@ app.post('/api/proposals', (req, res) => {
       category || 'general',
       sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
-      endsAt
+      endsAt,
+      userId
     );
     
+    if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
     res.status(201).json({ 
       message: 'Proposal created! Members can now vote.',
       success: true,
@@ -1188,6 +1220,17 @@ function calculateRankedResults(proposalId, options) {
 app.post('/api/ranked-proposals', (req, res) => {
   const { title, description, category, options, nickname } = req.body;
   
+  // Check if user is authenticated (for tracking who created it)
+  let userId = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    try {
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+      if (user) userId = user.id;
+    } catch (e) {}
+  }
+  
   if (!title || title.trim().length < 5) {
     return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
   }
@@ -1202,8 +1245,8 @@ app.post('/api/ranked-proposals', (req, res) => {
     const endsAt = new Date(Date.now() + settings.proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
     
     const stmt = db.prepare(`
-      INSERT INTO ranked_proposals (title, description, category, options, created_by_nickname, created_at, ends_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO ranked_proposals (title, description, category, options, created_by_nickname, created_at, ends_at, created_by_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
@@ -1212,8 +1255,11 @@ app.post('/api/ranked-proposals', (req, res) => {
       JSON.stringify(options.map(o => sanitizeHTML(o.trim())).filter(o => o)),
       sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
-      endsAt
+      endsAt,
+      userId
     );
+
+    if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
     
     res.status(201).json({ message: 'Ranked choice proposal created!', success: true, id: result.lastInsertRowid });
   } catch (error) {
@@ -2523,18 +2569,31 @@ app.post('/api/user/login', (req, res) => {
   
   // Determine login method
   let user;
-  
-   if (username && password) {
-     // Username + password login
-     // username can be: NID or custom username
-     // password is: phone number (non-digits removed for comparison)
-     const cleanedPassword = password.replace(/\D/g, '');
-     user = db.prepare(`
-       SELECT * FROM signups 
-       WHERE (username = ? OR nid = ?) 
-       AND phone = ? AND is_verified = 1
-     `).get(username.trim(), username.trim(), cleanedPassword);
-   } else if (phone && nid) {
+  let loginMethod = '';
+
+  if (username && password) {
+    // Username + password login
+    // username can be: NID or custom username
+    // First try password_hash-based login
+    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    user = db.prepare(`
+      SELECT * FROM signups 
+      WHERE (username = ? OR nid = ?) 
+      AND password_hash = ? AND is_verified = 1
+    `).get(username.trim(), username.trim(), passwordHash);
+    loginMethod = 'password_hash';
+
+    // Fallback: if no password_hash set, try phone-as-password (legacy)
+    if (!user) {
+      const cleanedPassword = password.replace(/\D/g, '');
+      user = db.prepare(`
+        SELECT * FROM signups 
+        WHERE (username = ? OR nid = ?) 
+        AND phone = ? AND is_verified = 1
+      `).get(username.trim(), username.trim(), cleanedPassword);
+      loginMethod = 'legacy_phone';
+    }
+  } else if (phone && nid) {
      // Phone + NID login (original method)
      // Clean phone input for consistency with validation/storage
      const cleanedPhone = phone.replace(/\D/g, '');
@@ -2550,6 +2609,8 @@ app.post('/api/user/login', (req, res) => {
     const authToken = crypto.randomBytes(32).toString('hex');
     const lastLogin = new Date().toISOString();
     db.prepare('UPDATE signups SET auth_token = ?, last_login = ? WHERE id = ?').run(authToken, lastLogin, user.id);
+
+    logActivity('user_login', user.id, null, { method: loginMethod || 'phone_nid' }, req);
     
     res.json({ 
       success: true, 
@@ -2581,6 +2642,8 @@ app.post('/api/user/login', (req, res) => {
 app.post('/api/user/logout', (req, res) => {
   const { phone } = req.body;
   if (phone) {
+    const user = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
+    if (user) logActivity('user_logout', user.id, null, null, req);
     db.prepare('UPDATE signups SET auth_token = NULL WHERE phone = ?').run(phone);
   }
   res.json({ success: true, message: 'Logged out' });
@@ -3135,6 +3198,7 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       id: user.id,
       phone: user.phone,
       name: user.name,
+      username: user.username,
       nid: user.nid,
       email: user.email,
       island: user.island,
@@ -3144,7 +3208,9 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       })() : [],
       donation_amount: user.donation_amount,
       initial_merit_estimate: user.initial_merit_estimate,
-      timestamp: user.timestamp
+      timestamp: user.timestamp,
+      last_login: user.last_login,
+      password_hash: !!user.password_hash
     },
     votes: {
       clauses: clauseVotes,
@@ -3193,6 +3259,8 @@ app.put('/api/user/profile', userAuth, (req, res) => {
     
     // Fetch updated user
     const updatedUser = db.prepare('SELECT * FROM signups WHERE id = ?').get(user.id);
+
+    logActivity('profile_update', user.id, null, { fields: Object.keys(req.body).filter(k => req.body[k] !== undefined) }, req);
     
     res.json({ 
       success: true, 
@@ -3216,6 +3284,91 @@ app.put('/api/user/profile', userAuth, (req, res) => {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Could not update profile', success: false });
+  }
+});
+
+// POST /api/user/change-password - Change user password
+app.post('/api/user/change-password', userAuth, (req, res) => {
+  const user = req.user;
+  const { current_password, new_password } = req.body;
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Current password and new password required', success: false });
+  }
+
+  if (new_password.length < 4) {
+    return res.status(400).json({ error: 'New password must be at least 4 characters', success: false });
+  }
+
+  // Verify current password
+  const currentHash = crypto.createHash('sha256').update(current_password).digest('hex');
+
+  // Check against password_hash if set, or phone number (legacy)
+  if (user.password_hash) {
+    if (user.password_hash !== currentHash) {
+      return res.status(401).json({ error: 'Current password is incorrect', success: false });
+    }
+  } else {
+    const cleanedPhone = user.phone ? user.phone.replace(/\D/g, '') : '';
+    if (current_password.replace(/\D/g, '') !== cleanedPhone) {
+      return res.status(401).json({ error: 'Current password is incorrect', success: false });
+    }
+  }
+
+  try {
+    const newHash = crypto.createHash('sha256').update(new_password).digest('hex');
+    db.prepare('UPDATE signups SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+    logActivity('password_change', user.id, null, null, req);
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Could not update password', success: false });
+  }
+});
+
+// GET /api/user/activity-log - Get user's activity log
+app.get('/api/user/activity-log', userAuth, (req, res) => {
+  const user = req.user;
+  try {
+    const logs = db.prepare(`
+      SELECT * FROM activity_log 
+      WHERE user_id = ? 
+      ORDER BY timestamp DESC 
+      LIMIT 50
+    `).all(user.id);
+
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error('Activity log error:', error);
+    res.status(500).json({ error: 'Could not fetch activity log', success: false });
+  }
+});
+
+// GET /api/user/proposals - Get user's proposals/drafts
+app.get('/api/user/proposals', userAuth, (req, res) => {
+  const user = req.user;
+  try {
+    const proposals = db.prepare(`
+      SELECT id, title, description, category, status, 
+             yes_votes, no_votes, abstain_votes, created_at, ends_at
+      FROM proposals 
+      WHERE created_by_user_id = ? 
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all(user.id);
+
+    const rankedProposals = db.prepare(`
+      SELECT id, title, description, category, status, created_at, ends_at
+      FROM ranked_proposals 
+      WHERE created_by_user_id = ? 
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all(user.id);
+
+    res.json({ success: true, proposals, ranked_proposals: rankedProposals });
+  } catch (error) {
+    console.error('User proposals error:', error);
+    res.status(500).json({ error: 'Could not fetch proposals', success: false });
   }
 });
 
@@ -3359,6 +3512,7 @@ app.get('/api/public-settings', (req, res) => {
     res.json({ 
       success: true, 
       target_members: settings.target_members,
+      target_treasury: settings.target_treasury,
       signup_base_merit: settings.signup_base_merit
     });
   } catch (error) {

@@ -1720,6 +1720,12 @@ function renderSystemSettings() {
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
                         <p class="text-xs text-gray-500 mt-1">Goal for membership (used for progress percentage)</p>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Target Treasury (MVR)</label>
+                        <input type="number" id="ss_target_treasury" value="${systemSettings.target_treasury}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Fundraising goal in MVR</p>
+                    </div>
                 </div>
             </div>
 
@@ -1757,7 +1763,8 @@ async function saveSystemSettings(e) {
         merit_donation: parseInt(document.getElementById('ss_merit_donation').value),
         donation_bonus_per_100: parseInt(document.getElementById('ss_donation_bonus_per_100').value),
         max_upload_bytes: parseInt(document.getElementById('ss_max_upload_bytes').value),
-        target_members: parseInt(document.getElementById('ss_target_members').value)
+        target_members: parseInt(document.getElementById('ss_target_members').value),
+        target_treasury: parseInt(document.getElementById('ss_target_treasury').value)
     };
     
     try {

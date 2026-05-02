@@ -149,18 +149,16 @@
 
     <script>
         // Load stats
-        let cachedTarget = 13000; // fallback default
+        let goalTreasury = 13000;
         async function loadStats() {
             try {
-                // Fetch public settings for target_members
                 const settingsRes = await fetch('/api/public-settings');
                 if (settingsRes.ok) {
                     const settingsData = await settingsRes.json();
-                    if (settingsData.target_members) {
-                        cachedTarget = settingsData.target_members;
+                    if (settingsData.target_treasury) {
+                        goalTreasury = settingsData.target_treasury;
                     }
                 }
-                
                 const response = await fetch('/api/wall-stats');
                 const data = await response.json();
                 if (data.success) {
@@ -168,7 +166,7 @@
                     document.getElementById('wallCount').textContent = data.wallPosts || 0;
                     document.getElementById('treasuryCount').textContent = (data.treasury || 0).toLocaleString();
                     
-                    const percent = ((data.members / cachedTarget) * 100).toFixed(2);
+                    const percent = Math.min((data.treasury / goalTreasury) * 100, 100).toFixed(2);
                     document.getElementById('progressPercent').textContent = percent + '%';
                 }
             } catch (e) {
@@ -305,6 +303,7 @@
         loadStats();
         loadPosts();
         loadWelcomeThread();
+        setInterval(loadStats, 30000);
     </script>
 </body>
 </html>
