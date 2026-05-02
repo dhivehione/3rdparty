@@ -34,31 +34,30 @@
         <div class="absolute inset-0 bg-gradient-to-b from-party-accent/5 to-transparent"></div>
         <div class="max-w-4xl mx-auto text-center relative">
             
-            <!-- Insurance Joke Badge -->
+            <!-- Movement Badge -->
             <div class="inline-block bg-party-accent/10 border border-party-accent/30 rounded-full px-4 py-2 mb-8">
-                <span class="text-party-accent text-sm">🚫 Not an insurance company</span>
+                <span class="text-party-accent text-sm">The Movement</span>
             </div>
             
-            <h1 class="text-5xl md:text-7xl font-black mb-4 leading-tight">
-                No, we are not doing <br class="hidden md:block">
+            <h1 class="text-5xl md:text-7xl font-black mb-6 leading-tight">
+                A government chosen by <br class="hidden md:block">
                 <span class="bg-gradient-to-r from-party-accent to-yellow-300 bg-clip-text text-transparent">
-                    3rd party insurance.
+                    its people. Not its families.
                 </span>
             </h1>
             
-            <p class="text-xl md:text-2xl text-gray-300 mb-4">
-                The real third option Maldives has been waiting for.
+            <p class="text-xl md:text-2xl text-gray-300 mb-6 max-w-2xl mx-auto">
+                You've voted. Nothing changed. That's not your fault — it's the system's. We're building the ladder. You climb it.
             </p>
             
             <p class="text-gray-500 mb-10 text-lg">
                 Phone + NID only • Takes 45 seconds • Already <span id="memberCount" class="text-party-accent font-bold">0</span> members 
-                <br class="hidden md:block"><span class="text-sm">(none of them insurance agents, we checked)</span>
             </p>
             
-            <!-- Motivational Line -->
-            <div class="bg-party-accent/10 border border-party-accent/30 rounded-full px-6 py-3 inline-block mb-8">
-                <span class="text-party-accent font-bold">💪 Every Member Matters</span>
-                <span class="text-gray-300 ml-2">— We only need 3% of the population (~13,000) to win</span>
+            <!-- 3% Milestone -->
+            <div class="bg-party-accent/10 border border-party-accent/30 rounded-xl px-6 py-4 inline-block mb-8">
+                <span class="text-party-accent font-bold">13,000 members. That's all it takes.</span>
+                <span class="text-gray-300 ml-2">— 3% of Maldives. Already <span id="milestoneCount" class="text-party-accent font-bold">0</span> on the ladder.</span>
             </div>
             
             <!-- Treasury Counter -->
@@ -77,22 +76,55 @@
                 <span>JOIN THE 3D PARTY</span>
                 <i class="fas fa-arrow-down"></i>
             </button>
+            
+            <p class="text-gray-600 text-sm mt-4">(And no, we're not an insurance company. We get that a lot.)</p>
+        </div>
+    </section>
+
+    <!-- The Problem — Emotional Hook -->
+    <section class="py-16 px-4 bg-party-card">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl md:text-3xl font-bold text-center mb-4">
+                Why does <span class="text-party-accent">nothing ever change?</span>
+            </h2>
+            <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+                Every election, the same promises. Every term, the same faces. The laws that govern your life were written before you were born — and the people who wrote them never asked what you needed.
+            </p>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🔒</div>
+                    <h3 class="text-lg font-bold mb-2">Outdated Laws</h3>
+                    <p class="text-gray-400 text-sm">We're governed by rules written decades ago. Laws should evolve with the people they serve.</p>
+                </div>
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🗳️</div>
+                    <h3 class="text-lg font-bold mb-2">Broken Democracy</h3>
+                    <p class="text-gray-400 text-sm">Voting once every 5 years isn't governance. Real democracy means your voice counts every day.</p>
+                </div>
+                <div class="bg-party-dark p-6 rounded-xl border border-gray-800">
+                    <div class="text-3xl mb-4">🤝</div>
+                    <h3 class="text-lg font-bold mb-2">Divided Nation</h3>
+                    <p class="text-gray-400 text-sm">Political parties exist to win, not to solve. We exist to build bridges, not walls.</p>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Contribution Selection Section -->
-    <section id="contribution" class="py-20 px-4 bg-party-card">
+    <section id="contribution" class="py-20 px-4">
         <div class="max-w-6xl mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">
-                How do you want to contribute<br class="hidden md:block"> 
-                <span class="text-party-accent">to the 3d Party?</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">
+                How do you want to <span class="text-party-accent">climb the ladder?</span>
             </h2>
+            <p class="text-gray-400 text-center mb-16 max-w-2xl mx-auto">
+                Every member is a leader. Pick where you want to start — your Merit Score grows from there.
+            </p>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 <!-- Skills Card -->
                 <div onclick="selectContribution('skills')" 
-                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                     class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-brain"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Skills & Expertise</h3>
                     <p class="text-gray-400 text-sm">Lawyers, designers, teachers, engineers — we need brains.</p>
@@ -100,7 +132,7 @@
                 
                 <!-- Action Card -->
                 <div onclick="selectContribution('action')" 
-                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                     class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-running"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">On-the-Ground Action</h3>
                     <p class="text-gray-400 text-sm">Events, cleanups, organizing. Less talking, more doing.</p>
@@ -108,24 +140,24 @@
                 
                 <!-- Ideas Card -->
                 <div onclick="selectContribution('ideas')" 
-                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                     class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-lightbulb"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Ideas & Proposals</h3>
-                    <p class="text-gray-400 text-sm">Policy suggestions. Actual bridge-building (not metaphors).</p>
+                    <p class="text-gray-400 text-sm">Policy suggestions. Real solutions, not empty promises.</p>
                 </div>
                 
                 <!-- Donation Card -->
                 <div onclick="selectContribution('donation')" 
-                     class="contribution-card bg-party-dark p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
+                     class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-hand-holding-usd"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Support & Donations</h3>
-                    <p class="text-gray-400 text-sm">Treasury help. Your contribution counts.</p>
+                    <p class="text-gray-400 text-sm">Fund the movement. No one can buy power — not even you.</p>
                 </div>
             </div>
 
             <!-- Merit Score Explanation (Hidden until user selects) -->
             <div id="meritExplanation" class="hidden mt-12 max-w-3xl mx-auto">
-                <div class="bg-party-accent/5 border-2 border-party-accent/30 rounded-xl p-8">
+                <div class="bg-party-card border-2 border-party-accent/30 rounded-xl p-8">
                     <div class="flex items-start space-x-4">
                         <div class="text-3xl">🌱</div>
                         <div>
@@ -137,37 +169,34 @@
                             </p>
                             
                             <p class="text-gray-300 leading-relaxed mb-4">
-                                Your <span class="text-party-accent font-bold">Merit Score</span> is built from real contributions (skills, effort, donations, physical work).
+                                Your <span class="text-party-accent font-bold">Merit Score</span> is built from real contributions — skills, effort, donations, physical work. No shortcuts. No family names.
                             </p>
                             
                              <div class="space-y-3 text-gray-300 leading-relaxed mb-4">
                                  <p>
                                      <span class="text-party-accent">→</span> 
-                                     We believe <strong>laws should be living</strong> — not stuck in the past. 
-                                     Today's citizens shouldn't be bound by 100‑year‑old rules that no longer make sense.
+                                     <strong>Laws should be living</strong> — not stuck in the past. Today's citizens shouldn't be bound by 100‑year‑old rules.
                                  </p>
                                  <p>
                                      <span class="text-party-accent">→</span> 
-                                     Citizens will <strong>directly vote and propose changes</strong> instead of outsourcing democracy to parliament. 
-                                     No more gerrymandering.
+                                     <strong>Direct citizen governance</strong> — vote and propose changes yourself. No outsourcing democracy to parliament.
                                  </p>
                                  <p>
                                      <span class="text-party-accent">→</span> 
-                                     We only need <strong>3% of the population</strong> (~13,000 people) to win this future. 
-                                     Every single member matters — and here, you will always know exactly where you stand.
+                                     <strong>13,000 members to win</strong> — that's 3% of Maldives. Every single member matters. Here, you always know where you stand.
                                  </p>
                              </div>
-        
-                            <div class="mt-8 p-6 bg-slate-800/70 rounded-3xl border border-teal-400/20">
-                              <p class="font-medium text-teal-300 mb-3">Finally... Anyone Can Be a Minister</p>
-                              <p class="text-slate-300">
-                                No more handing top jobs to family and friends. Any 3d Party member can apply to become a Cabinet Minister or hold other high positions (ambassadors, independent institutions, etc.).<br><br>
-                                The selection will be <strong>live on national TV</strong> — entertaining interviews judged by top experts, with public voting. The winner is announced live, and the President must accept them the next day.<br><br>
-                                Every minister will have a 3-month probation and annual appraisals, just like any normal job.
+         
+                            <div class="mt-8 p-6 bg-party-dark rounded-xl border border-gray-700">
+                              <p class="font-medium text-party-accent mb-3">Anyone Can Be a Minister</p>
+                              <p class="text-gray-300">
+                                No more handing top jobs to family and friends. Any member can apply to become a Cabinet Minister or hold other high positions.<br><br>
+                                The selection will be <strong>live on national TV</strong> — interviews judged by top experts, with public voting. The winner is announced live.<br><br>
+                                Every minister gets a 3-month probation and annual appraisals, just like any real job.
                               </p>
                             </div>
                              
-                             <p class="text-gray-400 text-sm italic mb-6">
+                             <p class="text-gray-500 text-sm italic mb-6">
                                  Unlike traditional parties where members are just statistics, 
                                  here you earn your influence transparently. No secret handshakes.
                              </p>
@@ -188,7 +217,7 @@
         </section>
 
         <!-- Live Activity Teaser -->
-        <section class="py-12 px-4">
+        <section class="py-12 px-4 bg-party-card">
             <div class="max-w-4xl mx-auto">
                 <h2 class="text-2xl font-bold text-center mb-8">
                     <span class="text-party-accent">Live Activity</span> — See what's happening
@@ -196,7 +225,7 @@
                 
                 <div class="grid md:grid-cols-2 gap-6">
                     <!-- Recent Wall Posts -->
-                    <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                    <div class="bg-party-dark rounded-xl p-6 border border-gray-700">
                         <h3 class="text-lg font-bold mb-4">
                             <i class="fas fa-comments text-party-accent mr-2"></i>Recent Posts
                         </h3>
@@ -211,7 +240,7 @@
                     </div>
 
                     <!-- Recent Law Votes -->
-                    <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                    <div class="bg-party-dark rounded-xl p-6 border border-gray-700">
                         <h3 class="text-lg font-bold mb-4">
                             <i class="fas fa-gavel text-party-accent mr-2"></i>Recent Votes
                         </h3>
@@ -228,6 +257,22 @@
             </div>
         </section>
 
+        <!-- CTA Section -->
+        <section class="py-20 px-4">
+            <div class="max-w-3xl mx-auto text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-6">
+                    Ready to be part of the solution?
+                </h2>
+                <p class="text-gray-400 mb-10">
+                    Join the leaders building the future of Maldives.
+                </p>
+                <a href="/join" class="inline-block bg-party-accent text-party-dark px-10 py-5 rounded-xl font-bold text-lg hover:scale-105 transform transition shadow-2xl shadow-party-accent/20">
+                    JOIN THE 3D PARTY
+                </a>
+                <p class="text-gray-500 text-sm mt-4">Takes 45 seconds • Phone + NID only</p>
+            </div>
+        </section>
+
         <script>
             // Load recent activity
             async function loadRecentActivity() {
@@ -236,7 +281,7 @@
                     const wallData = await wallRes.json();
                     if (wallData.posts && wallData.posts.length > 0) {
                         document.getElementById('recentPosts').innerHTML = wallData.posts.map(p => `
-                            <div class="bg-gray-800/50 rounded-lg p-3">
+                            <div class="bg-party-card/50 rounded-lg p-3">
                                 <div class="flex justify-between items-start mb-1">
                                     <span class="font-bold text-party-accent text-sm">${p.nickname}</span>
                                     <span class="text-gray-500 text-xs">${formatTime(p.timestamp)}</span>
@@ -253,15 +298,15 @@
 
                 try {
                     const votesRes = await fetch('/api/mvlaws/recent-votes');
-                    const votesData = await votesRes.json();
+                    const votesData = await votesData.json();
                     if (votesData.success && votesData.votes && votesData.votes.length > 0) {
                         document.getElementById('recentVotes').innerHTML = votesData.votes.slice(0, 3).map(v => `
-                            <div class="bg-gray-800/50 rounded-lg p-3">
+                            <div class="bg-party-card/50 rounded-lg p-3">
                                 <div class="flex justify-between items-start mb-1">
                                     <span class="font-bold text-party-accent text-sm">Article ${v.article_number}</span>
                                     <span class="text-gray-500 text-xs">${formatTime(v.voted_at)}</span>
                                 </div>
-                                <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${v.article_title || ''}</p>
+                                <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${escapeHtml(v.article_title || '')}</p>
                             </div>
                         `).join('');
                     } else {
@@ -301,7 +346,9 @@
                 const response = await fetch('/api/signups/count');
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('memberCount').textContent = data.total || 0;
+                    const total = data.total || 0;
+                    document.getElementById('memberCount').textContent = total;
+                    document.getElementById('milestoneCount').textContent = total;
                 }
             } catch (e) {
                 // Silently fail — just show 0
@@ -369,7 +416,7 @@
                 const wallData = await wallRes.json();
                 if (wallData.posts && wallData.posts.length > 0) {
                     document.getElementById('recentPosts').innerHTML = wallData.posts.map(p => `
-                        <div class="bg-gray-800/50 rounded-lg p-3">
+                        <div class="bg-party-card/50 rounded-lg p-3">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="font-bold text-party-accent text-sm">${p.nickname}</span>
                                 <span class="text-gray-500 text-xs">${formatTime(p.timestamp)}</span>
@@ -389,7 +436,7 @@
                 const votesData = await votesRes.json();
                 if (votesData.success && votesData.votes && votesData.votes.length > 0) {
                     document.getElementById('recentVotes').innerHTML = votesData.votes.slice(0, 3).map(v => `
-                        <div class="bg-gray-800/50 rounded-lg p-3">
+                        <div class="bg-party-card/50 rounded-lg p-3">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="font-bold text-party-accent text-sm">Article ${v.article_number}</span>
                                 <span class="text-gray-500 text-xs">${formatTime(v.voted_at)}</span>
