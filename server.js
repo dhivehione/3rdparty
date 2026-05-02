@@ -716,6 +716,8 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
   // Build query params for external directory service (GET /api/public/search/)
   const queryParams = new URLSearchParams();
   queryParams.set('limit', '10');
+  // Pass API key as query param per schema (the X-API-Key header triggers a 500 on their Django backend)
+  queryParams.set('api_key', apiKey);
 
   if (query) queryParams.set('q', w(query));
   if (name) queryParams.set('name', w(name));
@@ -729,14 +731,13 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
   const path = `/api/public/search/?${queryParams.toString()}`;
   const url = `https://${apiHost}${path}`;
 
-  console.log(`[Directory Search] ${url}`);
+  console.log(`[Directory Search] ${url.replace(apiKey, '***REDACTED***')}`);
 
   const options = {
     hostname: apiHost,
     path: path,
     method: 'GET',
     headers: {
-      'X-API-Key': apiKey,
       'Accept': 'application/json'
     },
     timeout: 10000
