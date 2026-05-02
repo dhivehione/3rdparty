@@ -150,34 +150,39 @@ try {
 }
 
 // Fix signups table schema - remove CHECK constraint if it exists
+// Only run once: if signups_new already exists we know this migration was done before
 try {
-  db.exec(`CREATE TABLE IF NOT EXISTS signups_new (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT NOT NULL,
-    nid TEXT NOT NULL,
-    name TEXT,
-    username TEXT,
-    email TEXT,
-    island TEXT,
-    contribution_type TEXT,
-    donation_amount REAL DEFAULT 0,
-    initial_merit_estimate INTEGER DEFAULT 0,
-    is_verified INTEGER DEFAULT 1,
-    auth_token TEXT,
-    unregistered_at TEXT,
-    unregistered_by TEXT,
-    unregister_justification TEXT,
-    timestamp TEXT NOT NULL
-  )`);
-  
-  // Copy data from old table
-  db.exec(`INSERT INTO signups_new (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp)
-           SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp FROM signups`);
-  
-  // Drop old table and rename new one
-  db.exec('DROP TABLE signups');
-  db.exec('ALTER TABLE signups_new RENAME TO signups');
-  console.log('✓ Migration: Fixed signups table schema');
+  const signupsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='signups'`).get();
+  const signupsNewExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='signups_new'`).get();
+  if (!signupsExists || signupsNewExists) {
+    console.log('✓ Signups table schema already correct');
+  } else {
+    db.exec(`CREATE TABLE signups_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      nid TEXT NOT NULL,
+      name TEXT,
+      username TEXT,
+      email TEXT,
+      island TEXT,
+      contribution_type TEXT,
+      donation_amount REAL DEFAULT 0,
+      initial_merit_estimate INTEGER DEFAULT 0,
+      is_verified INTEGER DEFAULT 1,
+      auth_token TEXT,
+      unregistered_at TEXT,
+      unregistered_by TEXT,
+      unregister_justification TEXT,
+      timestamp TEXT NOT NULL
+    )`);
+
+    db.exec(`INSERT INTO signups_new (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp)
+             SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp FROM signups`);
+
+    db.exec('DROP TABLE signups');
+    db.exec('ALTER TABLE signups_new RENAME TO signups');
+    console.log('✓ Migration: Fixed signups table schema');
+  }
 } catch (e) {
   console.log('✓ Signups table schema already correct');
 }
@@ -185,33 +190,55 @@ try {
 // Migration: Make phone and nid nullable for privacy-preserving enrollments
 // (family/friend enrollments may omit phone/nid; self-registration still requires them)
 try {
-  db.exec(`CREATE TABLE IF NOT EXISTS signups_v2 (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT,
-    nid TEXT,
-    name TEXT,
-    username TEXT,
-    email TEXT,
-    island TEXT,
-    contribution_type TEXT,
-    donation_amount REAL DEFAULT 0,
-    initial_merit_estimate INTEGER DEFAULT 0,
-    is_verified INTEGER DEFAULT 1,
-    auth_token TEXT,
-    unregistered_at TEXT,
-    unregistered_by TEXT,
-    unregister_justification TEXT,
-    timestamp TEXT NOT NULL
-  )`);
+  const cols = db.prepare(`PRAGMA table_info(signups)`).all();
+  const phoneCol = cols.find(c => c.name === 'phone');
+  if (phoneCol && phoneCol.notnull) {
+    // Phone still has NOT NULL — migration is needed
+    const hasLastLogin = cols.some(c => c.name === 'last_login');
 
-  db.exec(`INSERT INTO signups_v2 (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp)
-           SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp FROM signups`);
+    // Clean up any stale temp table to avoid duplicate data
+    db.exec('DROP TABLE IF EXISTS signups_v2');
 
-  db.exec('DROP TABLE signups');
-  db.exec('ALTER TABLE signups_v2 RENAME TO signups');
-  console.log('✓ Migration: Made phone and nid nullable in signups');
+    let createSql = `CREATE TABLE signups_v2 (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT,
+      nid TEXT,
+      name TEXT,
+      username TEXT,
+      email TEXT,
+      island TEXT,
+      contribution_type TEXT,
+      donation_amount REAL DEFAULT 0,
+      initial_merit_estimate INTEGER DEFAULT 0,
+      is_verified INTEGER DEFAULT 1,
+      auth_token TEXT,
+      unregistered_at TEXT,
+      unregistered_by TEXT,
+      unregister_justification TEXT,
+      timestamp TEXT NOT NULL`;
+    if (hasLastLogin) createSql += ',\n      last_login TEXT';
+    createSql += '\n    )';
+    db.exec(createSql);
+
+    let insertSql = `INSERT INTO signups_v2 (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp`;
+    let selectSql = `SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp`;
+    if (hasLastLogin) {
+      insertSql += ', last_login)';
+      selectSql += ', last_login';
+    } else {
+      insertSql += ')';
+    }
+    selectSql += ' FROM signups';
+    db.exec(insertSql + ' ' + selectSql);
+
+    db.exec('DROP TABLE signups');
+    db.exec('ALTER TABLE signups_v2 RENAME TO signups');
+    console.log('✓ Migration: Made phone and nid nullable in signups');
+  } else {
+    console.log('✓ Phone/NID already nullable');
+  }
 } catch (e) {
-  console.log('✓ Phone/NID nullable migration already applied');
+  console.log('⚠ Phone/NID nullable migration error:', e.message);
 }
 
 // Referrals table - track who introduced whom

@@ -954,15 +954,15 @@
                 }
 
                 searchResultsList.innerHTML = data.results.map((r, idx) => {
-                    const name = r.name || r.full_name || 'Unknown';
-                    const addr = r.address || r.street || '';
-                    const isl = r.island || r.atoll || '';
+                    const name = r.name || r.full_name || r.display_name || 'Unknown';
+                    const addr = r.address || r.street || r.street_address || r.address_line || r.address_line_1 || r.location || r.house_name || r.building || r.road || r.place || '';
+                    const isl = r.island || r.atoll || r.city || r.district || r.region || r.area || '';
+                    const parts = [name, addr, isl].filter(p => p);
                     return `
                         <label class="flex items-start space-x-3 cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
                             <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
                             <div class="flex-1">
-                                <div class="font-bold text-sm">${escapeHtml(name)}</div>
-                                <div class="text-gray-400 text-xs">${escapeHtml(addr)}${addr && isl ? ', ' : ''}${escapeHtml(isl)}</div>
+                                <div class="font-bold text-sm">${escapeHtml(parts.join(', '))}</div>
                             </div>
                         </label>
                     `;
