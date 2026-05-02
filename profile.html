@@ -232,7 +232,7 @@
                 <!-- Directory Search -->
                 <div class="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-600">
                     <h3 class="text-lg font-bold text-gray-300 mb-2">
-                        <i class="fas fa-search mr-2"></i>Search Maldives E-Directory
+                        <i class="fas fa-search mr-2"></i>Search Dhiraagu E-Directory
                     </h3>
                     <p class="text-gray-400 text-sm mb-3">Find your friends and family by address and island to auto-fill their details.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -251,8 +251,11 @@
                         <i class="fas fa-search mr-2"></i>Search
                     </button>
                     <div id="searchResults" class="mt-4 hidden">
-                        <p class="text-gray-400 text-sm mb-2">Select a person to auto-fill the form below:</p>
+                        <p class="text-gray-400 text-sm mb-2">Select people to add to your enrollment list:</p>
                         <div id="searchResultsList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                        <button onclick="addSelectedToPending()" class="mt-3 bg-party-accent text-party-dark font-bold px-4 py-2 rounded-lg hover:bg-yellow-400 transition text-sm w-full">
+                            <i class="fas fa-plus mr-2"></i>Add Selected
+                        </button>
                     </div>
                     <div id="searchError" class="mt-3 text-red-400 text-sm hidden"></div>
                 </div>
@@ -342,6 +345,15 @@
                     <button onclick="enrollFamilyFriend()" class="bg-party-accent text-party-dark font-bold px-6 py-3 rounded-lg hover:bg-yellow-400 transition">
                         <i class="fas fa-user-plus mr-2"></i>Enroll Now
                     </button>
+                </div>
+
+                <!-- Pending Enrollments from Search -->
+                <div id="pendingEnrollmentsSection" class="mt-6 hidden">
+                    <h3 class="text-lg font-bold text-gray-300 mb-3">
+                        <i class="fas fa-clock mr-2"></i>Pending Enrollments
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-3">Fill in the missing details (NID, Relation) for each entry and click Enroll.</p>
+                    <div id="pendingEnrollmentsList" class="space-y-3"></div>
                 </div>
 
                 <!-- Referral List -->
@@ -904,6 +916,9 @@
 
         // ==================== DIRECTORY SEARCH ====================
 
+        window.pendingEnrollments = [];
+        let pendingEnrollmentIdCounter = 0;
+
         async function searchDirectory() {
             const address = document.getElementById('searchAddress').value.trim();
             const island = document.getElementById('searchIsland').value.trim();
@@ -951,13 +966,14 @@
                     const isl = r.island || r.atoll || '';
                     const phone = r.phone || r.mobile || r.telephone || '';
                     return `
-                        <div onclick="selectDirectoryResult(${idx})"
-                             class="cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition"
-                             data-idx="${idx}">
-                            <div class="font-bold text-sm">${escapeHtml(name)}</div>
-                            <div class="text-gray-400 text-xs">${escapeHtml(addr)}${addr && isl ? ', ' : ''}${escapeHtml(isl)}</div>
-                            ${phone ? `<div class="text-gray-500 text-xs">${escapeHtml(phone)}</div>` : ''}
-                        </div>
+                        <label class="flex items-start space-x-3 cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
+                            <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
+                            <div class="flex-1">
+                                <div class="font-bold text-sm">${escapeHtml(name)}</div>
+                                <div class="text-gray-400 text-xs">${escapeHtml(addr)}${addr && isl ? ', ' : ''}${escapeHtml(isl)}</div>
+                                ${phone ? `<div class="text-gray-500 text-xs">${escapeHtml(phone)}</div>` : ''}
+                            </div>
+                        </label>
                     `;
                 }).join('');
 
@@ -970,24 +986,195 @@
             }
         }
 
-        function selectDirectoryResult(idx) {
-            const r = window.directoryResults[idx];
-            if (!r) return;
-
-            document.getElementById('enrollName').value = r.name || r.full_name || '';
-            document.getElementById('enrollIsland').value = r.island || r.atoll || '';
-            const phoneVal = (r.phone || r.mobile || r.telephone || '').replace(/\D/g, '');
-            document.getElementById('enrollPhone').value = phoneVal.length >= 7 ? phoneVal.slice(-7) : phoneVal;
-
-            document.querySelectorAll('#searchResultsList > div').forEach(div => {
-                div.classList.remove('border-party-accent', 'bg-party-accent/10');
-            });
-            const selected = document.querySelector(`#searchResultsList div[data-idx="${idx}"]`);
-            if (selected) {
-                selected.classList.add('border-party-accent', 'bg-party-accent/10');
+        function addSelectedToPending() {
+            const checkboxes = document.querySelectorAll('.directory-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one person');
+                return;
             }
 
-            alert(`Selected: ${r.name || r.full_name || 'Unknown'}. Please fill in the remaining required fields (NID, Relation) and click Enroll.`);
+            checkboxes.forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                const r = window.directoryResults[idx];
+                if (!r) return;
+
+                const phoneVal = (r.phone || r.mobile || r.telephone || '').replace(/\D/g, '');
+                const cleanedPhone = phoneVal.length >= 7 ? phoneVal.slice(-7) : phoneVal;
+
+                const entry = {
+                    id: ++pendingEnrollmentIdCounter,
+                    name: r.name || r.full_name || '',
+                    island: r.island || r.atoll || '',
+                    phone: cleanedPhone
+                };
+
+                window.pendingEnrollments.push(entry);
+            });
+
+            renderPendingEnrollments();
+            document.getElementById('pendingEnrollmentsSection').classList.remove('hidden');
+
+            // Clear checkboxes
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        function renderPendingEnrollments() {
+            const container = document.getElementById('pendingEnrollmentsList');
+            if (window.pendingEnrollments.length === 0) {
+                container.innerHTML = '';
+                document.getElementById('pendingEnrollmentsSection').classList.add('hidden');
+                return;
+            }
+
+            container.innerHTML = window.pendingEnrollments.map(e => `
+                <div class="bg-party-card border border-gray-600 rounded-lg p-4" id="pending-entry-${e.id}">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Name</label>
+                            <input type="text" id="pend-name-${e.id}" value="${escapeHtml(e.name)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Phone</label>
+                            <input type="tel" id="pend-phone-${e.id}" value="${escapeHtml(e.phone)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Island</label>
+                            <input type="text" id="pend-island-${e.id}" value="${escapeHtml(e.island)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">NID *</label>
+                            <input type="text" id="pend-nid-${e.id}" placeholder="A123456" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Relation *</label>
+                            <select id="pend-relation-${e.id}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                                <option value="">Select relation</option>
+                                <option value="family">Family</option>
+                                <option value="friend">Friend</option>
+                                <option value="colleague">Colleague</option>
+                                <option value="neighbor">Neighbor</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1">Email</label>
+                            <input type="email" id="pend-email-${e.id}" placeholder="email@example.com" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-gray-400 text-xs mb-1">How will they contribute?</label>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="flex items-center space-x-1 cursor-pointer text-sm">
+                                <input type="checkbox" id="pend-skills-${e.id}" value="skills" class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded">
+                                <span class="text-gray-300">Skills</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer text-sm">
+                                <input type="checkbox" id="pend-action-${e.id}" value="action" class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded">
+                                <span class="text-gray-300">Action</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer text-sm">
+                                <input type="checkbox" id="pend-ideas-${e.id}" value="ideas" class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded">
+                                <span class="text-gray-300">Ideas</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer text-sm">
+                                <input type="checkbox" id="pend-donation-${e.id}" value="donation" class="w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded pend-donation-checkbox" data-id="${e.id}">
+                                <span class="text-gray-300">Donation</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="pend-donation-section-${e.id}" class="hidden mb-3">
+                        <label class="block text-gray-400 text-xs mb-1">Donation Amount (MVR)</label>
+                        <input type="number" id="pend-donation-amount-${e.id}" placeholder="0" class="w-full md:w-1/3 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="enrollPendingEntry(${e.id})" class="bg-party-accent text-party-dark font-bold px-4 py-2 rounded-lg hover:bg-yellow-400 transition text-sm">
+                            <i class="fas fa-user-plus mr-1"></i>Enroll
+                        </button>
+                        <button onclick="removePendingEntry(${e.id})" class="bg-gray-600 text-white font-bold px-4 py-2 rounded-lg hover:bg-gray-500 transition text-sm">
+                            <i class="fas fa-trash mr-1"></i>Remove
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Attach donation checkbox listeners
+            document.querySelectorAll('.pend-donation-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const id = this.dataset.id;
+                    const section = document.getElementById(`pend-donation-section-${id}`);
+                    if (this.checked) {
+                        section.classList.remove('hidden');
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
+        async function enrollPendingEntry(id) {
+            const phone = document.getElementById(`pend-phone-${id}`).value.trim();
+            const nid = document.getElementById(`pend-nid-${id}`).value.trim();
+            const relation = document.getElementById(`pend-relation-${id}`).value;
+            const name = document.getElementById(`pend-name-${id}`).value.trim();
+            const email = document.getElementById(`pend-email-${id}`).value.trim();
+            const island = document.getElementById(`pend-island-${id}`).value.trim();
+
+            const contributionTypes = [];
+            if (document.getElementById(`pend-skills-${id}`).checked) contributionTypes.push('skills');
+            if (document.getElementById(`pend-action-${id}`).checked) contributionTypes.push('action');
+            if (document.getElementById(`pend-ideas-${id}`).checked) contributionTypes.push('ideas');
+            if (document.getElementById(`pend-donation-${id}`).checked) contributionTypes.push('donation');
+
+            const donationAmount = document.getElementById(`pend-donation-amount-${id}`).value;
+
+            if (!phone || !nid || !relation) {
+                alert('Please fill in Phone, NID, and Relation for this entry');
+                return;
+            }
+
+            const payload = {
+                phone,
+                nid,
+                relation,
+                name: name || undefined,
+                email: email || undefined,
+                island: island || undefined,
+                contribution_types: contributionTypes.length > 0 ? contributionTypes : undefined,
+                donation_amount: (contributionTypes.includes('donation') && donationAmount) ? parseFloat(donationAmount) : undefined
+            };
+
+            try {
+                const res = await fetch('/api/enroll-family-friend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || 'Successfully enrolled!');
+                    removePendingEntry(id);
+                    loadReferrals();
+                } else {
+                    alert(data.error || 'Failed to enroll. Please try again.');
+                }
+            } catch (e) {
+                alert('Error during enrollment. Please try again.');
+            }
+        }
+
+        function removePendingEntry(id) {
+            window.pendingEnrollments = window.pendingEnrollments.filter(e => e.id !== id);
+            const el = document.getElementById(`pending-entry-${id}`);
+            if (el) el.remove();
+            if (window.pendingEnrollments.length === 0) {
+                document.getElementById('pendingEnrollmentsSection').classList.add('hidden');
+            }
         }
     </script>
 </body>
