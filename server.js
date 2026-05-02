@@ -182,6 +182,38 @@ try {
   console.log('✓ Signups table schema already correct');
 }
 
+// Migration: Make phone and nid nullable for privacy-preserving enrollments
+// (family/friend enrollments may omit phone/nid; self-registration still requires them)
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS signups_v2 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT,
+    nid TEXT,
+    name TEXT,
+    username TEXT,
+    email TEXT,
+    island TEXT,
+    contribution_type TEXT,
+    donation_amount REAL DEFAULT 0,
+    initial_merit_estimate INTEGER DEFAULT 0,
+    is_verified INTEGER DEFAULT 1,
+    auth_token TEXT,
+    unregistered_at TEXT,
+    unregistered_by TEXT,
+    unregister_justification TEXT,
+    timestamp TEXT NOT NULL
+  )`);
+
+  db.exec(`INSERT INTO signups_v2 (id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp)
+           SELECT id, phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, unregistered_at, unregistered_by, unregister_justification, timestamp FROM signups`);
+
+  db.exec('DROP TABLE signups');
+  db.exec('ALTER TABLE signups_v2 RENAME TO signups');
+  console.log('✓ Migration: Made phone and nid nullable in signups');
+} catch (e) {
+  console.log('✓ Phone/NID nullable migration already applied');
+}
+
 // Referrals table - track who introduced whom
 db.exec(`
   CREATE TABLE IF NOT EXISTS referrals (
@@ -632,20 +664,27 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
   }
   
   const { query, name, island, address } = req.body;
-  
+
   if (!query && !name && !island && !address) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'At least one search parameter required: query, name, island, or address',
-      success: false 
+      success: false
     });
   }
-  
+
+  // Helper: add wildcard for prefix matching unless user already supplied one
+  const w = (val) => {
+    if (!val) return '';
+    if (val.includes('*')) return val;
+    return val + '*';
+  };
+
   // Build search payload for external directory service
   const searchPayload = JSON.stringify({
-    query: query || '',
-    name: name || '',
-    island: island || '',
-    address: address || '',
+    query: w(query),
+    name: w(name),
+    island: w(island),
+    address: w(address),
     page_size: 10
   });
   
@@ -2241,13 +2280,16 @@ app.post('/api/referral/introduce', userAuth, (req, res) => {
 
 // POST /api/enroll-family-friend - Enroll a family member or friend directly (optimized for logged-in users)
 app.post('/api/enroll-family-friend', userAuth, (req, res) => {
-  const { phone, nid, name, username, email, island, contribution_types, donation_amount, relation } = req.body;
+  const { name, username, email, island, contribution_types, donation_amount, relation } = req.body;
+  // Normalize phone and nid: treat empty strings as null
+  const phone = req.body.phone ? req.body.phone.trim() : null;
+  const nid = req.body.nid ? req.body.nid.trim() : null;
   const referrerId = req.user.id;
 
   // Validate mandatory fields
-  if (!phone || !nid || !relation) {
+  if (!relation) {
     return res.status(400).json({
-      error: 'Phone, NID, and relation are required',
+      error: 'Relation is required',
       success: false
     });
   }
@@ -2274,32 +2316,46 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
     typesArray = contribution_types.filter(t => validTypes.includes(t));
   }
 
-  // Basic phone validation (Maldivian format: 7 digits)
-  const phoneRegex = /^[0-9]{7}$/;
-  if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
-    return res.status(400).json({
-      error: 'Please enter a valid 7-digit phone number.',
-      success: false
-    });
+  let cleanedPhone = null;
+  if (phone) {
+    // Basic phone validation (Maldivian format: 7 digits)
+    const phoneRegex = /^[0-9]{7}$/;
+    cleanedPhone = phone.replace(/\D/g, '');
+    if (!phoneRegex.test(cleanedPhone)) {
+      return res.status(400).json({
+        error: 'Please enter a valid 7-digit phone number.',
+        success: false
+      });
+    }
   }
 
-  // Basic NID validation
-  const nidRegex = /^[A-Za-z][0-9]{6,7}$/;
-  if (!nidRegex.test(nid.trim())) {
-    return res.status(400).json({
-      error: 'Please enter a valid NID (e.g., A123456).',
-      success: false
-    });
+  if (nid) {
+    // Basic NID validation
+    const nidRegex = /^[A-Za-z][0-9]{6,7}$/;
+    if (!nidRegex.test(nid)) {
+      return res.status(400).json({
+        error: 'Please enter a valid NID (e.g., A123456).',
+        success: false
+      });
+    }
   }
 
-   // Check for duplicate phone or NID
-   const cleanedPhone = phone.replace(/\D/g, '');
-   const existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ? OR nid = ?').get(cleanedPhone, nid);
-  if (existing) {
-    return res.status(409).json({
-      error: 'This person is already registered with us.',
-      success: false
-    });
+  // Check for duplicate phone or NID only when provided
+  if (cleanedPhone || nid) {
+    let existing = null;
+    if (cleanedPhone && nid) {
+      existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ? OR nid = ?').get(cleanedPhone, nid);
+    } else if (cleanedPhone) {
+      existing = db.prepare('SELECT id, is_verified FROM signups WHERE phone = ?').get(cleanedPhone);
+    } else if (nid) {
+      existing = db.prepare('SELECT id, is_verified FROM signups WHERE nid = ?').get(nid);
+    }
+    if (existing) {
+      return res.status(409).json({
+        error: 'This person is already registered with us.',
+        success: false
+      });
+    }
   }
 
   // Calculate initial merit estimate

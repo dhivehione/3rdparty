@@ -224,18 +224,10 @@
                     <h3 class="text-lg font-bold text-gray-300 mb-2">
                         <i class="fas fa-search mr-2"></i>Search Dhiraagu E-Directory
                     </h3>
-                    <p class="text-gray-400 text-sm mb-3">Find your friends and family by address and island to auto-fill their details.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                        <div>
-                            <label class="block text-gray-400 text-xs mb-1">Address / Street</label>
-                            <input type="text" id="searchAddress" placeholder="Street address..."
-                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-gray-400 text-xs mb-1">Island</label>
-                            <input type="text" id="searchIsland" placeholder="Island name..."
-                                   class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
-                        </div>
+                    <p class="text-gray-400 text-sm mb-3">Search by name, or use <code>name, island</code> or <code>name, address, island</code>. Use * for wildcards.</p>
+                    <div class="mb-3">
+                        <input type="text" id="searchQuery" placeholder="e.g. Ahmed, Male or just Ahmed"
+                               class="w-full bg-party-card border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                     </div>
                     <button onclick="searchDirectory()" class="bg-party-secondary text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-500 transition text-sm">
                         <i class="fas fa-search mr-2"></i>Search
@@ -257,13 +249,13 @@
                     <!-- Basic Info -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-gray-400 text-sm mb-1">Phone Number *</label>
-                            <input type="tel" id="enrollPhone" placeholder="7-digit number"
+                            <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
+                            <input type="tel" id="enrollPhone" placeholder="7-digit number (optional)"
                                    class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-gray-400 text-sm mb-1">NID *</label>
-                            <input type="text" id="enrollNid" placeholder="A123456"
+                            <label class="block text-gray-400 text-sm mb-1">NID</label>
+                            <input type="text" id="enrollNid" placeholder="A123456 (optional)"
                                    class="w-full bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
                         </div>
                         <div>
@@ -804,14 +796,14 @@
             const donationAmount = document.getElementById('enrollDonationAmount').value;
 
             // Validate required fields
-            if (!phone || !nid || !relation) {
-                alert('Please fill in all required fields (Phone, NID, Relation)');
+            if (!relation) {
+                alert('Please select a relation');
                 return;
             }
 
             const payload = {
-                phone,
-                nid,
+                phone: phone || undefined,
+                nid: nid || undefined,
                 relation,
                 name: name || undefined,
                 email: email || undefined,
@@ -911,12 +903,22 @@
         let pendingEnrollmentIdCounter = 0;
 
         async function searchDirectory() {
-            const address = document.getElementById('searchAddress').value.trim();
-            const island = document.getElementById('searchIsland').value.trim();
+            const raw = document.getElementById('searchQuery').value.trim();
 
-            if (!address && !island) {
-                alert('Please enter an address or island to search');
+            if (!raw) {
+                alert('Please enter a search term');
                 return;
+            }
+
+            // Parse comma-separated input: name, address, island
+            const parts = raw.split(',').map(s => s.trim()).filter(s => s);
+            let payload = {};
+            if (parts.length === 1) {
+                payload = { query: parts[0] };
+            } else if (parts.length === 2) {
+                payload = { name: parts[0], island: parts[1] };
+            } else {
+                payload = { name: parts[0], address: parts[1], island: parts[2] };
             }
 
             const searchResults = document.getElementById('searchResults');
@@ -934,7 +936,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ address, island })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
@@ -955,14 +957,12 @@
                     const name = r.name || r.full_name || 'Unknown';
                     const addr = r.address || r.street || '';
                     const isl = r.island || r.atoll || '';
-                    const phone = r.phone || r.mobile || r.telephone || '';
                     return `
                         <label class="flex items-start space-x-3 cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
                             <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
                             <div class="flex-1">
                                 <div class="font-bold text-sm">${escapeHtml(name)}</div>
                                 <div class="text-gray-400 text-xs">${escapeHtml(addr)}${addr && isl ? ', ' : ''}${escapeHtml(isl)}</div>
-                                ${phone ? `<div class="text-gray-500 text-xs">${escapeHtml(phone)}</div>` : ''}
                             </div>
                         </label>
                     `;
@@ -989,14 +989,10 @@
                 const r = window.directoryResults[idx];
                 if (!r) return;
 
-                const phoneVal = (r.phone || r.mobile || r.telephone || '').replace(/\D/g, '');
-                const cleanedPhone = phoneVal.length >= 7 ? phoneVal.slice(-7) : phoneVal;
-
                 const entry = {
                     id: ++pendingEnrollmentIdCounter,
                     name: r.name || r.full_name || '',
-                    island: r.island || r.atoll || '',
-                    phone: cleanedPhone
+                    island: r.island || r.atoll || ''
                 };
 
                 window.pendingEnrollments.push(entry);
@@ -1026,7 +1022,7 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Phone</label>
-                            <input type="tel" id="pend-phone-${e.id}" value="${escapeHtml(e.phone)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <input type="tel" id="pend-phone-${e.id}" value="${escapeHtml(e.phone || '')}" placeholder="7-digit (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Island</label>
@@ -1035,8 +1031,8 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
-                            <label class="block text-gray-400 text-xs mb-1">NID *</label>
-                            <input type="text" id="pend-nid-${e.id}" placeholder="A123456" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <label class="block text-gray-400 text-xs mb-1">NID</label>
+                            <input type="text" id="pend-nid-${e.id}" placeholder="A123456 (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Relation *</label>
@@ -1120,14 +1116,14 @@
 
             const donationAmount = document.getElementById(`pend-donation-amount-${id}`).value;
 
-            if (!phone || !nid || !relation) {
-                alert('Please fill in Phone, NID, and Relation for this entry');
+            if (!relation) {
+                alert('Please select a relation for this entry');
                 return;
             }
 
             const payload = {
-                phone,
-                nid,
+                phone: phone || undefined,
+                nid: nid || undefined,
                 relation,
                 name: name || undefined,
                 email: email || undefined,

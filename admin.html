@@ -558,10 +558,10 @@
             }
             
             if (searchTerm) {
-                filtered = filtered.filter(s => 
+                filtered = filtered.filter(s =>
                     (s.name && s.name.toLowerCase().includes(searchTerm)) ||
-                    s.phone.includes(searchTerm) ||
-                    s.nid.toLowerCase().includes(searchTerm)
+                    (s.phone && s.phone.includes(searchTerm)) ||
+                    (s.nid && s.nid.toLowerCase().includes(searchTerm))
                 );
             }
             
@@ -587,11 +587,11 @@
             
             noData.classList.add('hidden');
             
-            tbody.innerHTML = signups.map(s => `
+                tbody.innerHTML = signups.map(s => `
                 <tr class="hover:bg-gray-800/50 text-sm ${s.is_verified ? '' : 'opacity-50'}">
                     <td class="px-6 py-4 text-gray-500">#${s.id}</td>
-                    <td class="px-6 py-4">+960 ${s.phone}</td>
-                    <td class="px-6 py-4 font-mono">${s.nid}</td>
+                    <td class="px-6 py-4">${s.phone ? '+960 ' + s.phone : '<span class="text-gray-600">—</span>'}</td>
+                    <td class="px-6 py-4 font-mono">${s.nid || '<span class="text-gray-600">—</span>'}</td>
                     <td class="px-6 py-4">${s.name || '<span class="text-gray-600">—</span>'}</td>
                     <td class="px-6 py-4">
                         ${s.is_verified 
@@ -632,7 +632,7 @@
             
             allSignups.forEach(s => {
                 const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
-                csv += `${s.id},+960${s.phone},${s.nid},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
+                csv += `${s.id},${s.phone ? '+960' + s.phone : ''},${s.nid || ''},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
             });
             
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -1202,7 +1202,7 @@
                             <div class="flex justify-between items-start mb-3">
                                 <div>
                                     <div class="font-bold text-lg">MVR ${d.amount}</div>
-                                    <div class="text-sm text-gray-400">${d.phone} | ${d.nid}</div>
+                                    <div class="text-sm text-gray-400">${d.phone || '—'} | ${d.nid || '—'}</div>
                                     <div class="text-xs text-gray-500">${new Date(d.created_at).toLocaleString()}</div>
                                 </div>
                                 <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">Pending</span>
