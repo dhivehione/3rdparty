@@ -957,18 +957,12 @@
                     const name = r.name || 'Unknown';
                     const addr = r.address || r.street || r.ward || '';
                     const isl = r.island || r.atoll || '';
-                    const locationParts = [addr, isl].filter(p => p);
-                    const extras = [];
-                    if (r.profession) extras.push(r.profession);
-                    if (r.party) extras.push(r.party);
-                    if (r.status) extras.push(r.status);
+                    const parts = [name, addr, isl].filter(p => p);
                     return `
                         <label class="flex items-start space-x-3 cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
                             <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
                             <div class="flex-1">
-                                <div class="font-bold text-sm">${escapeHtml(name)}</div>
-                                ${locationParts.length ? `<div class="text-xs text-gray-400">${escapeHtml(locationParts.join(', '))}</div>` : ''}
-                                ${extras.length ? `<div class="text-xs text-gray-500">${escapeHtml(extras.join(' · '))}</div>` : ''}
+                                <div class="font-bold text-sm">${escapeHtml(parts.join(', '))}</div>
                             </div>
                         </label>
                     `;
