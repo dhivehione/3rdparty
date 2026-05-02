@@ -675,10 +675,66 @@ function checkEnrollRateLimit(ip) {
   return { allowed: true, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: 0 };
 }
 
+// Helper: proxy a single search request to the external directory API
+// Returns a Promise that resolves with { results, total_count } or rejects
+function directorySearch(apiKey, apiHost, searchFields) {
+  const w = (val) => {
+    if (!val) return '';
+    if (val.includes('*')) return val;
+    return '*' + val + '*';
+  };
+
+  const searchPayload = JSON.stringify({
+    query: w(searchFields.query),
+    name: w(searchFields.name),
+    island: w(searchFields.island),
+    address: w(searchFields.address),
+    page_size: 10
+  });
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: apiHost,
+      path: '/api/mydir/advanced_search/',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(searchPayload),
+        'Authorization': `Api-Key ${apiKey}`
+      },
+      timeout: 10000
+    };
+
+    const proxyReq = https.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', (chunk) => { data += chunk; });
+      proxyRes.on('end', () => {
+        if (proxyRes.statusCode >= 400) {
+          reject(new Error(`Directory service returned ${proxyRes.statusCode}`));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          resolve({ results: parsed.results || [], total_count: parsed.total_count || 0 });
+        } catch (e) {
+          reject(new Error('Invalid response from directory service'));
+        }
+      });
+    });
+
+    proxyReq.on('error', (e) => reject(e));
+    proxyReq.on('timeout', () => { proxyReq.destroy(); reject(new Error('Directory service timeout')); });
+    proxyReq.write(searchPayload);
+    proxyReq.end();
+  });
+}
+
 // POST /api/enroll/lookup - Search external directory for members
-// Proxies to external directory API: GET /api/public/search/
+// Proxies to external directory API: POST /api/mydir/advanced_search/
 // Used for enrolling friends and family - requires auth, rate limited
-app.post('/api/enroll/lookup', userAuth, (req, res) => {
+// When only a generic 'query' is provided, searches by name AND island in
+// parallel and merges results so that name-only or island-only searches work.
+app.post('/api/enroll/lookup', userAuth, async (req, res) => {
   const ip = getClientIp(req);
   const rateCheck = checkEnrollRateLimit(ip);
 
@@ -706,85 +762,64 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     return res.status(503).json({ error: 'Directory service not configured', success: false });
   }
 
-  // Wildcard helper: pad with * on both sides unless user already supplied *.
-  const w = (val) => {
-    if (!val) return '';
-    if (val.includes('*')) return val;
-    return '*' + val + '*';
-  };
+  try {
+    let mergedResults = [];
 
-  // Build JSON payload for the working external directory endpoint
-  const searchPayload = JSON.stringify({
-    query: w(query),
-    name: w(name),
-    island: w(island),
-    address: w(address),
-    page_size: 10
-  });
+    // When specific fields are provided, do a single targeted search
+    if (name || island || address) {
+      const result = await directorySearch(apiKey, apiHost, { query, name, island, address });
+      mergedResults = result.results;
+    } else {
+      // Generic query only — search by name and by island in parallel,
+      // then merge & deduplicate by pid so both name-only and
+      // island-only lookups return relevant results.
+      const searches = [
+        directorySearch(apiKey, apiHost, { name: query }),
+        directorySearch(apiKey, apiHost, { island: query })
+      ];
 
-  const options = {
-    hostname: apiHost,
-    path: '/api/mydir/advanced_search/',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(searchPayload),
-      'Authorization': `Api-Key ${apiKey}`
-    },
-    timeout: 10000
-  };
+      const [byName, byIsland] = await Promise.allSettled(searches);
 
-  const proxyReq = https.request(options, (proxyRes) => {
-    let data = '';
-
-    proxyRes.on('data', (chunk) => {
-      data += chunk;
-    });
-
-    proxyRes.on('end', () => {
-      console.log(`[Directory Search] status=${proxyRes.statusCode}`);
-
-      if (proxyRes.statusCode >= 400) {
-        return res.status(502).json({
-          error: `Directory service returned ${proxyRes.statusCode}`,
-          success: false
-        });
-      }
-
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.results && parsed.results.length > 0) {
-          const first = parsed.results[0];
-          console.log('[Directory Search] sample result keys:', Object.keys(first));
-          console.log('[Directory Search] sample result:', JSON.stringify(first).substring(0, 800));
-        }
-        res.json({
-          success: true,
-          results: parsed.results || [],
-          total_count: parsed.total_count || 0,
-          rate_limit: {
-            remaining_daily: rateCheck.remaining,
-            reset_in_seconds: rateCheck.resetIn > 0 ? Math.ceil(rateCheck.resetIn / 1000) : null
+      const seenPids = new Set();
+      const addUnique = (results) => {
+        for (const r of results) {
+          if (!seenPids.has(r.pid)) {
+            seenPids.add(r.pid);
+            mergedResults.push(r);
           }
-        });
-      } catch (e) {
-        res.status(502).json({ error: 'Invalid response from directory service', success: false });
+        }
+      };
+
+      if (byName.status === 'fulfilled') addUnique(byName.value.results);
+      if (byIsland.status === 'fulfilled') addUnique(byIsland.value.results);
+    }
+
+    if (mergedResults.length > 0) {
+      const first = mergedResults[0];
+      console.log('[Directory Search] sample result keys:', Object.keys(first));
+      console.log('[Directory Search] sample result:', JSON.stringify(first).substring(0, 800));
+    }
+    console.log(`[Directory Search] merged ${mergedResults.length} results`);
+
+    res.json({
+      success: true,
+      results: mergedResults,
+      total_count: mergedResults.length,
+      rate_limit: {
+        remaining_daily: rateCheck.remaining,
+        reset_in_seconds: rateCheck.resetIn > 0 ? Math.ceil(rateCheck.resetIn / 1000) : null
       }
     });
-  });
-
-  proxyReq.on('error', (e) => {
-    console.error(`[Directory Search] request error: ${e.message}`);
+  } catch (e) {
+    console.error(`[Directory Search] error: ${e.message}`);
+    if (e.message.includes('returned')) {
+      return res.status(502).json({ error: e.message, success: false });
+    }
+    if (e.message.includes('timeout')) {
+      return res.status(504).json({ error: e.message, success: false });
+    }
     res.status(502).json({ error: 'Directory service unavailable: ' + e.message, success: false });
-  });
-
-  proxyReq.on('timeout', () => {
-    proxyReq.destroy();
-    res.status(504).json({ error: 'Directory service timeout', success: false });
-  });
-
-  proxyReq.write(searchPayload);
-  proxyReq.end();
+  }
 });
 
 // ==================== ANALYTICS API ====================
