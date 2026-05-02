@@ -27,7 +27,8 @@ const DEFAULT_SETTINGS = {
   merit_ideas: 150,
   merit_donation: 100,
   donation_bonus_per_100: 5,
-  max_upload_bytes: 5 * 1024 * 1024
+  max_upload_bytes: 5 * 1024 * 1024,
+  target_members: 13000
 };
 
 function getSettings() {
@@ -233,6 +234,13 @@ db.exec(`
 // Migration: Add is_approved column to existing wall_posts table
 try {
   db.exec(`ALTER TABLE wall_posts ADD COLUMN is_approved INTEGER DEFAULT 1`);
+} catch (e) {
+  // Column already exists, ignore error
+}
+
+// Migration: Add thread_id column for grouping related posts
+try {
+  db.exec(`ALTER TABLE wall_posts ADD COLUMN thread_id TEXT`);
 } catch (e) {
   // Column already exists, ignore error
 }
@@ -734,6 +742,23 @@ app.get('/api/wall', (req, res) => {
   } catch (error) {
     console.error('Wall fetch error:', error);
     res.status(500).json({ error: 'Could not fetch posts', success: false });
+  }
+});
+
+// GET /api/wall/thread/:threadId - Get posts for a specific thread
+app.get('/api/wall/thread/:threadId', (req, res) => {
+  const { threadId } = req.params;
+  try {
+    const posts = db.prepare(`
+      SELECT * FROM wall_posts 
+      WHERE is_approved = 1 AND thread_id = ?
+      ORDER BY timestamp DESC 
+      LIMIT 50
+    `).all(threadId);
+    res.json({ posts, success: true });
+  } catch (error) {
+    console.error('Wall thread fetch error:', error);
+    res.status(500).json({ error: 'Could not fetch thread posts', success: false });
   }
 });
 
@@ -1786,12 +1811,19 @@ app.post('/api/signup', (req, res) => {
       has_username: !!username
     }, req);
     
-    // Auto-post welcome message to the wall
+    // Get current member count for progress percentage
+    const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
+    const settings = getSettings();
+    const targetMembers = settings.target_members || 13000;
+    const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
+    const progressMsg = `[size=${memberCount}] [progress=${percentComplete}%]`;
+    
+    // Auto-post to welcome thread
     const displayName = name || username || 'A new member';
-    const welcomeMsg = `${displayName} joined the movement! Welcome, friend! 🌍`;
+    const welcomeMsg = `🌴 ${displayName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`;
     try {
-      db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)')
-        .run('3d Party System', welcomeMsg, timestamp);
+      db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
+        .run('admin', welcomeMsg, timestamp, 'new_members_welcome');
     } catch (e) {
       console.log('Could not post welcome to wall:', e.message);
     }
@@ -2807,6 +2839,20 @@ app.get('/api/system-settings', adminAuth, (req, res) => {
     res.json({ success: true, settings });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Could not fetch system settings' });
+  }
+});
+
+// GET /api/public-settings - Get public settings (non-admin)
+app.get('/api/public-settings', (req, res) => {
+  try {
+    const settings = getSettings();
+    res.json({ 
+      success: true, 
+      target_members: settings.target_members,
+      signup_base_merit: settings.signup_base_merit
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch public settings' });
   }
 });
 

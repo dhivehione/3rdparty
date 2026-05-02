@@ -103,21 +103,30 @@
     </div>
 
     <script>
-        fetch('/api/signups/count')
+        let targetMembers = 13000;
+        
+        fetch('/api/public-settings')
             .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    const total = d.total;
-                    const goal = 13000;
-                    const percent = Math.min(100, (total / goal) * 100);
-                    const remaining = Math.max(0, goal - total);
-                    
-                    document.getElementById('memberCount').textContent = total.toLocaleString();
-                    document.getElementById('remainingCount').textContent = remaining.toLocaleString();
-                    document.getElementById('progressBar').style.width = percent + '%';
-                }
+            .then(s => {
+                if (s.target_members) targetMembers = s.target_members;
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => {
+                fetch('/api/signups/count')
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            const total = d.total;
+                            const percent = Math.min(100, (total / targetMembers) * 100);
+                            const remaining = Math.max(0, targetMembers - total);
+                            
+                            document.getElementById('memberCount').textContent = total.toLocaleString();
+                            document.getElementById('remainingCount').textContent = remaining.toLocaleString();
+                            document.getElementById('progressBar').style.width = percent + '%';
+                        }
+                    })
+                    .catch(() => {});
+            });
     </script>
 </body>
 </html>

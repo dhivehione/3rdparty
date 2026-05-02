@@ -47,6 +47,25 @@
                     <div class="text-3xl font-bold text-green-400" id="treasuryCount">—</div>
                     <div class="text-gray-500 text-sm">Treasury (MVR)</div>
                 </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-400" id="progressPercent">—</div>
+                    <div class="text-gray-500 text-sm">To 13,000 Goal</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Members Welcome Thread -->
+        <div class="bg-gradient-to-r from-green-900/30 to-party-card rounded-xl p-6 mb-8 border border-green-600/50">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🌴</span>
+                <h2 class="text-xl font-bold text-green-400">New Members Welcome Thread</h2>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">Watch the movement grow! Every signature matters — we're building a better Maldives together.</p>
+            <div id="welcomeThread" class="space-y-3">
+                <!-- Welcome posts loaded here -->
+            </div>
+            <div id="noWelcomePosts" class="text-center py-4 text-gray-500 hidden">
+                <p class="text-sm">No new members yet. <a href="/join" class="text-green-400 hover:underline">Be the first to join!</a></p>
             </div>
         </div>
 
@@ -121,17 +140,61 @@
 
     <script>
         // Load stats
+        let cachedTarget = 13000; // fallback default
         async function loadStats() {
             try {
+                // Fetch public settings for target_members
+                const settingsRes = await fetch('/api/public-settings');
+                if (settingsRes.ok) {
+                    const settingsData = await settingsRes.json();
+                    if (settingsData.target_members) {
+                        cachedTarget = settingsData.target_members;
+                    }
+                }
+                
                 const response = await fetch('/api/wall-stats');
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('memberCount').textContent = data.members || 0;
                     document.getElementById('wallCount').textContent = data.wallPosts || 0;
                     document.getElementById('treasuryCount').textContent = (data.treasury || 0).toLocaleString();
+                    
+                    const percent = ((data.members / cachedTarget) * 100).toFixed(2);
+                    document.getElementById('progressPercent').textContent = percent + '%';
                 }
             } catch (e) {
                 console.error('Stats error:', e);
+            }
+        }
+        
+        // Load welcome thread posts (thread_id = 'new_members_welcome')
+        async function loadWelcomeThread() {
+            try {
+                const response = await fetch('/api/wall/thread/new_members_welcome');
+                const data = await response.json();
+                
+                if (data.posts && data.posts.length > 0) {
+                    const container = document.getElementById('welcomeThread');
+                    container.innerHTML = '';
+                    data.posts.forEach(post => {
+                        const postEl = document.createElement('div');
+                        postEl.className = 'bg-party-dark/50 rounded-lg p-4 border border-green-600/30';
+                        postEl.innerHTML = `
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="font-bold text-green-400">${escapeHtml(post.nickname)}</span>
+                                <span class="text-gray-600 text-sm">${formatTime(post.timestamp)}</span>
+                            </div>
+                            <p class="text-gray-300">${escapeHtml(post.message)}</p>
+                        `;
+                        container.appendChild(postEl);
+                    });
+                    document.getElementById('noWelcomePosts').classList.add('hidden');
+                } else {
+                    document.getElementById('noWelcomePosts').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error('Welcome thread error:', e);
+                document.getElementById('noWelcomePosts').classList.remove('hidden');
             }
         }
 
@@ -232,6 +295,7 @@
         // Init
         loadStats();
         loadPosts();
+        loadWelcomeThread();
     </script>
 </body>
 </html>

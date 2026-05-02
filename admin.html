@@ -1568,6 +1568,19 @@ function renderSystemSettings() {
                 </div>
             </div>
 
+            <!-- Goals -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-bullseye mr-2"></i>Goals</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Target Members</label>
+                        <input type="number" id="ss_target_members" value="${systemSettings.target_members}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Goal for membership (used for progress percentage)</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex gap-4">
                 <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
                     <i class="fas fa-save mr-2"></i>Save All Settings
@@ -1601,7 +1614,8 @@ async function saveSystemSettings(e) {
         merit_ideas: parseInt(document.getElementById('ss_merit_ideas').value),
         merit_donation: parseInt(document.getElementById('ss_merit_donation').value),
         donation_bonus_per_100: parseInt(document.getElementById('ss_donation_bonus_per_100').value),
-        max_upload_bytes: parseInt(document.getElementById('ss_max_upload_bytes').value)
+        max_upload_bytes: parseInt(document.getElementById('ss_max_upload_bytes').value),
+        target_members: parseInt(document.getElementById('ss_target_members').value)
     };
     
     try {
