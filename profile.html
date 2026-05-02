@@ -62,24 +62,9 @@
             window.location.reload();
         }
     </script>
+    <script src="nav.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
-    
-    <!-- Navigation -->
-    <nav class="border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <a href="/" class="flex items-center space-x-2">
-                    <span class="text-2xl font-bold text-party-accent">3d</span>
-                    <span class="text-sm text-gray-400">Party</span>
-                </a>
-            </div>
-            <div class="flex items-center space-x-4 text-sm">
-                <span id="userGreeting" class="text-gray-400"></span>
-                <button onclick="logout()" class="text-gray-400 hover:text-party-accent">Logout</button>
-            </div>
-        </div>
-    </nav>
 
     <div class="max-w-4xl mx-auto px-4 py-8">
         
@@ -166,6 +151,11 @@
                 
                 <!-- View Details -->
                 <div id="userDetails" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-700 text-right">
+                    <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                    </button>
                 </div>
             </div>
 
@@ -545,7 +535,6 @@
                 document.getElementById('profileSection').classList.remove('hidden');
                 
                 const user = data.user;
-                document.getElementById('userGreeting').textContent = user.name ? `Hi, ${user.name}` : `User ${user.phone}`;
                 
                 // User details
                 const detailsHtml = `

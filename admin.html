@@ -128,6 +128,62 @@
                     </div>
                 </div>
 
+                <!-- Events Management Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-calendar-alt text-party-accent mr-3"></i>
+                            Events Management
+                        </h2>
+                        <div class="flex gap-2">
+                            <button onclick="loadAdminEvents()" class="text-party-accent hover:underline text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                            <button onclick="showAddEventForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400">
+                                <i class="fas fa-plus mr-1"></i>Add Event
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add/Edit Event Form -->
+                    <div id="eventForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
+                        <h3 class="text-lg font-bold mb-4" id="eventFormTitle">New Event</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Title *</label>
+                                <input type="text" id="eventTitle" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Description</label>
+                                <textarea id="eventDescription" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Date *</label>
+                                    <input type="date" id="eventDate" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Location</label>
+                                    <input type="text" id="eventLocation" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="e.g. Online / Male' City">
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="saveEvent()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400">
+                                    <i class="fas fa-save mr-1"></i>Save Event
+                                </button>
+                                <button onclick="hideEventForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">
+                                    Cancel
+                                </button>
+                            </div>
+                            <input type="hidden" id="editingEventId" value="">
+                        </div>
+                    </div>
+
+                    <div id="eventsAdminList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">Loading events...</div>
+                    </div>
+                </div>
+
                 <!-- System Settings Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -312,11 +368,7 @@
                 <input type="text" id="searchInput" oninput="applyFilter()" 
                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent flex-1 min-w-[200px]"
                        placeholder="Search by name, phone, or NID...">
-                <button onclick="clearDatabase()" 
-                        class="bg-red-600/20 text-red-400 border border-red-600/30 px-6 py-3 rounded-lg font-bold hover:bg-red-600/30 transition inline-flex items-center space-x-2">
-                    <i class="fas fa-trash"></i>
-                    <span>Clear All</span>
-                </button>
+
             </div>
 
             <!-- Table -->
@@ -435,6 +487,9 @@
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             refreshData();
+            loadProposalsAdmin();
+            loadPendingDonations();
+            loadAdminEvents();
         }
 
         function logout() {
@@ -588,27 +643,13 @@
             a.click();
         }
 
-        async function clearDatabase() {
-            if (!confirm('Delete ALL signups? This cannot be undone.')) return;
-            if (!confirm('Final warning: This will permanently delete everything. Continue?')) return;
-            
-            try {
-                const response = await fetch('/api/signups', {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    refreshData();
-                }
-            } catch (error) {
-                alert('Error clearing database');
-            }
-        }
-
         async function unregisterUser(userId) {
+            if (!authToken) {
+                alert('Session expired. Please login again.');
+                logout();
+                return;
+            }
+
             const justification = prompt('Enter justification for unregistering this user (required):');
             
             if (!justification || justification.trim().length < 10) {
@@ -1233,6 +1274,128 @@
             }
         }
 
+        // ==================== EVENTS MANAGEMENT ====================
+        async function loadAdminEvents() {
+            const container = document.getElementById('eventsAdminList');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+            try {
+                const res = await fetch('/api/admin/events', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success && data.events && data.events.length > 0) {
+                    container.innerHTML = data.events.map(e => `
+                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <div class="font-bold">${e.title}</div>
+                                    <div class="text-sm text-gray-400 mt-1">${e.description || ''}</div>
+                                    ${e.location ? `<div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>${e.location}</div>` : ''}
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded ${new Date(e.event_date) > new Date() ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}">
+                                    ${new Date(e.event_date).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <div class="flex gap-2 mt-3">
+                                <button onclick='editEvent(${JSON.stringify(e.id)}, ${JSON.stringify(e.title)}, ${JSON.stringify(e.description || "")}, ${JSON.stringify(e.event_date)}, ${JSON.stringify(e.location || "")})' class="text-blue-400 hover:text-blue-300 text-sm">
+                                    <i class="fas fa-edit mr-1"></i>Edit
+                                </button>
+                                <button onclick="deleteEvent(${e.id})" class="text-red-400 hover:text-red-300 text-sm">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">📅</div><p>No events scheduled.</p></div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading events.</div>';
+            }
+        }
+
+        function showAddEventForm() {
+            document.getElementById('eventFormTitle').textContent = 'New Event';
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventDescription').value = '';
+            document.getElementById('eventDate').value = '';
+            document.getElementById('eventLocation').value = '';
+            document.getElementById('editingEventId').value = '';
+            document.getElementById('eventForm').classList.remove('hidden');
+        }
+
+        function hideEventForm() {
+            document.getElementById('eventForm').classList.add('hidden');
+        }
+
+        function editEvent(id, title, description, eventDate, location) {
+            document.getElementById('eventFormTitle').textContent = 'Edit Event';
+            document.getElementById('eventTitle').value = title;
+            document.getElementById('eventDescription').value = description;
+            document.getElementById('eventDate').value = eventDate;
+            document.getElementById('eventLocation').value = location;
+            document.getElementById('editingEventId').value = id;
+            document.getElementById('eventForm').classList.remove('hidden');
+        }
+
+        async function saveEvent() {
+            const id = document.getElementById('editingEventId').value;
+            const title = document.getElementById('eventTitle').value.trim();
+            const description = document.getElementById('eventDescription').value.trim();
+            const eventDate = document.getElementById('eventDate').value;
+            const location = document.getElementById('eventLocation').value.trim();
+
+            if (!title) { alert('Event title is required'); return; }
+            if (!eventDate) { alert('Event date is required'); return; }
+
+            const isEdit = !!id;
+            const url = isEdit ? `/api/admin/events/${id}` : '/api/admin/events';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ title, description, event_date: eventDate, location })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    hideEventForm();
+                    loadAdminEvents();
+                } else {
+                    alert(data.error || 'Failed to save event');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Delete this event?')) return;
+
+            try {
+                const res = await fetch(`/api/admin/events/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    loadAdminEvents();
+                } else {
+                    alert(data.error || 'Failed to delete event');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
         // ==================== SYSTEM SETTINGS ====================
 let systemSettings = {};
 
@@ -1505,6 +1668,7 @@ async function resetSystemSettings() {
         setTimeout(() => {
             loadProposalsAdmin();
             loadPendingDonations();
+            loadAdminEvents();
         }, 1000);
     </script>
 </body>

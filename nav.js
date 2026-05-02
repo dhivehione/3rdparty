@@ -46,6 +46,7 @@ function createNavigation() {
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
+                <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
                 <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
