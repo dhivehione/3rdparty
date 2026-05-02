@@ -24,6 +24,15 @@
             }
         }
     </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-0PED1M435Y');
+    </script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -397,6 +406,11 @@
                     <div class="text-4xl mb-4">📭</div>
                     <p>No signups yet. The party is empty!</p>
                 </div>
+                <!-- Pagination -->
+                <div id="paginationControls" class="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+                    <div id="pageInfo" class="text-sm text-gray-400"></div>
+                    <div id="pageButtons" class="flex items-center space-x-2"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -451,6 +465,9 @@
     <script>
         let authToken = localStorage.getItem('3dparty_admin_token');
         let allSignups = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        const PAGE_SIZE = 50;
 
         if (authToken) {
             showDashboard();
@@ -502,18 +519,23 @@
 
         async function refreshData() {
             try {
-                const response = await fetch('/api/signups', {
+                const response = await fetch(`/api/signups?page=${currentPage}&limit=${PAGE_SIZE}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
+                
+                if (!response.ok) {
+                    logout();
+                    return;
+                }
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     allSignups = result.signups;
+                    totalPages = result.totalPages || 1;
                     updateStats(result);
                     applyFilter();
-                
-                    // Also load leadership data
+                    renderPagination();
                     await loadLeadershipData();
                 } else {
                     logout();
@@ -524,15 +546,10 @@
         }
 
         function updateStats(result) {
-            document.getElementById('totalCount').textContent = result.total;
+            document.getElementById('totalCount').textContent = result.total.toLocaleString();
             document.getElementById('totalTreasury').textContent = `MVR ${result.total_treasury.toLocaleString()}`;
-            
-            const today = new Date().toISOString().split('T')[0];
-            const todaySignups = result.signups.filter(s => s.timestamp.startsWith(today));
-            document.getElementById('todayCount').textContent = todaySignups.length;
-            
-            const donors = result.signups.filter(s => s.donation_amount > 0);
-            document.getElementById('donorCount').textContent = donors.length;
+            document.getElementById('todayCount').textContent = result.today_count || 0;
+            document.getElementById('donorCount').textContent = result.donor_count || 0;
         }
 
         function applyFilter() {
@@ -620,27 +637,43 @@
                             ? `<button onclick="unregisterUser(${s.id})" class="text-red-400 hover:text-red-300 text-sm">
                                 <i class="fas fa-user-minus mr-1"></i>Unregister
                                </button>`
-                            : '<span class="text-gray-600 text-xs">Removed</span>'
+                            : `<button onclick="reregisterUser(${s.id})" class="text-green-400 hover:text-green-300 text-sm">
+                                <i class="fas fa-user-plus mr-1"></i>Re-register
+                               </button>`
                         }
                     </td>
                 </tr>
             `).join('');
         }
 
-        function exportToCSV() {
-            let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
-            
-            allSignups.forEach(s => {
-                const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
-                csv += `${s.id},${s.phone ? '+960' + s.phone : ''},${s.nid || ''},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `3dparty-signups-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
+        async function exportToCSV() {
+            try {
+                const response = await fetch('/api/signups?limit=999999', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    alert('Failed to fetch data for export');
+                    return;
+                }
+                const allData = result.signups;
+                
+                let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
+                
+                allData.forEach(s => {
+                    const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
+                    csv += `${s.id},${s.phone ? '+960' + s.phone : ''},${s.nid || ''},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `3dparty-signups-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+            } catch (error) {
+                alert('Error exporting CSV');
+            }
         }
 
         async function unregisterUser(userId) {
@@ -669,16 +702,125 @@
                     body: JSON.stringify({ user_id: userId, justification: justification.trim() })
                 });
                 
+                if (!response.ok) {
+                    alert('Server error. Please try again.');
+                    return;
+                }
+                
                 const result = await response.json();
                 if (result.success) {
                     alert(result.message);
-                    refreshData();
+                    await refreshData();
                 } else {
                     alert(result.error || 'Failed to unregister user');
                 }
             } catch (error) {
                 alert('Error unregistering user');
             }
+        }
+
+        async function reregisterUser(userId) {
+            if (!authToken) {
+                alert('Session expired. Please login again.');
+                logout();
+                return;
+            }
+            
+            if (!confirm('Re-register this user? This will restore their verified status.')) return;
+            
+            try {
+                const response = await fetch('/api/reregister', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                if (!response.ok) {
+                    alert('Server error. Please try again.');
+                    return;
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    await refreshData();
+                } else {
+                    alert(result.error || 'Failed to re-register user');
+                }
+            } catch (error) {
+                alert('Error re-registering user');
+            }
+        }
+
+        // ==================== PAGINATION ====================
+        function renderPagination() {
+            const pageInfo = document.getElementById('pageInfo');
+            const pageButtons = document.getElementById('pageButtons');
+            
+            if (!totalPages || totalPages <= 1) {
+                pageInfo.textContent = `Showing all ${allSignups.length} members`;
+                pageButtons.innerHTML = '';
+                return;
+            }
+            
+            const start = (currentPage - 1) * PAGE_SIZE + 1;
+            const end = Math.min(currentPage * PAGE_SIZE, allSignups.length + (currentPage - 1) * PAGE_SIZE);
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${allSignups.length} members on this page)`;
+            
+            let buttonsHtml = '';
+            
+            // Previous button
+            buttonsHtml += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} 
+                class="px-3 py-1 rounded ${currentPage <= 1 ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-600'}">
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+            
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            if (startPage > 1) {
+                buttonsHtml += `<button onclick="goToPage(1)" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">1</button>`;
+                if (startPage > 2) {
+                    buttonsHtml += `<span class="text-gray-500">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    buttonsHtml += `<button class="px-3 py-1 rounded bg-party-accent text-party-dark font-bold">${i}</button>`;
+                } else {
+                    buttonsHtml += `<button onclick="goToPage(${i})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${i}</button>`;
+                }
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    buttonsHtml += `<span class="text-gray-500">...</span>`;
+                }
+                buttonsHtml += `<button onclick="goToPage(${totalPages})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${totalPages}</button>`;
+            }
+            
+            // Next button
+            buttonsHtml += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} 
+                class="px-3 py-1 rounded ${currentPage >= totalPages ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-600'}">
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+            
+            pageButtons.innerHTML = buttonsHtml;
+        }
+
+        async function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            await refreshData();
         }
 
         // Keyboard shortcut: Ctrl+R to refresh

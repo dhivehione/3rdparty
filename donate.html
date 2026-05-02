@@ -17,6 +17,15 @@
             }
         }
     </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-0PED1M435Y');
+    </script>
     <script src="nav.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
@@ -88,6 +97,19 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-2">Remarks (optional)</label>
                 <textarea id="remarks" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent" placeholder="Any additional notes about your donation..."></textarea>
+            </div>
+
+            <!-- Donor Info -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Phone Number (optional)</label>
+                <input type="tel" id="phone" placeholder="+960 7XX XXXX" 
+                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">National ID (optional)</label>
+                <input type="text" id="nid" placeholder="A1234567" 
+                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
             </div>
 
             <!-- Deposit Slip Upload -->
@@ -206,10 +228,10 @@
             const nid = document.getElementById('nid')?.value.trim();
             const remarks = document.getElementById('remarks')?.value.trim();
 
+            formData.append('amount', selectedAmount);
             if (phone) formData.append('phone', phone);
             if (nid) formData.append('nid', nid);
             if (remarks) formData.append('remarks', remarks);
-            formData.append('amount', selectedAmount);
             formData.append('slip', uploadedFile);
 
             const btn = event.target;

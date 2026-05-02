@@ -427,6 +427,59 @@ try {
   // Column already exists, ignore error
 }
 
+// Migration: Make phone and nid nullable in donations table
+// (donations can be submitted without phone/nid by anonymous donors)
+try {
+  const donationCols = db.prepare(`PRAGMA table_info(donations)`).all();
+  const phoneColDonations = donationCols.find(c => c.name === 'phone');
+  if (phoneColDonations && phoneColDonations.notnull) {
+    const existingRows = donationCols.map(c => c.name);
+    const hasUserId = existingRows.includes('user_id');
+    const hasNid = existingRows.includes('nid');
+    const hasRemarks = existingRows.includes('remarks');
+    const hasVerifiedBy = existingRows.includes('verified_by');
+    const hasVerifiedAt = existingRows.includes('verified_at');
+
+    db.exec('DROP TABLE IF EXISTS donations_v2');
+
+    let createSql = `CREATE TABLE donations_v2 (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      phone TEXT,
+      nid TEXT,
+      amount REAL NOT NULL,
+      slip_filename TEXT,
+      remarks TEXT,
+      status TEXT DEFAULT 'pending',
+      verified_by TEXT,
+      verified_at TEXT,
+      created_at TEXT NOT NULL`;
+    createSql += '\n    )';
+
+    let insertCols = ['id', 'amount', 'slip_filename', 'status', 'created_at'];
+    let selectCols = ['id', 'amount', 'slip_filename', 'status', 'created_at'];
+    if (hasUserId) { insertCols.push('user_id'); selectCols.push('user_id'); }
+    if (hasNid) { insertCols.push('nid'); selectCols.push('nid'); }
+    if (hasRemarks) { insertCols.push('remarks'); selectCols.push('remarks'); }
+    if (hasVerifiedBy) { insertCols.push('verified_by'); selectCols.push('verified_by'); }
+    if (hasVerifiedAt) { insertCols.push('verified_at'); selectCols.push('verified_at'); }
+    // Always include phone in the data copy
+    insertCols.push('phone');
+    selectCols.push('phone');
+
+    const insertSql = `INSERT INTO donations_v2 (${insertCols.join(', ')}) SELECT ${selectCols.join(', ')} FROM donations`;
+    db.exec(createSql);
+    db.exec(insertSql);
+    db.exec('DROP TABLE donations');
+    db.exec('ALTER TABLE donations_v2 RENAME TO donations');
+    console.log('✓ Migration: Made phone/nid nullable in donations table');
+  } else {
+    console.log('✓ Donations phone/nid already nullable');
+  }
+} catch (e) {
+  console.log('⚠ Donations phone/nid nullable migration error:', e.message);
+}
+
 // ==================== LEADERSHIP STRUCTURE TABLES ====================
 
 // Leadership settings (threshold, term limits, etc.)
@@ -2010,6 +2063,40 @@ app.post('/api/unregister', adminAuth, (req, res) => {
   }
 });
 
+// POST /api/reregister - Re-register an unregistered user (admin only)
+app.post('/api/reregister', adminAuth, (req, res) => {
+  const { user_id } = req.body;
+  
+  if (!user_id) {
+    return res.status(400).json({ error: 'User ID required', success: false });
+  }
+  
+  try {
+    const user = db.prepare('SELECT id, name, phone FROM signups WHERE id = ?').get(user_id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', success: false });
+    }
+    
+    if (user.is_verified === 1) {
+      return res.status(400).json({ error: 'User is already verified', success: false });
+    }
+    
+    db.prepare(`
+      UPDATE signups 
+      SET is_verified = 1, unregistered_at = NULL, unregistered_by = NULL, unregister_justification = NULL
+      WHERE id = ?
+    `).run(user_id);
+    
+    res.json({ 
+      message: `User ${user.name || user.phone || '#' + user_id} has been re-registered.`,
+      success: true 
+    });
+  } catch (error) {
+    console.error('Reregister error:', error);
+    res.status(500).json({ error: 'Could not re-register user', success: false });
+  }
+});
+
 // GET /api/signups/count - Get signup count (public)
 app.get('/api/signups/count', (req, res) => {
   try {
@@ -2049,12 +2136,19 @@ app.get('/api/stats/new-joins', (req, res) => {
   }
 });
 
-// GET /api/signups - Get all signups (admin only)
+// GET /api/signups - Get all signups (admin only, with pagination)
 app.get('/api/signups', adminAuth, (req, res) => {
   try {
-    const signups = db.prepare('SELECT * FROM signups ORDER BY timestamp DESC').all();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(500, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+    
+    const signups = db.prepare('SELECT * FROM signups ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, offset);
     const count = db.prepare('SELECT COUNT(*) as total FROM signups').get();
     const treasury = db.prepare('SELECT SUM(donation_amount) as total_donations FROM signups WHERE donation_amount > 0').get();
+    const donorCount = db.prepare('SELECT COUNT(*) as total FROM signups WHERE donation_amount > 0').get();
+    const today = new Date().toISOString().split('T')[0];
+    const todayCount = db.prepare('SELECT COUNT(*) as total FROM signups WHERE timestamp >= ?').get(today);
     
     const parsedSignups = signups.map(s => ({
       ...s,
@@ -2068,6 +2162,11 @@ app.get('/api/signups', adminAuth, (req, res) => {
       signups: parsedSignups,
       total: count.total,
       total_treasury: treasury.total_donations || 0,
+      donor_count: donorCount.total,
+      today_count: todayCount.total,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(count.total / limit),
       success: true 
     });
   } catch (error) {
@@ -3330,7 +3429,10 @@ const uploadDir = path.join(dataDir, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 app.post('/api/donate', upload.single('slip'), (req, res) => {
-  const { phone, nid, amount, remarks } = req.body;
+  const phone = req.body.phone || null;
+  const nid = req.body.nid || null;
+  const amount = req.body.amount;
+  const remarks = req.body.remarks || null;
 
   if (!amount) {
     return res.status(400).json({ error: 'Donation amount is required', success: false });
@@ -3347,11 +3449,22 @@ app.post('/api/donate', upload.single('slip'), (req, res) => {
 
   try {
     const createdAt = new Date().toISOString();
-    const stmt = db.prepare(`
-      INSERT INTO donations (phone, nid, amount, slip_filename, remarks, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?)
-    `);
-    const result = stmt.run(phone || null, nid || null, donationAmount, req.file.filename, remarks || null, createdAt);
+
+    // Check which columns exist in donations table
+    const donationCols = db.prepare(`PRAGMA table_info(donations)`).all();
+    const colNames = donationCols.map(c => c.name);
+    
+    let insertCols = ['amount', 'slip_filename', 'status', 'created_at'];
+    let insertVals = [donationAmount, req.file.filename, 'pending', createdAt];
+    
+    if (colNames.includes('phone')) { insertCols.push('phone'); insertVals.push(phone); }
+    if (colNames.includes('nid')) { insertCols.push('nid'); insertVals.push(nid); }
+    if (colNames.includes('remarks')) { insertCols.push('remarks'); insertVals.push(remarks); }
+    if (colNames.includes('user_id')) { insertCols.push('user_id'); insertVals.push(null); }
+
+    const placeholders = insertVals.map(() => '?').join(', ');
+    const stmt = db.prepare(`INSERT INTO donations (${insertCols.join(', ')}) VALUES (${placeholders})`);
+    const result = stmt.run(...insertVals);
     
     // Log the pending donation for admin review
     logActivity('donation_pending', null, null, {
