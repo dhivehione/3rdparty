@@ -1,15 +1,15 @@
-FROM node:22-alpine
-
+# Stage 1: Install dependencies
+FROM node:22-alpine AS deps
 WORKDIR /app
-
 COPY package*.json ./
-
-# Install build deps for better-sqlite3, then remove them
 RUN apk add --no-cache python3 make g++ && \
-    npm ci --only=production && \
-    npm cache clean --force && \
+    npm ci --omit=dev && \
     apk del python3 make g++
 
+# Stage 2: Production image
+FROM node:22-alpine
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 EXPOSE 3001
