@@ -7,11 +7,50 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ==================== SYSTEM SETTINGS ====================
+// All configurable values stored in DB, with defaults
+const DEFAULT_SETTINGS = {
+  visitor_timeout_ms: 5 * 60 * 1000,
+  enroll_rate_limit_ms: 60 * 1000,
+  enroll_max_per_day: 50,
+  vote_cooldown_ms: 60 * 60 * 1000,
+  proposal_voting_days: 7,
+  wall_post_max_length: 500,
+  proposal_title_max_length: 200,
+  proposal_description_max_length: 2000,
+  nickname_max_length: 50,
+  wall_posts_limit: 100,
+  recent_votes_limit: 50,
+  signup_base_merit: 50,
+  merit_skills: 250,
+  merit_action: 200,
+  merit_ideas: 150,
+  merit_donation: 100,
+  donation_bonus_per_100: 5,
+  max_upload_bytes: 5 * 1024 * 1024
+};
+
+function getSettings() {
+  try {
+    const row = db.prepare('SELECT settings_json FROM system_settings WHERE id = 1').get();
+    if (row && row.settings_json) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(row.settings_json) };
+    }
+  } catch (e) {}
+  return { ...DEFAULT_SETTINGS };
+}
+
+function updateSettings(newSettings) {
+  const current = getSettings();
+  const merged = { ...current, ...newSettings };
+  db.prepare('INSERT OR REPLACE INTO system_settings (id, settings_json, updated_at) VALUES (1, ?, ?)')
+    .run(JSON.stringify(merged), new Date().toISOString());
+  return merged;
+}
+
 // ==================== SIMPLE ANALYTICS - ACTIVE VISITORS ====================
 // Store active visitors: { sessionId: timestamp }
-// Sessions expire after 5 minutes of inactivity
 const activeVisitors = new Map();
-const VISITOR_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function getClientIp(req) {
   return req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
@@ -19,8 +58,9 @@ function getClientIp(req) {
 
 function cleanupExpiredVisitors() {
   const now = Date.now();
+  const timeout = getSettings().visitor_timeout_ms;
   for (const [sessionId, lastSeen] of activeVisitors.entries()) {
-    if (now - lastSeen > VISITOR_TIMEOUT_MS) {
+    if (now - lastSeen > timeout) {
       activeVisitors.delete(sessionId);
     }
   }
@@ -435,6 +475,21 @@ if (existingSOPs.cnt === 0) {
   sops.forEach(s => insertSOP.run(s.title, s.content, s.category, now, now));
 }
 
+// System settings table (admin-configurable)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS system_settings (
+    id INTEGER PRIMARY KEY,
+    settings_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
+`);
+
+const existingSystemSettings = db.prepare('SELECT id FROM system_settings WHERE id = 1').get();
+if (!existingSystemSettings) {
+  db.prepare('INSERT INTO system_settings (id, settings_json, updated_at) VALUES (1, ?, ?)')
+    .run(JSON.stringify(DEFAULT_SETTINGS), new Date().toISOString());
+}
+
 console.log('✓ Leadership structure tables initialized');
 
 // ==================== ADD DEMO DATA ====================
@@ -442,7 +497,7 @@ console.log('✓ Leadership structure tables initialized');
 const demoProposals = db.prepare('SELECT COUNT(*) as cnt FROM proposals').get();
 if (demoProposals.cnt === 0) {
   const now = new Date().toISOString();
-  const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const futureDate = new Date(Date.now() + getSettings().proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
   
   const demoData = [
     { title: 'Establish Free Public Wi-Fi in All Islands', description: 'Provide free internet access to all inhabited islands in Maldives, starting with the most underserved regions. This will help bridge the digital divide and enable remote education and work opportunities.', category: 'infrastructure' },
@@ -502,12 +557,12 @@ app.use((req, res, next) => {
 // For enrolling friends/family - rate limited hidden feature
 const https = require('https');
 
-const ENROLL_RATE_LIMIT_MS = 60 * 1000; // 1 minute between searches
-const ENROLL_MAX_PER_DAY = 50; // Max 50 searches per day per IP
-
-const enrollRateLimits = new Map(); // ip -> { lastRequest: timestamp, dailyCount: number, dailyReset: date }
+const enrollRateLimits = new Map();
 
 function checkEnrollRateLimit(ip) {
+  const settings = getSettings();
+  const ENROLL_RATE_LIMIT_MS = settings.enroll_rate_limit_ms;
+  const ENROLL_MAX_PER_DAY = settings.enroll_max_per_day;
   const now = Date.now();
   const record = enrollRateLimits.get(ip);
   
@@ -516,7 +571,6 @@ function checkEnrollRateLimit(ip) {
     return { allowed: true, remaining: ENROLL_MAX_PER_DAY - 1, resetIn: ENROLL_RATE_LIMIT_MS };
   }
   
-  // Reset daily counter if past reset time
   if (now > record.dailyReset.getTime()) {
     record.dailyCount = 1;
     record.dailyReset = new Date(now + 24*60*60*1000);
@@ -524,17 +578,14 @@ function checkEnrollRateLimit(ip) {
     return { allowed: true, remaining: ENROLL_MAX_PER_DAY - 1, resetIn: ENROLL_RATE_LIMIT_MS };
   }
   
-  // Check daily limit
   if (record.dailyCount >= ENROLL_MAX_PER_DAY) {
     return { allowed: false, remaining: 0, resetIn: record.dailyReset.getTime() - now };
   }
   
-  // Check per-request rate limit
   if (now - record.lastRequest < ENROLL_RATE_LIMIT_MS) {
     return { allowed: false, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: ENROLL_RATE_LIMIT_MS - (now - record.lastRequest) };
   }
   
-  // Update counters
   record.lastRequest = now;
   record.dailyCount++;
   enrollRateLimits.set(ip, record);
@@ -662,7 +713,7 @@ function adminAuth(req, res, next) {
 // GET /api/wall - Get all posts
 app.get('/api/wall', (req, res) => {
   try {
-    const posts = db.prepare('SELECT * FROM wall_posts WHERE is_approved = 1 ORDER BY timestamp DESC LIMIT 100').all();
+    const posts = db.prepare(`SELECT * FROM wall_posts WHERE is_approved = 1 ORDER BY timestamp DESC LIMIT ${getSettings().wall_posts_limit}`).all();
     const count = db.prepare('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1').get();
     res.json({ posts, total: count.total, success: true });
   } catch (error) {
@@ -713,19 +764,19 @@ app.post('/api/proposals', (req, res) => {
   }
   
   try {
+    const settings = getSettings();
     const createdAt = new Date().toISOString();
-    // Demo: 7 day voting period
-    const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const endsAt = new Date(Date.now() + settings.proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
     
     const stmt = db.prepare(`
       INSERT INTO proposals (title, description, category, created_by_nickname, created_at, ends_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
-      title.trim().substring(0, 200),
-      description.trim().substring(0, 2000),
+      title.trim().substring(0, settings.proposal_title_max_length),
+      description.trim().substring(0, settings.proposal_description_max_length),
       category || 'general',
-      nickname ? nickname.trim().substring(0, 50) : 'Anonymous',
+      nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous',
       createdAt,
       endsAt
     );
@@ -889,19 +940,20 @@ app.post('/api/ranked-proposals', (req, res) => {
   }
   
   try {
+    const settings = getSettings();
     const createdAt = new Date().toISOString();
-    const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const endsAt = new Date(Date.now() + settings.proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
     
     const stmt = db.prepare(`
       INSERT INTO ranked_proposals (title, description, category, options, created_by_nickname, created_at, ends_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
-      title.trim().substring(0, 200),
-      description.trim().substring(0, 2000),
+      title.trim().substring(0, settings.proposal_title_max_length),
+      description.trim().substring(0, settings.proposal_description_max_length),
       category || 'election',
       JSON.stringify(options.map(o => o.trim()).filter(o => o)),
-      nickname ? nickname.trim().substring(0, 50) : 'Anonymous',
+      nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous',
       createdAt,
       endsAt
     );
@@ -1398,16 +1450,16 @@ app.post('/api/mvlaws/vote-subarticle', (req, res) => {
   }
 
   const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+  const cooldownAgo = new Date(Date.now() - getSettings().vote_cooldown_ms).toISOString();
   
   const recentVote = lawsDb.prepare(`
     SELECT id FROM sub_article_votes 
     WHERE sub_article_id = ? AND user_ip = ? AND voted_at > ?
     LIMIT 1
-  `).get(sub_article_id, userIP, oneHourAgo);
+  `).get(sub_article_id, userIP, cooldownAgo);
   
   if (recentVote) {
-    return res.status(429).json({ error: 'Please wait an hour before voting again', success: false });
+    return res.status(429).json({ error: 'Please wait before voting again', success: false });
   }
 
   try {
@@ -1460,13 +1512,13 @@ let userId = null;
   }
 
   const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+  const cooldownAgo = new Date(Date.now() - getSettings().vote_cooldown_ms).toISOString();
   
   const recentVote = lawsDb.prepare(`
     SELECT id FROM votes 
     WHERE (user_id = ? OR user_ip = ?) AND voted_at > ?
     LIMIT 1
-  `).get(userId || -1, userIP, oneHourAgo);
+  `).get(userId || -1, userIP, cooldownAgo);
   
   if (recentVote) {
     return res.status(429).json({ error: 'Please wait before voting again', success: false });
@@ -1511,14 +1563,14 @@ app.post('/api/wall', (req, res) => {
     return res.status(400).json({ error: 'Please write something', success: false });
   }
   
-  if (message.length > 500) {
-    return res.status(400).json({ error: 'Message too long (max 500 characters)', success: false });
+  if (message.length > getSettings().wall_post_max_length) {
+    return res.status(400).json({ error: `Message too long (max ${getSettings().wall_post_max_length} characters)`, success: false });
   }
   
   try {
     const timestamp = new Date().toISOString();
     const stmt = db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)');
-    const result = stmt.run(nickname.trim().substring(0, 50), message.trim().substring(0, 500), timestamp);
+    const result = stmt.run(nickname.trim().substring(0, getSettings().nickname_max_length), message.trim().substring(0, getSettings().wall_post_max_length), timestamp);
     
     res.status(201).json({ 
       message: 'Posted! Thanks for your support.',
@@ -1624,13 +1676,14 @@ app.post('/api/signup', (req, res) => {
   }
   
   // Calculate initial merit estimate based on contribution types
+  const settings = getSettings();
   const meritEstimates = {
-    'skills': 250,
-    'action': 200,
-    'ideas': 150,
-    'donation': 100
+    'skills': settings.merit_skills,
+    'action': settings.merit_action,
+    'ideas': settings.merit_ideas,
+    'donation': settings.merit_donation
   };
-  let initialMerit = 50; // base merit
+  let initialMerit = settings.signup_base_merit;
   typesArray.forEach(type => {
     initialMerit += meritEstimates[type] || 0;
   });
@@ -1646,8 +1699,8 @@ app.post('/api/signup', (req, res) => {
         success: false 
       });
     }
-    // Bonus merit for donations (diminishing returns: 5 points per 100 MVR)
-    const donationBonus = Math.floor(finalDonation / 100) * 5;
+    // Bonus merit for donations (diminishing returns)
+    const donationBonus = Math.floor(finalDonation / 100) * settings.donation_bonus_per_100;
     initialMerit += donationBonus;
   }
   
@@ -2163,13 +2216,14 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
   }
 
   // Calculate initial merit estimate
+  const enrollSettings = getSettings();
   const meritEstimates = {
-    'skills': 250,
-    'action': 200,
-    'ideas': 150,
-    'donation': 100
+    'skills': enrollSettings.merit_skills,
+    'action': enrollSettings.merit_action,
+    'ideas': enrollSettings.merit_ideas,
+    'donation': enrollSettings.merit_donation
   };
-  let initialMerit = 50; // base merit
+  let initialMerit = enrollSettings.signup_base_merit;
   typesArray.forEach(type => {
     initialMerit += meritEstimates[type] || 0;
   });
@@ -2185,7 +2239,7 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
         success: false
       });
     }
-    const donationBonus = Math.floor(finalDonation / 100) * 5;
+    const donationBonus = Math.floor(finalDonation / 100) * enrollSettings.donation_bonus_per_100;
     initialMerit += donationBonus;
   }
 
@@ -2585,16 +2639,16 @@ app.post('/api/mvlaws/vote-law', (req, res) => {
   }
   
   const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-  const oneHourAgo = new Date(Date.now() - 60*60*1000).toISOString();
+  const cooldownAgo = new Date(Date.now() - getSettings().vote_cooldown_ms).toISOString();
   
   const recentVote = lawsDb.prepare(`
     SELECT id FROM law_level_votes 
     WHERE law_id = ? AND (user_ip = ? OR user_phone = ?) AND voted_at > ?
     LIMIT 1
-  `).get(law_id, userIP, phone || '', oneHourAgo);
+  `).get(law_id, userIP, phone || '', cooldownAgo);
   
   if (recentVote) {
-    return res.status(429).json({ error: 'Please wait an hour before voting on this law again', success: false });
+    return res.status(429).json({ error: 'Please wait before voting on this law again', success: false });
   }
   
   try {
@@ -2687,6 +2741,28 @@ app.post('/api/leadership/settings', adminAuth, (req, res) => {
     res.json({ success: true, message: 'Settings updated' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Could not update settings' });
+  }
+});
+
+// ==================== SYSTEM SETTINGS API ====================
+// GET /api/system-settings - Get all system settings (admin only)
+app.get('/api/system-settings', adminAuth, (req, res) => {
+  try {
+    const settings = getSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Could not fetch system settings' });
+  }
+});
+
+// POST /api/system-settings - Update system settings (admin only)
+app.post('/api/system-settings', adminAuth, (req, res) => {
+  try {
+    const updated = updateSettings(req.body);
+    res.json({ success: true, settings: updated });
+  } catch (error) {
+    console.error('System settings update error:', error);
+    res.status(500).json({ success: false, error: 'Could not update system settings' });
   }
 });
 
@@ -3007,7 +3083,7 @@ app.get('/api/donation-info', (req, res) => {
 // POST /api/donate - Submit donation with slip
 const upload = multer({
   dest: path.join(dataDir, 'uploads'),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: getSettings().max_upload_bytes },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
       return cb(new Error('Only images allowed'));
@@ -3135,11 +3211,12 @@ app.put('/api/admin/proposals/:id', adminAuth, (req, res) => {
     }
 
     const now = new Date().toISOString();
+    const settings = getSettings();
     db.prepare(`
       UPDATE proposals
       SET title = ?, description = ?, category = ?, updated_at = ?
       WHERE id = ?
-    `).run(title.trim().substring(0, 200), description.trim().substring(0, 2000), category || 'general', now, proposalId);
+    `).run(title.trim().substring(0, settings.proposal_title_max_length), description.trim().substring(0, settings.proposal_description_max_length), category || 'general', now, proposalId);
 
     // Log the action
     logActivity('proposal_edited', null, proposalId, { title: title.trim() }, req);
