@@ -542,7 +542,7 @@ function checkEnrollRateLimit(ip) {
   return { allowed: true, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: 0 };
 }
 
-// POST /api/enroll/lookup - Search maldivesedirectory.com for members
+// POST /api/enroll/lookup - Search external directory for members
 // Used for enrolling friends and family - requires auth, rate limited
 app.post('/api/enroll/lookup', userAuth, (req, res) => {
   const ip = getClientIp(req);
@@ -566,7 +566,7 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     });
   }
   
-  // Build search payload for maldivesedirectory.com
+  // Build search payload for external directory service
   const searchPayload = JSON.stringify({
     query: query || '',
     name: name || '',
@@ -575,8 +575,9 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     page_size: 10
   });
   
-  const apiKey = process.env.DIRECTORY_API_KEY;
-  if (!apiKey) {
+  const apiKey = (process.env.DIRECTORY_API_KEY || '').trim();
+  const apiHost = (process.env.DIRECTORY_API_HOST || '').trim();
+  if (!apiKey || !apiHost) {
     return res.status(503).json({ error: 'Directory service not configured', success: false });
   }
   
@@ -587,7 +588,7 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
   };
   
   const options = {
-    hostname: process.env.DIRECTORY_API_HOST || 'www.maldivesedirectory.com',
+    hostname: apiHost,
     path: '/api/mydir/advanced_search/',
     method: 'POST',
     headers: headers,
