@@ -4,8 +4,11 @@ WORKDIR /app
 
 COPY package*.json ./
 
-ENV NODE_ENV=production
-RUN npm ci --only=production && npm cache clean --force
+# Install build deps for better-sqlite3, then remove them
+RUN apk add --no-cache python3 make g++ && \
+    npm ci --only=production && \
+    npm cache clean --force && \
+    apk del python3 make g++
 
 COPY . .
 
