@@ -76,6 +76,21 @@
             <!-- Filled by JavaScript -->
         </div>
         
+        <!-- Live Treasury Counter -->
+        <div id="treasuryCounter" class="bg-party-card border border-party-accent/20 rounded-xl p-4 mb-8 hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="text-2xl">💰</div>
+                    <div>
+                        <div class="text-xs text-gray-400 uppercase">Live Treasury</div>
+                        <div class="text-xl font-bold text-party-accent" id="treasuryAmount">Loading...</div>
+                    </div>
+                </div>
+                <a href="/donate" class="text-xs text-party-accent hover:underline">View details →</a>
+            </div>
+        </div>
+
+        <div id="signupFormContainer" class="hidden transition-all duration-300">
         <form id="signupForm" class="space-y-6">
             <!-- Phone -->
             <div>
@@ -183,6 +198,7 @@
                 Already have an account? <a href="/profile" class="text-party-accent hover:underline">Sign in</a>
             </p>
         </form>
+        </div>
     
     <script>
         // Get URL parameters
@@ -204,6 +220,26 @@
             'ideas': '💡',
             'donation': '💰'
         };
+        
+        const meritValues = {
+            'skills': 250,
+            'action': 200,
+            'ideas': 150,
+            'donation': 100
+        };
+        const baseMerit = 50;
+        const donationBonusPer100 = 5;
+        
+        function calculateEstimatedScore() {
+            let score = baseMerit;
+            selectedTypes.forEach(type => {
+                score += meritValues[type] || 0;
+            });
+            if (selectedTypes.includes('donation') && selectedDonationAmount > 0) {
+                score += Math.floor(selectedDonationAmount / 100) * donationBonusPer100;
+            }
+            return score;
+        }
         
         function toggleContribution(type, e) {
             const idx = selectedTypes.indexOf(type);
@@ -228,6 +264,8 @@
                 document.getElementById('donationSection').classList.remove('hidden');
             } else {
                 document.getElementById('donationSection').classList.add('hidden');
+                selectedDonationAmount = 0;
+                document.getElementById('donationAmount').value = 0;
             }
             
             // Show summary
@@ -239,20 +277,27 @@
             document.getElementById('contributionSelection').classList.add('hidden');
             document.getElementById('contributionSummary').classList.add('hidden');
             document.getElementById('donationSection').classList.add('hidden');
+            document.getElementById('signupFormContainer').classList.remove('hidden');
+            document.getElementById('treasuryCounter').classList.remove('hidden');
         }
         
         function updateContributionSummary() {
             if (selectedTypes.length === 0) {
                 document.getElementById('contributionSelection').classList.remove('hidden');
                 document.getElementById('contributionSummary').classList.add('hidden');
+                document.getElementById('signupFormContainer').classList.add('hidden');
+                document.getElementById('treasuryCounter').classList.add('hidden');
                 return;
             }
             
             document.getElementById('contributionSelection').classList.add('hidden');
             document.getElementById('contributionSummary').classList.remove('hidden');
+            document.getElementById('signupFormContainer').classList.remove('hidden');
+            document.getElementById('treasuryCounter').classList.remove('hidden');
             
             const icons = selectedTypes.map(t => `<span class="mr-1">${typeIcons[t]}</span>`).join(' ');
             const labels = selectedTypes.map(t => typeLabels[t]).join(', ');
+            const estimatedScore = calculateEstimatedScore();
             
             document.getElementById('contributionSummary').innerHTML = `
                 <div class="flex items-center justify-between">
@@ -263,7 +308,14 @@
                             <p class="font-bold text-party-accent">${labels}</p>
                         </div>
                     </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">Starting Merit Score</div>
+                        <div class="text-xl font-bold text-party-accent">${estimatedScore}</div>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between">
                     <button type="button" onclick="resetContribution()" class="text-gray-400 hover:text-white text-sm">Change</button>
+                    <p class="text-xs text-gray-500">+ random bonus (0-49) upon joining</p>
                 </div>
             `;
         }
@@ -273,6 +325,8 @@
             document.getElementById('contributionSelection').classList.remove('hidden');
             document.getElementById('contributionSummary').classList.add('hidden');
             document.getElementById('donationSection').classList.add('hidden');
+            document.getElementById('signupFormContainer').classList.add('hidden');
+            document.getElementById('treasuryCounter').classList.add('hidden');
             document.querySelectorAll('.contrib-btn').forEach(btn => {
                 btn.classList.remove('border-party-accent', 'bg-party-accent/10');
             });
@@ -286,6 +340,22 @@
             } catch (e) {}
         }
         
+        // Fetch Live Treasury balance
+        async function fetchTreasury() {
+            try {
+                const response = await fetch('/api/wall-stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        document.getElementById('treasuryAmount').textContent = 'MVR ' + (data.treasury || 0).toLocaleString();
+                    }
+                }
+            } catch (e) {
+                document.getElementById('treasuryAmount').textContent = 'MVR 0';
+            }
+        }
+        fetchTreasury();
+        
         function selectDonation(amount, e) {
             selectedDonationAmount = amount;
             document.getElementById('donationAmount').value = amount;
@@ -297,12 +367,24 @@
             if (e && e.target) {
                 e.target.classList.add('border-party-accent', 'bg-party-accent/10');
             }
+            
+            // Clear custom field
+            document.getElementById('customDonation').value = '';
+            
+            updateContributionSummary();
         }
         
         // Custom donation handler
         document.getElementById('customDonation').addEventListener('input', function() {
             selectedDonationAmount = parseFloat(this.value) || 0;
             document.getElementById('donationAmount').value = selectedDonationAmount;
+            
+            // Remove preset highlights
+            document.querySelectorAll('.donation-btn').forEach(btn => {
+                btn.classList.remove('border-party-accent', 'bg-party-accent/10');
+            });
+            
+            updateContributionSummary();
         });
         
         // Form submission

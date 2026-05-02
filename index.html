@@ -382,11 +382,12 @@
         fetchMemberCount();
         fetchTreasury();
         
-        // Merit score estimates for each contribution type
-        const meritScores = {
+        // Merit score estimates for each contribution type (matches server defaults)
+        const baseMerit = 50;
+        const meritValues = {
             'skills': 250,
-            'action': 180,
-            'ideas': 200,
+            'action': 200,
+            'ideas': 150,
             'donation': 100
         };
         
@@ -402,9 +403,10 @@
             // Set contribution type
             selectedContribution = type;
             
-            // Show explanation with merit score
+            // Show explanation with estimated merit score
+            const estimatedScore = baseMerit + (meritValues[type] || 0);
             document.getElementById('meritExplanation').classList.remove('hidden');
-            document.getElementById('estimatedScore').textContent = meritScores[type] || '—';
+            document.getElementById('estimatedScore').textContent = estimatedScore;
             document.getElementById('meritExplanation').scrollIntoView({ behavior: 'smooth' });
         }
         
@@ -412,10 +414,10 @@
             if (!selectedContribution) return;
             
             // Store selection in sessionStorage
-            sessionStorage.setItem('contribution_type', selectedContribution);
+            sessionStorage.setItem('contribution_types', JSON.stringify([selectedContribution]));
             
             // Redirect to signup page
-            window.location.href = `/join?type=${selectedContribution}`;
+            window.location.href = `/join`;
         }
         
         // Load recent activity
