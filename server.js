@@ -700,41 +700,36 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     });
   }
 
-  // Wildcard helper: allow * anywhere in the value.
-  // If user supplies no wildcard, append * for prefix matching.
-  const w = (val) => {
-    if (!val) return '';
-    if (val.includes('*')) return val;
-    return val + '*';
-  };
-
   const apiKey = (process.env.DIRECTORY_API_KEY || '').trim();
   const apiHost = (process.env.DIRECTORY_API_HOST || '').trim();
   if (!apiKey || !apiHost) {
     return res.status(503).json({ error: 'Directory service not configured', success: false });
   }
 
+  // Wildcard helper: pad with * on both sides unless user already supplied *.
+  const w = (val) => {
+    if (!val) return '';
+    if (val.includes('*')) return val;
+    return '*' + val + '*';
+  };
+
   // Build query params for external directory service (GET /api/public/search/)
   const queryParams = new URLSearchParams();
   queryParams.set('limit', '10');
 
-  if (query) {
-    queryParams.set('q', w(query));
-  }
-  if (name) {
-    queryParams.set('name', w(name));
-  }
-  if (island) {
-    queryParams.set('island', w(island));
-  }
+  if (query) queryParams.set('q', w(query));
+  if (name) queryParams.set('name', w(name));
+  if (island) queryParams.set('island', w(island));
   // The public search API has no dedicated address param; fold address into the general q param.
   if (address) {
     const existingQ = queryParams.get('q') || '';
-    const addrWild = w(address);
-    queryParams.set('q', existingQ ? `${existingQ} ${addrWild}` : addrWild);
+    queryParams.set('q', existingQ ? `${existingQ} ${w(address)}` : w(address));
   }
 
   const path = `/api/public/search/?${queryParams.toString()}`;
+  const url = `https://${apiHost}${path}`;
+
+  console.log(`[Directory Search] ${url}`);
 
   const options = {
     hostname: apiHost,
@@ -755,6 +750,15 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
     });
 
     proxyRes.on('end', () => {
+      console.log(`[Directory Search] status=${proxyRes.statusCode} body=${data.substring(0, 500)}`);
+
+      if (proxyRes.statusCode >= 400) {
+        return res.status(502).json({
+          error: `Directory service returned ${proxyRes.statusCode}`,
+          success: false
+        });
+      }
+
       try {
         const parsed = JSON.parse(data);
         res.json({
@@ -767,12 +771,13 @@ app.post('/api/enroll/lookup', userAuth, (req, res) => {
           }
         });
       } catch (e) {
-        res.status(502).json({ error: 'Could not reach directory service', success: false });
+        res.status(502).json({ error: 'Invalid response from directory service', success: false });
       }
     });
   });
 
   proxyReq.on('error', (e) => {
+    console.error(`[Directory Search] request error: ${e.message}`);
     res.status(502).json({ error: 'Directory service unavailable: ' + e.message, success: false });
   });
 
