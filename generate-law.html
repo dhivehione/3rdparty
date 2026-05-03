@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Law Draft — 3d Party</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0PED1M435Y');
+    </script>
+    <script src="nav.js"></script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-3">
+                <i class="fas fa-robot text-party-accent mr-2"></i>AI Law Draft Generator
+            </h1>
+            <p class="text-gray-400 max-w-2xl mx-auto">
+                Propose an idea for a new law, regulation, or clause. We'll search existing Maldivian legislation for relevant context and use AI to generate a sample draft you can refine.
+            </p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+            <h2 class="text-xl font-bold text-party-accent mb-4">
+                <i class="fas fa-lightbulb mr-2"></i>Your Seed Idea
+            </h2>
+
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-2">What kind of draft do you want?</label>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="setDraftType('law')" id="type-law"
+                            class="px-4 py-2 rounded-lg font-bold text-sm border border-party-accent text-party-accent bg-party-accent/10">
+                        Full Law
+                    </button>
+                    <button onclick="setDraftType('regulation')" id="type-regulation"
+                            class="px-4 py-2 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 hover:border-party-accent hover:text-party-accent transition">
+                        Regulation
+                    </button>
+                    <button onclick="setDraftType('clause')" id="type-clause"
+                            class="px-4 py-2 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 hover:border-party-accent hover:text-party-accent transition">
+                        Specific Clause
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-2" for="seedIdea">Describe your idea <span class="text-party-accent">*</span></label>
+                <textarea id="seedIdea" rows="6" required
+                          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none resize-y"
+                          placeholder="Example: A law requiring all public beaches in the Maldives to have designated waste collection points with daily pickup, funded through a tourism levy..."></textarea>
+                <p class="text-gray-500 text-xs mt-1">Be specific. Include context: what problem does it solve? Who is affected? What change do you want?</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-2" for="additionalContext">Additional context (optional)</label>
+                <textarea id="additionalContext" rows="3"
+                          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none resize-y"
+                          placeholder="Any specific requirements, references to existing laws, or details you want the draft to include..."></textarea>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="generateDraft()" id="generateBtn"
+                        class="bg-party-accent text-party-dark px-8 py-3 rounded-lg font-bold hover:bg-yellow-400 transition flex items-center gap-2">
+                    <i class="fas fa-wand-magic-sparkles"></i>Generate Draft
+                </button>
+                <button onclick="clearForm()" class="text-gray-400 hover:text-white text-sm transition">
+                    <i class="fas fa-undo mr-1"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden bg-party-card rounded-xl p-8 mb-8 border border-gray-700 text-center">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-party-accent mb-4"></div>
+            <p class="text-gray-400" id="loadingText">Searching relevant laws and generating draft...</p>
+            <div id="loadingSteps" class="mt-4 space-y-2 text-sm text-gray-500 max-w-md mx-auto"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-900/20 border border-red-500/50 rounded-xl p-6 mb-8">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-400 text-xl mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-red-400 mb-1">Generation Failed</h3>
+                    <p id="errorMessage" class="text-gray-300 text-sm"></p>
+                </div>
+                <button onclick="document.getElementById('errorState').classList.add('hidden')" class="text-gray-400 hover:text-white ml-auto">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Result -->
+        <div id="resultContainer" class="hidden">
+            <div class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h2 class="text-xl font-bold text-party-accent">
+                        <i class="fas fa-file-contract mr-2"></i>Generated Draft
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="copyDraft()" id="copyBtn"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-copy mr-1"></i>Copy
+                        </button>
+                        <button onclick="downloadDraft()"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-download mr-1"></i>Download
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div id="draftMeta" class="flex flex-wrap gap-4 mb-6 text-xs text-gray-500">
+                </div>
+
+                <!-- Draft Content -->
+                <div id="draftContent"
+                     class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[800px] overflow-y-auto">
+                </div>
+            </div>
+
+            <!-- Refine Section -->
+            <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+                <h3 class="font-bold text-party-accent mb-3">
+                    <i class="fas fa-screwdriver-wrench mr-2"></i>Refine the Draft
+                </h3>
+                <p class="text-gray-400 text-sm mb-3">Not happy with the result? Tell us what to change.</p>
+                <div class="flex flex-col md:flex-row gap-3">
+                    <textarea id="refineInput" rows="2"
+                              class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none"
+                              placeholder="e.g., Make the penalties stricter, add more specific definitions, shorten it..."></textarea>
+                    <button onclick="refineDraft()" id="refineBtn"
+                            class="bg-party-secondary text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-500 transition whitespace-nowrap h-fit self-end">
+                        <i class="fas fa-rotate mr-1"></i>Refine
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let draftType = 'law';
+        let currentDraft = '';
+        let lastSeedIdea = '';
+        let lastAdditionalContext = '';
+
+        function setDraftType(type) {
+            draftType = type;
+            document.querySelectorAll('[id^="type-"]').forEach(btn => {
+                btn.classList.remove('border-party-accent', 'text-party-accent', 'bg-party-accent/10');
+                btn.classList.add('border-gray-600', 'text-gray-300');
+            });
+            const active = document.getElementById('type-' + type);
+            active.classList.remove('border-gray-600', 'text-gray-300');
+            active.classList.add('border-party-accent', 'text-party-accent', 'bg-party-accent/10');
+        }
+
+        function clearForm() {
+            document.getElementById('seedIdea').value = '';
+            document.getElementById('additionalContext').value = '';
+            document.getElementById('resultContainer').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            currentDraft = '';
+            lastSeedIdea = '';
+            lastAdditionalContext = '';
+        }
+
+        function updateLoadingSteps(step) {
+            const el = document.getElementById('loadingSteps');
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-2 text-gray-400';
+            item.innerHTML = '<i class="fas fa-circle text-[4px] text-party-accent"></i><span>' + step + '</span>';
+            el.appendChild(item);
+        }
+
+        async function generateDraft() {
+            const seedIdea = document.getElementById('seedIdea').value.trim();
+            const additionalContext = document.getElementById('additionalContext').value.trim();
+
+            if (seedIdea.length < 10) {
+                alert('Please enter a seed idea with at least 10 characters.');
+                return;
+            }
+
+            lastSeedIdea = seedIdea;
+            lastAdditionalContext = additionalContext;
+
+            const fullIdea = additionalContext
+                ? `[Draft Type: ${draftType}] ${seedIdea}\n\nAdditional context: ${additionalContext}`
+                : `[Draft Type: ${draftType}] ${seedIdea}`;
+
+            const loadingState = document.getElementById('loadingState');
+            const resultContainer = document.getElementById('resultContainer');
+            const errorState = document.getElementById('errorState');
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingSteps = document.getElementById('loadingSteps');
+
+            loadingSteps.innerHTML = '';
+            loadingState.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            errorState.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+
+            updateLoadingSteps('Extracting keywords from your idea...');
+
+            try {
+                const res = await fetch('/api/generate-law-draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seed_idea: fullIdea })
+                });
+
+                const data = await res.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Generation failed');
+                }
+
+                currentDraft = data.draft;
+
+                document.getElementById('loadingText').textContent = 'Draft generated successfully!';
+                updateLoadingSteps('Found ' + (data.clauses_referenced || 0) + ' relevant existing clauses');
+                updateLoadingSteps('AI draft complete');
+
+                setTimeout(() => {
+                    loadingState.classList.add('hidden');
+                    displayResult(data);
+                }, 600);
+            } catch (e) {
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = e.message;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>Generate Draft';
+            }
+        }
+
+        function displayResult(data) {
+            const container = document.getElementById('resultContainer');
+            const content = document.getElementById('draftContent');
+            const meta = document.getElementById('draftMeta');
+
+            container.classList.remove('hidden');
+
+            meta.innerHTML = `
+                <span><i class="fas fa-tags mr-1"></i>Keywords: ${(data.keywords_used || []).join(', ') || 'none'}</span>
+                <span><i class="fas fa-scale-balanced mr-1"></i>Clauses referenced: ${data.clauses_referenced || 0}</span>
+                <span><i class="fas fa-clock mr-1"></i>${new Date(data.timestamp).toLocaleString()}</span>
+            `;
+
+            content.textContent = currentDraft;
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function refineDraft() {
+            const refineInput = document.getElementById('refineInput').value.trim();
+            if (!refineInput) {
+                alert('Please describe what you want to change.');
+                return;
+            }
+
+            if (!currentDraft || !lastSeedIdea) {
+                alert('No draft to refine. Generate one first.');
+                return;
+            }
+
+            const loadingState = document.getElementById('loadingState');
+            const loadingSteps = document.getElementById('loadingSteps');
+            const refineBtn = document.getElementById('refineBtn');
+
+            loadingSteps.innerHTML = '';
+            loadingState.classList.remove('hidden');
+            refineBtn.disabled = true;
+            refineBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Refining...';
+
+            updateLoadingSteps('Refining draft with your feedback...');
+
+            const refinePrompt = `Your original idea was: ${lastSeedIdea}\n\nHere is the current draft:\n\n${currentDraft}\n\nRefine the draft based on this feedback: ${refineInput}\n\n${lastAdditionalContext ? 'Additional context: ' + lastAdditionalContext : ''}`;
+
+            try {
+                const res = await fetch('/api/generate-law-draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seed_idea: refinePrompt })
+                });
+
+                const data = await res.json();
+
+                if (!data.success) throw new Error(data.error || 'Refinement failed');
+
+                currentDraft = data.draft;
+                document.getElementById('draftContent').textContent = currentDraft;
+                document.getElementById('refineInput').value = '';
+
+                const meta = document.getElementById('draftMeta');
+                const existingMeta = meta.innerHTML;
+                meta.innerHTML = existingMeta + ` <span class="text-party-accent"><i class="fas fa-sync mr-1"></i>Refined at ${new Date().toLocaleTimeString()}</span>`;
+
+                updateLoadingSteps('Refinement complete');
+            } catch (e) {
+                loadingState.classList.add('hidden');
+                document.getElementById('errorMessage').textContent = e.message;
+                document.getElementById('errorState').classList.remove('hidden');
+            } finally {
+                loadingState.classList.add('hidden');
+                refineBtn.disabled = false;
+                refineBtn.innerHTML = '<i class="fas fa-rotate mr-1"></i>Refine';
+            }
+        }
+
+        function copyDraft() {
+            if (!currentDraft) return;
+            navigator.clipboard.writeText(currentDraft).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                btn.classList.add('text-party-accent');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy';
+                    btn.classList.remove('text-party-accent');
+                }, 2000);
+            });
+        }
+
+        function downloadDraft() {
+            if (!currentDraft) return;
+            const blob = new Blob([currentDraft], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const title = lastSeedIdea.split('\n')[0].replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 40) || 'law_draft';
+            a.download = title.toLowerCase().replace(/\s+/g, '_') + '.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('seedIdea');
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    generateDraft();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

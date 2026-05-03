@@ -1786,6 +1786,172 @@ let userId = null;
   }
 });
 
+// ==================== AI LAW DRAFT GENERATION ====================
+
+const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+const OPENROUTER_MODEL = (process.env.OPENROUTER_MODEL || 'openai/gpt-4o').trim();
+
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+  'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
+  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+  'could', 'should', 'may', 'might', 'shall', 'can', 'need', 'dare',
+  'ought', 'used', 'this', 'that', 'these', 'those', 'i', 'we', 'you',
+  'he', 'she', 'it', 'they', 'me', 'him', 'her', 'us', 'them', 'my',
+  'our', 'your', 'his', 'its', 'their', 'not', 'no', 'nor', 'so',
+  'if', 'then', 'than', 'too', 'very', 'just', 'about', 'above',
+  'after', 'again', 'all', 'also', 'any', 'because', 'before',
+  'between', 'both', 'each', 'few', 'more', 'most', 'other', 'some',
+  'such', 'only', 'own', 'same', 'into', 'over', 'under', 'up', 'out',
+  'down', 'off', 'here', 'there', 'when', 'where', 'why', 'how',
+  'which', 'who', 'whom', 'what', 's', 't', 'd', 'll', 've', 're',
+  'm', 'nt', 'don', 'doesn', 'isn', 'wasn', 'weren', 'hasn',
+  'haven', 'hadn', 'won', 'wouldn', 'couldn', 'shouldn', 'mightn',
+  'mustn', 'needn', 'oughtn'
+]);
+
+function extractKeywords(text) {
+  const words = text.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+  const freq = {};
+  for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(e => e[0]);
+}
+
+function searchLawsForKeywords(keywords) {
+  if (!lawsDb || keywords.length === 0) return [];
+  const results = [];
+
+  try {
+    for (const kw of keywords) {
+      const like = `%${kw.replace(/[%_]/g, '\\$&')}%`;
+      const clauses = lawsDb.prepare(`
+        SELECT sa.text_content, sa.sub_article_label, a.article_title, a.article_number, l.law_name, l.category_name
+        FROM sub_articles sa
+        JOIN articles a ON sa.article_id = a.id
+        JOIN laws l ON a.law_id = l.id
+        WHERE sa.text_content LIKE ?
+        LIMIT 8
+      `).all(like);
+      for (const c of clauses) {
+        const key = `${c.law_name}|||${c.article_number}|||${c.sub_article_label}`;
+        if (!results.find(r => r.key === key)) {
+          results.push({ ...c, key });
+        }
+      }
+      if (results.length >= 20) break;
+    }
+  } catch (e) {
+    console.error('Law keyword search error:', e);
+  }
+
+  return results.slice(0, 20);
+}
+
+async function callOpenRouter(systemPrompt, userPrompt) {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 4096,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`OpenRouter returned ${response.status}: ${errBody}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+// POST /api/generate-law-draft - Generate a law draft from a seed idea
+app.post('/api/generate-law-draft', async (req, res) => {
+  if (!OPENROUTER_API_KEY) {
+    return res.status(503).json({ error: 'AI service not configured. Set OPENROUTER_API_KEY.', success: false });
+  }
+
+  const { seed_idea } = req.body;
+
+  if (!seed_idea || seed_idea.trim().length < 10) {
+    return res.status(400).json({ error: 'Please provide a seed idea (at least 10 characters)', success: false });
+  }
+
+  try {
+    const keywords = extractKeywords(seed_idea);
+    const relevantClauses = searchLawsForKeywords(keywords);
+
+    let clausesContext = '';
+    if (relevantClauses.length > 0) {
+      clausesContext = relevantClauses.map((c, i) =>
+        `[${i + 1}] Law: ${c.law_name} | Article ${c.article_number}: ${c.article_title} | Clause ${c.sub_article_label}: ${c.text_content}`
+      ).join('\n');
+    }
+
+    const systemPrompt = `You are a legal drafting assistant for the Maldives. Given a seed idea for a law, regulation, or clause, produce a well-structured draft using proper legal formatting.
+
+Structure your response with these sections:
+## Title
+A clear, concise title for the proposed law/regulation/clause.
+
+## Preamble
+A brief statement of purpose and rationale (2-3 sentences).
+
+## Definitions
+Key terms defined precisely (if applicable).
+
+## Provisions
+Numbered sections. Each section should have:
+- A clear heading
+- Specific requirements, prohibitions, or permissions
+- Enforcement mechanisms where appropriate
+
+## Penalties / Enforcement
+Consequences for non-compliance (if applicable).
+
+## Commencement
+When the law takes effect.
+
+Draft in a formal legal style. Use "shall" for obligations, "may" for permissions. Be specific and enforceable. Do NOT include placeholder text or markdown formatting instructions in the output.`;
+
+    let userPrompt = `Seed idea: ${seed_idea.trim()}\n\n`;
+
+    if (clausesContext) {
+      userPrompt += `Here are relevant existing Maldivian law clauses for reference and inspiration:\n\n${clausesContext}\n\n`;
+    }
+
+    userPrompt += 'Please generate a complete draft law/regulation/clause based on the seed idea above.';
+
+    const draft = await callOpenRouter(systemPrompt, userPrompt);
+
+    res.json({
+      success: true,
+      draft,
+      keywords_used: keywords,
+      clauses_referenced: relevantClauses.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Generate law draft error:', error);
+    res.status(500).json({ error: 'Failed to generate draft: ' + error.message, success: false });
+  }
+});
+
 // POST /api/wall - Add a post (no signup required)
 app.post('/api/wall', (req, res) => {
   const { nickname, message } = req.body;
@@ -3834,6 +4000,10 @@ app.get('/admin', (req, res) => {
 
 app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
+});
+
+app.get('/generate-law', (req, res) => {
+  res.sendFile(path.join(__dirname, 'generate-law.html'));
 });
 
 app.get('/leadership', (req, res) => {

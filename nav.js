@@ -7,6 +7,7 @@ function getPageName() {
     if (path.includes('intro')) return 'intro';
     if (path.includes('how')) return 'how-it-works';
     if (path.includes('whitepaper')) return 'whitepaper';
+    if (path.includes('generate-law')) return 'generate-law';
     if (path.includes('laws') && !path.includes('law-stats')) return 'laws';
     if (path.includes('law-stats')) return 'law-stats';
     if (path.includes('legislature')) return 'legislature';
@@ -43,6 +44,7 @@ function createNavigation() {
                 <a href="/how-it-works" class="hover:text-party-accent transition ${currentPage === 'how-it-works' ? 'text-party-accent font-bold' : 'text-gray-300'}">How</a>
                 <a href="/whitepaper" class="hover:text-party-accent transition ${currentPage === 'whitepaper' ? 'text-party-accent font-bold' : 'text-gray-300'}">Whitepaper</a>
                 <a href="/laws" class="hover:text-party-accent transition ${currentPage === 'laws' ? 'text-party-accent font-bold' : 'text-gray-300'}">Laws</a>
+                <a href="/generate-law" class="hover:text-party-accent transition ${currentPage === 'generate-law' ? 'text-party-accent font-bold' : 'text-gray-300'}">Generate Law</a>
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
