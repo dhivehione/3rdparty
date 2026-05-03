@@ -686,7 +686,7 @@
             const summary = escapeHtmlDecode(summaryRaw);
             
             const pdfContent = document.createElement('div');
-            pdfContent.style.cssText = 'padding:40px;font-family:Arial,sans-serif;color:#000;background:#fff;';
+            pdfContent.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;padding:40px;font-family:Arial,sans-serif;color:#000;background:#fff;';
             pdfContent.innerHTML = `
                 <h1 style="font-size:24px;margin-bottom:10px;color:#111;">${title}</h1>
                 <hr style="border:1px solid #ddd;margin-bottom:20px;">
@@ -695,6 +695,7 @@
                 <h2 style="font-size:16px;color:#555;margin-bottom:10px;">Full Proposal</h2>
                 <pre style="font-size:13px;line-height:1.7;color:#333;white-space:pre-wrap;font-family:Arial,sans-serif;">${fullText}</pre>
             `;
+            document.body.appendChild(pdfContent);
             
             const opt = {
                 margin: [10, 10, 10, 10],
@@ -704,7 +705,9 @@
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
-            html2pdf().set(opt).from(pdfContent).save();
+            html2pdf().set(opt).from(pdfContent).save().then(() => {
+                document.body.removeChild(pdfContent);
+            });
         }
 
         function escapeHtmlDecode(str) {
