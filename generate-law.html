@@ -6,6 +6,7 @@
     <title>Generate Law Draft — 3d Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -111,6 +112,10 @@
                         <button onclick="downloadDraft()"
                                 class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
                             <i class="fas fa-download mr-1"></i>Download
+                        </button>
+                        <button onclick="downloadPdfDraft()"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
                         </button>
                     </div>
                 </div>
@@ -589,6 +594,71 @@
             a.download = title.toLowerCase().replace(/\s+/g, '_') + '.md';
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function downloadPdfDraft() {
+            if (!currentDraft) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const margin = 20;
+            const pageWidth = 210;
+            const maxWidth = pageWidth - margin * 2;
+            let y = margin;
+
+            const title = lastSeedIdea.split('\n')[0].replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 40) || 'Law Draft';
+            const filename = title.toLowerCase().replace(/\s+/g, '_') + '.pdf';
+
+            // Title
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(17, 17, 17);
+            const titleLines = doc.splitTextToSize(title, maxWidth);
+            doc.text(titleLines, margin, y);
+            y += titleLines.length * 8 + 4;
+
+            // Separator
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 8;
+
+            // Executive Summary
+            if (currentExecutiveSummary) {
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(85, 85, 85);
+                doc.text('Executive Summary', margin, y);
+                y += 8;
+
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(51, 51, 51);
+                const summaryLines = doc.splitTextToSize(currentExecutiveSummary, maxWidth);
+                for (const line of summaryLines) {
+                    if (y > 277) { doc.addPage(); y = margin; }
+                    doc.text(line, margin, y);
+                    y += 5.5;
+                }
+                y += 6;
+            }
+
+            // Full Draft
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(85, 85, 85);
+            doc.text('Full Draft', margin, y);
+            y += 8;
+
+            doc.setFontSize(10);
+            doc.setFont('courier', 'normal');
+            doc.setTextColor(51, 51, 51);
+            const fullLines = doc.splitTextToSize(currentDraft, maxWidth);
+            for (const line of fullLines) {
+                if (y > 277) { doc.addPage(); y = margin; }
+                doc.text(line, margin, y);
+                y += 4.5;
+            }
+
+            doc.save(filename);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
