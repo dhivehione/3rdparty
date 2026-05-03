@@ -1068,7 +1068,7 @@ app.post('/api/proposals', (req, res) => {
     `);
     const result = stmt.run(
       sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
-      sanitizeHTML(description.trim().substring(0, settings.proposal_description_max_length)),
+      sanitizeHTML(description.trim()),
       category || 'general',
       sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
@@ -1303,7 +1303,7 @@ app.post('/api/ranked-proposals', (req, res) => {
     `);
     const result = stmt.run(
       sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
-      sanitizeHTML(description.trim().substring(0, settings.proposal_description_max_length)),
+      sanitizeHTML(description.trim()),
       category || 'election',
       JSON.stringify(options.map(o => sanitizeHTML(o.trim())).filter(o => o)),
       sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
@@ -4153,7 +4153,7 @@ app.put('/api/admin/proposals/:id', adminAuth, (req, res) => {
       UPDATE proposals
       SET title = ?, description = ?, category = ?, updated_at = ?
       WHERE id = ?
-    `).run(title.trim().substring(0, settings.proposal_title_max_length), description.trim().substring(0, settings.proposal_description_max_length), category || 'general', now, proposalId);
+    `).run(title.trim().substring(0, settings.proposal_title_max_length), description.trim(), category || 'general', now, proposalId);
 
     // Log the action
     logActivity('proposal_edited', null, proposalId, { title: title.trim() }, req);

@@ -471,7 +471,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: title.slice(0, 200),
-                        description: description.slice(0, 5000),
+                        description: description,
                         category: 'policy',
                         nickname: nickname || 'AI Draft Contributor'
                     })
