@@ -742,32 +742,28 @@ function checkEnrollRateLimit(ip) {
   return { allowed: true, remaining: ENROLL_MAX_PER_DAY - record.dailyCount, resetIn: 0 };
 }
 
-// Helper: proxy a search request to the external directory API (POST /api/mydir/advanced_search/)
-// Returns a Promise that resolves with { results, total_count } or rejects
+// Helper: proxy a search request to the external directory API (GET /api/public/search/)
+// Returns a Promise that resolves with { results, count } or rejects
 function directorySearch(apiKey, apiHost, searchFields) {
-  const w = (val) => {
-    if (!val) return '';
-    if (val.includes('*')) return val;
-    return '*' + val + '*';
-  };
+  const params = new URLSearchParams();
+  if (searchFields.q) params.append('q', searchFields.q);
+  if (searchFields.name) params.append('name', searchFields.name);
+  if (searchFields.island) params.append('island', searchFields.island);
+  if (searchFields.atoll) params.append('atoll', searchFields.atoll);
+  if (searchFields.profession) params.append('profession', searchFields.profession);
+  params.append('limit', String(searchFields.limit || 20));
+  if (searchFields.offset) params.append('offset', String(searchFields.offset));
 
-  const searchPayload = JSON.stringify({
-    query: w(searchFields.query),
-    name: w(searchFields.name),
-    island: w(searchFields.island),
-    address: w(searchFields.address),
-    page_size: 10
-  });
+  const path = '/api/public/search/?' + params.toString();
 
   return new Promise((resolve, reject) => {
     const options = {
       hostname: apiHost,
-      path: '/api/mydir/advanced_search/',
-      method: 'POST',
+      path: path,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(searchPayload),
-        'Authorization': `Api-Key ${apiKey}`
+        'X-API-Key': apiKey,
+        'Accept': 'application/json'
       },
       timeout: 10000
     };
@@ -782,7 +778,7 @@ function directorySearch(apiKey, apiHost, searchFields) {
         }
         try {
           const parsed = JSON.parse(data);
-          resolve({ results: parsed.results || [], total_count: parsed.total_count || 0 });
+          resolve({ results: parsed.results || [], count: parsed.count || 0 });
         } catch (e) {
           reject(new Error('Invalid response from directory service'));
         }
@@ -791,13 +787,12 @@ function directorySearch(apiKey, apiHost, searchFields) {
 
     proxyReq.on('error', (e) => reject(e));
     proxyReq.on('timeout', () => { proxyReq.destroy(); reject(new Error('Directory service timeout')); });
-    proxyReq.write(searchPayload);
     proxyReq.end();
   });
 }
 
 // POST /api/enroll/lookup - Search external directory for members
-// Proxies to external directory API: POST /api/mydir/advanced_search/
+// Proxies to external directory API: GET /api/public/search/
 // Used for enrolling friends and family - requires auth, rate limited
 // When only a generic 'query' is provided, searches by name AND island in
 // parallel and merges results so that name-only or island-only searches work.
@@ -814,11 +809,11 @@ app.post('/api/enroll/lookup', userAuth, async (req, res) => {
     });
   }
 
-  const { query, name, island, address } = req.body;
+  const { query, name, island, atoll, profession, address } = req.body;
 
-  if (!query && !name && !island && !address) {
+  if (!query && !name && !island && !atoll && !profession && !address) {
     return res.status(400).json({
-      error: 'At least one search parameter required: query, name, island, or address',
+      error: 'At least one search parameter required: query, name, island, atoll, profession, or address',
       success: false
     });
   }
@@ -833,19 +828,27 @@ app.post('/api/enroll/lookup', userAuth, async (req, res) => {
     let mergedResults = [];
 
     // When specific fields are provided, do a single targeted search
-    if (name || island || address) {
-      const result = await directorySearch(apiKey, apiHost, { query, name, island, address });
+    if (name || island || atoll || profession || address) {
+      // Map legacy 'address' field to generic 'q' since the new API uses q for full-text search
+      const searchFields = {
+        q: query || address || '',
+        name: name || '',
+        island: island || '',
+        atoll: atoll || '',
+        profession: profession || ''
+      };
+      const result = await directorySearch(apiKey, apiHost, searchFields);
       mergedResults = result.results;
     } else {
-      // Generic query only — search by name and by island in parallel,
-      // then merge & deduplicate by pid so both name-only and
-      // island-only lookups return relevant results.
+      // Generic query only — search by name, island, and via q in parallel,
+      // then merge & deduplicate by pid so all lookups return relevant results.
       const searches = [
+        directorySearch(apiKey, apiHost, { q: query }),
         directorySearch(apiKey, apiHost, { name: query }),
         directorySearch(apiKey, apiHost, { island: query })
       ];
 
-      const [byName, byIsland] = await Promise.allSettled(searches);
+      const [byQ, byName, byIsland] = await Promise.allSettled(searches);
 
       const seenPids = new Set();
       const addUnique = (results) => {
@@ -857,6 +860,7 @@ app.post('/api/enroll/lookup', userAuth, async (req, res) => {
         }
       };
 
+      if (byQ.status === 'fulfilled') addUnique(byQ.value.results);
       if (byName.status === 'fulfilled') addUnique(byName.value.results);
       if (byIsland.status === 'fulfilled') addUnique(byIsland.value.results);
     }

@@ -1,0 +1,124 @@
+API BASE URL: https://<your-domain>/api/public
+
+AUTHENTICATION: Pass API key via header `X-API-Key: <key>` or query param `?api_key=<key>`
+
+-- Search directory entries --
+GET /api/public/search/
+  q: string (search name, address, profession, remark)
+  name: string
+  island: string
+  atoll: string
+  profession: string
+  limit: int (default 20)
+  offset: int (default 0)
+RESPONSE: {
+  count: int,
+  limit: int,
+  offset: int,
+  results: [{
+    pid: int,
+    name: string|null,
+    address: string|null,
+    street: string|null,
+    ward: string|null,
+    island: string|null,
+    atoll: string|null,
+    party: string|null,
+    profession: string|null,
+    gender: string|null,
+    status: string|null,
+    contact: string|null,
+    email: string|null,
+    nid: string|null,
+    DOB: string|null             // requires can_view_details
+  }]
+}
+
+-- Get single entry detail (requires can_view_details) --
+GET /api/public/entry/{pid}/
+RESPONSE: {
+  pid: int,
+  name: string|null,
+  address: string|null,
+  street: string|null,
+  ward: string|null,
+  island: string|null,
+  atoll: string|null,
+  party: string|null,
+  profession: string|null,
+  gender: string|null,
+  status: string|null,
+  remark: string|null,
+  contact: string|null,
+  email: string|null,
+  nid: string|null,
+  DOB: string|null,             // requires can_view_details
+  extra: string|null,            // requires can_view_details
+  employer: string|null,         // requires can_view_details
+  criminal_record: string|null   // requires can_view_details
+}
+
+-- Search companies (requires can_access_companies) --
+GET /api/public/companies/
+  q: string (search company_name, registration_number, director_name)
+  name: string
+  registration_number: string
+  limit: int (default 20)
+  offset: int (default 0)
+RESPONSE: {
+  count: int,
+  limit: int,
+  offset: int,
+  results: [{
+    id: int,
+    registration_number: string|null,
+    company_name: string|null,
+    company_type: string|null,
+    state: string|null,
+    registered_date: string|null,
+    director_name: string|null,
+    director_nid: string|null    // requires can_view_details
+  }]
+}
+
+-- Get single company detail (requires can_access_companies) --
+GET /api/public/companies/{id}/
+RESPONSE: {
+  id: int,
+  registration_number: string|null,
+  company_name: string|null,
+  company_type: string|null,
+  state: string|null,
+  registered_date: string|null,
+  director_name: string|null,
+  director_nid: string|null,    // requires can_view_details
+  created_at: string|null,       // requires can_view_details
+  updated_at: string|null        // requires can_view_details
+}
+
+-- List all islands --
+GET /api/public/islands/
+RESPONSE: [{ id: int, name: string, atoll__name: string|null }]
+
+-- List all atolls --
+GET /api/public/atolls/
+RESPONSE: [{ id: int, name: string }]
+
+-- API info / permissions --
+GET /api/public/info/
+RESPONSE: {
+  name: string,
+  version: string,
+  description: string,
+  endpoints: object,
+  api_key: {                    // present when authenticated
+    name: string,
+    permissions: {
+      can_search: bool,
+      can_view_details: bool,
+      can_access_companies: bool,
+      can_access_land_titles: bool
+    },
+    rate_limit: string
+  }
+}
