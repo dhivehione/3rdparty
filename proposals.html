@@ -253,13 +253,41 @@
                 data.proposals.forEach(p => {
                     const total = p.yes_votes + p.no_votes + p.abstain_votes;
                     const yesPct = total > 0 ? Math.round((p.yes_votes / total) * 100) : 0;
+
+                    // Check if this is an AI-generated law draft
+                    let isAiDraft = false;
+                    let execSummary = '';
+                    let fullDraft = '';
+                    let descriptionHtml = '';
+                    const aiMatch = p.description.match(/^\[AI_LAW_DRAFT\]/);
+                    
+                    if (aiMatch) {
+                        isAiDraft = true;
+                        const descBody = p.description.replace(/^\[AI_LAW_DRAFT\]\n?/, '');
+                        const summaryMatch = descBody.match(/##\s*Executive Summary\s*\n([\s\S]*?)(?=\n---)/);
+                        const draftMatch = descBody.match(/---\n+\n*##\s*Full Draft\s*\n([\s\S]*)/);
+                        if (summaryMatch) {
+                            execSummary = summaryMatch[1].trim()
+                                .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                                .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
+                                .replace(/\n/g, '<br>');
+                            descriptionHtml = execSummary;
+                        }
+                        if (draftMatch) {
+                            fullDraft = draftMatch[1].trim();
+                        } else {
+                            fullDraft = descBody;
+                        }
+                    } else {
+                        descriptionHtml = escapeHtml(p.description);
+                    }
                     
                     const el = document.createElement('div');
                     el.className = 'bg-party-card rounded-xl p-6 border border-gray-700';
                     el.innerHTML = `
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <span class="text-xs text-gray-500 uppercase tracking-wide">${p.category}</span>
+                                <span class="text-xs text-gray-500 uppercase tracking-wide">${p.category}${isAiDraft ? ' · <span class="text-party-accent">AI Drafted Law</span>' : ''}</span>
                                 <h3 class="text-xl font-bold text-white mt-1">${escapeHtml(p.title)}</h3>
                                 <p class="text-gray-500 text-sm mt-1">by ${escapeHtml(p.created_by_nickname || 'Anonymous')} • ${formatDate(p.created_at)}</p>
                             </div>
@@ -268,7 +296,26 @@
                                 <span class="text-gray-500 text-sm block">passing</span>
                             </div>
                         </div>
-                        <p class="text-gray-300 mb-6">${escapeHtml(p.description)}</p>
+                        ${isAiDraft ? `
+                            ${execSummary ? `
+                            <div class="bg-gradient-to-r from-party-accent/10 to-transparent border border-party-accent/30 rounded-lg p-4 mb-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-star text-party-accent text-xs"></i>
+                                    <span class="font-bold text-party-accent text-xs uppercase tracking-wide">Executive Summary</span>
+                                </div>
+                                <div class="text-gray-200 text-sm leading-relaxed">${descriptionHtml}</div>
+                            </div>
+                            ` : ''}
+                            ${fullDraft ? `
+                                <button onclick="toggleAiDraft(this)" class="w-full flex items-center justify-center gap-2 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-party-accent/50 transition text-gray-400 hover:text-white text-sm mb-3">
+                                    <i class="fas fa-chevron-down toggle-icon"></i>
+                                    <span class="toggle-label">Read Full Proposal</span>
+                                </button>
+                                <div class="ai-full-draft hidden bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-gray-300 max-h-[400px] overflow-y-auto mb-3">${escapeHtml(fullDraft)}</div>
+                            ` : ''}
+                        ` : `
+                            <p class="text-gray-300 mb-3">${descriptionHtml}</p>
+                        `}
                         <div class="bg-party-dark rounded-lg p-4 mb-4">
                             <div class="flex justify-between text-sm mb-2">
                                 <span class="text-party-green">✓ Yes: ${p.yes_votes}</span>
@@ -498,6 +545,21 @@
 
         function formatDate(timestamp) {
             return new Date(timestamp).toLocaleDateString();
+        }
+
+        function toggleAiDraft(btn) {
+            const draftDiv = btn.nextElementSibling;
+            const icon = btn.querySelector('.toggle-icon');
+            const label = btn.querySelector('.toggle-label');
+            if (draftDiv.classList.contains('hidden')) {
+                draftDiv.classList.remove('hidden');
+                icon.className = 'fas fa-chevron-up toggle-icon';
+                label.textContent = 'Hide Full Proposal';
+            } else {
+                draftDiv.classList.add('hidden');
+                icon.className = 'fas fa-chevron-down toggle-icon';
+                label.textContent = 'Read Full Proposal';
+            }
         }
 
         // Init

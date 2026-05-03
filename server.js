@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS = {
   proposal_voting_days: 7,
   wall_post_max_length: 500,
   proposal_title_max_length: 200,
-  proposal_description_max_length: 2000,
+  proposal_description_max_length: 8000,
   nickname_max_length: 50,
   wall_posts_limit: 100,
   recent_votes_limit: 50,
@@ -859,8 +859,8 @@ app.post('/api/enroll/lookup', userAuth, async (req, res) => {
     });
   }
 
-  const apiKey = (process.env.DIRECTORY_API_KEY || '').trim();
-  const apiHost = (process.env.DIRECTORY_API_HOST || '').trim();
+  const apiKey = (process.env.DIRECTORY_API_KEY || '').replace(/[\r\n\t\x00-\x1f]/g, '').trim();
+  const apiHost = (process.env.DIRECTORY_API_HOST || '').replace(/[\r\n\t\x00-\x1f]/g, '').trim();
   if (!apiKey || !apiHost) {
     return res.status(503).json({ error: 'Directory service not configured', success: false });
   }
@@ -2013,7 +2013,11 @@ IMPORTANT — First, determine the appropriate scope:
 
 The FIRST LINE of your response MUST be: **Draft Type:** law (or regulation, or clause)
 
-Then structure your response with these sections:
+Then structure your response with these sections (each required section MUST start with ## ):
+
+## Executive Summary
+A concise, plain-language summary of the proposal in 3-5 bullet points, written for citizens who won't read the full legal text. Summarize: (1) What problem this solves, (2) What the law proposes to do, (3) Who is affected, (4) Key obligations/rights created, (5) How it will be enforced. Use simple language — no legal jargon.
+
 ## Title
 A clear, concise title for the proposal.
 
@@ -2056,9 +2060,17 @@ Draft in a formal legal style. Use "shall" for obligations, "may" for permission
       draft = rawDraft.replace(/^\*\*Draft Type:.*?\*\*\s*\n?/im, '').trim();
     }
 
+    let executiveSummary = '';
+    const summaryMatch = draft.match(/##\s*Executive Summary\s*\n([\s\S]*?)(?=\n##\s)/);
+    if (summaryMatch) {
+      executiveSummary = summaryMatch[1].trim();
+      draft = draft.replace(/##\s*Executive Summary\s*\n[\s\S]*?(?=\n##\s)/, '').trim();
+    }
+
     res.json({
       success: true,
       draft,
+      executive_summary: executiveSummary,
       detected_type: detectedType,
       model_used: result.model,
       fallback_used: result.fallback_used,
@@ -2116,19 +2128,19 @@ app.post('/api/wall', (req, res) => {
 
 // GET /api/wall-stats - Get public engagement stats (no signup required)
 app.get('/api/wall-stats', (req, res) => {
-  try {
-    const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get();
-    const wallCount = db.prepare('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1').get();
-    const signupTreasury = db.prepare('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0').get();
-    const donationTreasury = db.prepare('SELECT SUM(amount) as total FROM donations WHERE status = "verified"').get();
-    const totalTreasury = (signupTreasury.total || 0) + (donationTreasury.total || 0);
+  function safeQuery(sql, defaultVal = 0) {
+    try { const r = db.prepare(sql).get(); return r.total || defaultVal; }
+    catch (e) { return defaultVal; }
+  }
 
-    res.json({
-      members: memberCount.total,
-      wallPosts: wallCount.total,
-      treasury: totalTreasury,
-      success: true
-    });
+  try {
+    const members = safeQuery('SELECT COUNT(*) as total FROM signups');
+    const wallPosts = safeQuery('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1');
+    const signupTreasury = safeQuery('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0');
+    const donationTreasury = safeQuery('SELECT SUM(amount) as total FROM donations WHERE status = "verified"');
+    const treasury = signupTreasury + donationTreasury;
+
+    res.json({ members, wallPosts, treasury, success: true });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch stats', success: false });
   }

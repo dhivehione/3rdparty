@@ -118,8 +118,25 @@
                 <div id="draftMeta" class="flex flex-wrap gap-4 mb-6 text-xs text-gray-500">
                 </div>
 
-                <div id="draftContent"
-                     class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[600px] overflow-y-auto">
+                <!-- Executive Summary -->
+                <div id="executiveSummary" class="hidden bg-gradient-to-r from-party-accent/10 to-transparent border border-party-accent/30 rounded-lg p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fas fa-star text-party-accent"></i>
+                        <h3 class="font-bold text-party-accent text-sm uppercase tracking-wide">Executive Summary</h3>
+                    </div>
+                    <div class="summary-content text-gray-200 text-sm leading-relaxed"></div>
+                </div>
+
+                <!-- Read More Toggle -->
+                <button onclick="toggleFullDraft()" id="readMoreToggle" class="hidden w-full flex items-center justify-center gap-2 py-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-party-accent/50 transition text-gray-400 hover:text-white text-sm">
+                    <i id="readMoreIcon" class="fas fa-chevron-down"></i>
+                    <span id="readMoreLabel">Read Full Draft</span>
+                </button>
+
+                <div id="fullDraftSection" class="hidden">
+                    <div id="draftContent"
+                         class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[600px] overflow-y-auto mt-4">
+                    </div>
                 </div>
             </div>
 
@@ -182,10 +199,12 @@
 
     <script>
         let currentDraft = '';
+        let currentExecutiveSummary = '';
         let lastSeedIdea = '';
         let lastAdditionalContext = '';
         let detectedType = 'law';
         let clausesExpanded = true;
+        let fullDraftExpanded = false;
 
         function clearForm() {
             document.getElementById('seedIdea').value = '';
@@ -194,6 +213,7 @@
             document.getElementById('errorState').classList.add('hidden');
             document.getElementById('proposalStatus').classList.add('hidden');
             currentDraft = '';
+            currentExecutiveSummary = '';
             lastSeedIdea = '';
             lastAdditionalContext = '';
         }
@@ -222,6 +242,23 @@
             } else {
                 content.classList.add('hidden');
                 toggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            }
+        }
+
+        function toggleFullDraft() {
+            fullDraftExpanded = !fullDraftExpanded;
+            const fullDraftSection = document.getElementById('fullDraftSection');
+            const readMoreToggle = document.getElementById('readMoreToggle');
+            const readMoreIcon = document.getElementById('readMoreIcon');
+            const readMoreLabel = document.getElementById('readMoreLabel');
+            if (fullDraftExpanded) {
+                fullDraftSection.classList.remove('hidden');
+                readMoreIcon.className = 'fas fa-chevron-up';
+                readMoreLabel.textContent = 'Hide Full Draft';
+            } else {
+                fullDraftSection.classList.add('hidden');
+                readMoreIcon.className = 'fas fa-chevron-down';
+                readMoreLabel.textContent = 'Read Full Draft';
             }
         }
 
@@ -323,6 +360,7 @@
                 }
 
                 currentDraft = data.draft;
+                currentExecutiveSummary = data.executive_summary || '';
 
                 document.getElementById('loadingText').textContent = 'Draft generated successfully!';
                 updateLoadingSteps('Found ' + (data.relevant_clauses ? data.relevant_clauses.length : 0) + ' relevant existing clauses');
@@ -346,6 +384,11 @@
             const container = document.getElementById('resultContainer');
             const content = document.getElementById('draftContent');
             const meta = document.getElementById('draftMeta');
+            const execSummaryEl = document.getElementById('executiveSummary');
+            const fullDraftSection = document.getElementById('fullDraftSection');
+            const readMoreToggle = document.getElementById('readMoreToggle');
+            const readMoreIcon = document.getElementById('readMoreIcon');
+            const readMoreLabel = document.getElementById('readMoreLabel');
 
             container.classList.remove('hidden');
 
@@ -362,12 +405,25 @@
                 <span><i class="fas fa-clock mr-1"></i>${new Date(data.timestamp).toLocaleString()}</span>
             `;
 
-            content.textContent = currentDraft;
+            if (currentExecutiveSummary) {
+                execSummaryEl.classList.remove('hidden');
+                execSummaryEl.querySelector('.summary-content').innerHTML = currentExecutiveSummary
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
+                    .replace(/\n/g, '<br>');
+            } else {
+                execSummaryEl.classList.add('hidden');
+            }
 
-            // Render the matching clauses section
+            content.textContent = currentDraft;
+            fullDraftExpanded = false;
+            fullDraftSection.classList.add('hidden');
+            readMoreToggle.classList.remove('hidden');
+            readMoreIcon.className = 'fas fa-chevron-down';
+            readMoreLabel.textContent = 'Read Full Draft';
+
             renderClauses(data.relevant_clauses || []);
 
-            // Reset proposal state
             document.getElementById('proposalStatus').classList.add('hidden');
             document.getElementById('submitProposalBtn').disabled = false;
             document.getElementById('submitProposalBtn').innerHTML = '<i class="fas fa-vote-yea"></i>Add as Community Proposal';
@@ -388,6 +444,14 @@
                 title = titleMatch[1].trim();
             }
 
+            // Build description with executive summary first (detectable by proposals page)
+            let description = '';
+            if (currentExecutiveSummary) {
+                description = '[AI_LAW_DRAFT]\n## Executive Summary\n' + currentExecutiveSummary + '\n\n---\n\n## Full Draft\n' + currentDraft;
+            } else {
+                description = '[AI_LAW_DRAFT]\n\n' + currentDraft;
+            }
+
             const nickname = document.getElementById('proposalNickname').value.trim();
             const btn = document.getElementById('submitProposalBtn');
             const status = document.getElementById('proposalStatus');
@@ -402,7 +466,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: title.slice(0, 200),
-                        description: currentDraft.slice(0, 2000),
+                        description: description.slice(0, 5000),
                         category: 'policy',
                         nickname: nickname || 'AI Draft Contributor'
                     })
@@ -472,8 +536,18 @@
                 if (!data.success) throw new Error(data.error || 'Refinement failed');
 
                 currentDraft = data.draft;
+                currentExecutiveSummary = data.executive_summary || '';
                 document.getElementById('draftContent').textContent = currentDraft;
                 document.getElementById('refineInput').value = '';
+
+                const execSummaryEl = document.getElementById('executiveSummary');
+                if (currentExecutiveSummary) {
+                    execSummaryEl.classList.remove('hidden');
+                    execSummaryEl.querySelector('.summary-content').innerHTML = currentExecutiveSummary
+                        .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
+                        .replace(/\n/g, '<br>');
+                }
 
                 const meta = document.getElementById('draftMeta');
                 meta.innerHTML = meta.innerHTML + ` <span class="text-party-accent"><i class="fas fa-sync mr-1"></i>Refined at ${new Date().toLocaleTimeString()}</span>`;
