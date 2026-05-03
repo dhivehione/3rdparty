@@ -6,13 +6,12 @@
     <title>Generate Law Draft — 3d Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280', green: '#10B981', red: '#EF4444' }
                     }
                 }
             }
@@ -46,24 +45,7 @@
             <h2 class="text-xl font-bold text-party-accent mb-4">
                 <i class="fas fa-lightbulb mr-2"></i>Your Seed Idea
             </h2>
-
-            <div class="mb-4">
-                <label class="block text-sm text-gray-400 mb-2">What kind of draft do you want?</label>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="setDraftType('law')" id="type-law"
-                            class="px-4 py-2 rounded-lg font-bold text-sm border border-party-accent text-party-accent bg-party-accent/10">
-                        Full Law
-                    </button>
-                    <button onclick="setDraftType('regulation')" id="type-regulation"
-                            class="px-4 py-2 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 hover:border-party-accent hover:text-party-accent transition">
-                        Regulation
-                    </button>
-                    <button onclick="setDraftType('clause')" id="type-clause"
-                            class="px-4 py-2 rounded-lg font-bold text-sm border border-gray-600 text-gray-300 hover:border-party-accent hover:text-party-accent transition">
-                        Specific Clause
-                    </button>
-                </div>
-            </div>
+            <p class="text-gray-500 text-xs mb-4">Just describe what you want — we'll figure out whether it needs a full law, regulation, or specific clause.</p>
 
             <div class="mb-4">
                 <label class="block text-sm text-gray-400 mb-2" for="seedIdea">Describe your idea <span class="text-party-accent">*</span></label>
@@ -114,6 +96,8 @@
 
         <!-- Result -->
         <div id="resultContainer" class="hidden">
+
+            <!-- Generated Draft -->
             <div class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                     <h2 class="text-xl font-bold text-party-accent">
@@ -131,14 +115,49 @@
                     </div>
                 </div>
 
-                <!-- Metadata -->
                 <div id="draftMeta" class="flex flex-wrap gap-4 mb-6 text-xs text-gray-500">
                 </div>
 
-                <!-- Draft Content -->
                 <div id="draftContent"
-                     class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[800px] overflow-y-auto">
+                     class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[600px] overflow-y-auto">
                 </div>
+            </div>
+
+            <!-- Relevant Existing Clauses -->
+            <div id="relevantClauses" class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700 hidden">
+                <div class="flex justify-between items-center mb-4 cursor-pointer" onclick="toggleClausesSection()">
+                    <h2 class="text-lg font-bold text-party-secondary">
+                        <i class="fas fa-scale-balanced mr-2"></i>Relevant Existing Clauses
+                        <span id="clauseCount" class="text-sm text-gray-400 ml-2">(0)</span>
+                    </h2>
+                    <button id="clausesToggle" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div id="clausesContent" class="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                </div>
+                <p class="text-gray-500 text-xs mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>These clauses from Maldivian laws were found by keyword search and used as context for the AI draft.
+                </p>
+            </div>
+
+            <!-- Submit as Proposal -->
+            <div class="bg-party-card rounded-xl p-6 mb-4 border border-green-500/30">
+                <h2 class="text-lg font-bold text-party-green mb-2">
+                    <i class="fas fa-paper-plane mr-2"></i>Submit as Proposal
+                </h2>
+                <p class="text-gray-400 text-sm mb-4">Like this draft? Submit it as a public proposal so the community can vote on it.</p>
+                <div class="mb-3">
+                    <label class="block text-sm text-gray-400 mb-1">Your nickname (optional)</label>
+                    <input type="text" id="proposalNickname"
+                           class="w-full max-w-md bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none text-sm"
+                           placeholder="How should we credit you?">
+                </div>
+                <button onclick="submitAsProposal()" id="submitProposalBtn"
+                        class="bg-party-green text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-green-400 transition flex items-center gap-2">
+                    <i class="fas fa-vote-yea"></i>Add as Community Proposal
+                </button>
+                <p id="proposalStatus" class="hidden text-sm mt-2"></p>
             </div>
 
             <!-- Refine Section -->
@@ -162,27 +181,18 @@
     </div>
 
     <script>
-        let draftType = 'law';
         let currentDraft = '';
         let lastSeedIdea = '';
         let lastAdditionalContext = '';
-
-        function setDraftType(type) {
-            draftType = type;
-            document.querySelectorAll('[id^="type-"]').forEach(btn => {
-                btn.classList.remove('border-party-accent', 'text-party-accent', 'bg-party-accent/10');
-                btn.classList.add('border-gray-600', 'text-gray-300');
-            });
-            const active = document.getElementById('type-' + type);
-            active.classList.remove('border-gray-600', 'text-gray-300');
-            active.classList.add('border-party-accent', 'text-party-accent', 'bg-party-accent/10');
-        }
+        let detectedType = 'law';
+        let clausesExpanded = true;
 
         function clearForm() {
             document.getElementById('seedIdea').value = '';
             document.getElementById('additionalContext').value = '';
             document.getElementById('resultContainer').classList.add('hidden');
             document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('proposalStatus').classList.add('hidden');
             currentDraft = '';
             lastSeedIdea = '';
             lastAdditionalContext = '';
@@ -194,6 +204,70 @@
             item.className = 'flex items-center gap-2 text-gray-400';
             item.innerHTML = '<i class="fas fa-circle text-[4px] text-party-accent"></i><span>' + step + '</span>';
             el.appendChild(item);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function toggleClausesSection() {
+            clausesExpanded = !clausesExpanded;
+            const content = document.getElementById('clausesContent');
+            const toggle = document.getElementById('clausesToggle');
+            if (clausesExpanded) {
+                content.classList.remove('hidden');
+                toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+            } else {
+                content.classList.add('hidden');
+                toggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            }
+        }
+
+        function renderClauses(clauses) {
+            if (!clauses || clauses.length === 0) {
+                document.getElementById('relevantClauses').classList.add('hidden');
+                return;
+            }
+
+            const section = document.getElementById('relevantClauses');
+            const content = document.getElementById('clausesContent');
+            const count = document.getElementById('clauseCount');
+
+            section.classList.remove('hidden');
+            clausesExpanded = true;
+            document.getElementById('clausesToggle').innerHTML = '<i class="fas fa-chevron-down"></i>';
+            count.textContent = '(' + clauses.length + ')';
+
+            let html = '';
+            const grouped = {};
+            for (const c of clauses) {
+                const key = c.law_name;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(c);
+            }
+
+            for (const [law, items] of Object.entries(grouped)) {
+                html += `<div class="border border-gray-700 rounded-lg p-4 bg-gray-900/50">
+                    <div class="flex items-start gap-2 mb-3">
+                        <i class="fas fa-gavel text-party-accent mt-1"></i>
+                        <div>
+                            <div class="font-bold text-white">${escapeHtml(law)}</div>
+                            <div class="text-xs text-gray-500">${escapeHtml(items[0].category_name || '')}</div>
+                        </div>
+                    </div>`;
+                for (const item of items) {
+                    html += `<div class="ml-6 mb-2 p-3 bg-gray-800 rounded border border-gray-700/50">
+                        <div class="text-xs text-party-secondary font-bold mb-1">Article ${escapeHtml(item.article_number)} · ${escapeHtml(item.clause_label || item.sub_article_label)}</div>
+                        <div class="text-xs text-gray-400 italic mb-1">${escapeHtml(item.article_title)}</div>
+                        <div class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">${escapeHtml(item.text_content)}</div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+
+            content.innerHTML = html;
         }
 
         async function generateDraft() {
@@ -209,19 +283,21 @@
             lastAdditionalContext = additionalContext;
 
             const fullIdea = additionalContext
-                ? `[Draft Type: ${draftType}] ${seedIdea}\n\nAdditional context: ${additionalContext}`
-                : `[Draft Type: ${draftType}] ${seedIdea}`;
+                ? `${seedIdea}\n\nAdditional context: ${additionalContext}`
+                : seedIdea;
 
             const loadingState = document.getElementById('loadingState');
             const resultContainer = document.getElementById('resultContainer');
             const errorState = document.getElementById('errorState');
             const generateBtn = document.getElementById('generateBtn');
             const loadingSteps = document.getElementById('loadingSteps');
+            const proposalStatus = document.getElementById('proposalStatus');
 
             loadingSteps.innerHTML = '';
             loadingState.classList.remove('hidden');
             resultContainer.classList.add('hidden');
             errorState.classList.add('hidden');
+            proposalStatus.classList.add('hidden');
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
 
@@ -243,7 +319,7 @@
                 currentDraft = data.draft;
 
                 document.getElementById('loadingText').textContent = 'Draft generated successfully!';
-                updateLoadingSteps('Found ' + (data.clauses_referenced || 0) + ' relevant existing clauses');
+                updateLoadingSteps('Found ' + (data.relevant_clauses ? data.relevant_clauses.length : 0) + ' relevant existing clauses');
                 updateLoadingSteps('AI draft complete');
 
                 setTimeout(() => {
@@ -267,14 +343,82 @@
 
             container.classList.remove('hidden');
 
+            detectedType = data.detected_type || 'law';
+            const typeBadge = detectedType === 'law' ? 'bg-purple-900/40 text-purple-300 border-purple-500/30' :
+                              detectedType === 'regulation' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' :
+                              'bg-gray-700 text-gray-300 border-gray-500/30';
+
             meta.innerHTML = `
+                <span class="px-2 py-0.5 rounded text-xs border ${typeBadge} font-bold uppercase">${detectedType}</span>
                 <span><i class="fas fa-tags mr-1"></i>Keywords: ${(data.keywords_used || []).join(', ') || 'none'}</span>
-                <span><i class="fas fa-scale-balanced mr-1"></i>Clauses referenced: ${data.clauses_referenced || 0}</span>
+                <span><i class="fas fa-scale-balanced mr-1"></i>Clauses referenced: ${data.relevant_clauses ? data.relevant_clauses.length : 0}</span>
                 <span><i class="fas fa-clock mr-1"></i>${new Date(data.timestamp).toLocaleString()}</span>
             `;
 
             content.textContent = currentDraft;
+
+            // Render the matching clauses section
+            renderClauses(data.relevant_clauses || []);
+
+            // Reset proposal state
+            document.getElementById('proposalStatus').classList.add('hidden');
+            document.getElementById('submitProposalBtn').disabled = false;
+            document.getElementById('submitProposalBtn').innerHTML = '<i class="fas fa-vote-yea"></i>Add as Community Proposal';
+
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function submitAsProposal() {
+            if (!currentDraft) {
+                alert('No draft to submit. Generate one first.');
+                return;
+            }
+
+            // Extract title from the draft (first ## Title line)
+            let title = lastSeedIdea.split('\n')[0].replace(/^\[Draft Type.*?\]\s*/, '').trim();
+            const titleMatch = currentDraft.match(/^##\s*Title\s*\n+(.+)/m);
+            if (titleMatch) {
+                title = titleMatch[1].trim();
+            }
+
+            const nickname = document.getElementById('proposalNickname').value.trim();
+            const btn = document.getElementById('submitProposalBtn');
+            const status = document.getElementById('proposalStatus');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Submitting...';
+            status.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title.slice(0, 200),
+                        description: currentDraft.slice(0, 2000),
+                        category: 'policy',
+                        nickname: nickname || 'AI Draft Contributor'
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    status.className = 'text-party-green text-sm mt-2';
+                    status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Proposal submitted! <a href="/proposals" class="underline">View it on the proposals page →</a>';
+                    status.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Submitted';
+                    btn.className = 'bg-gray-700 text-gray-400 px-6 py-2 rounded-lg font-bold cursor-not-allowed';
+                } else {
+                    throw new Error(data.error || 'Submission failed');
+                }
+            } catch (e) {
+                status.className = 'text-party-red text-sm mt-2';
+                status.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>' + escapeHtml(e.message);
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-vote-yea"></i>Add as Community Proposal';
+            }
         }
 
         async function refineDraft() {
@@ -297,10 +441,11 @@
             loadingState.classList.remove('hidden');
             refineBtn.disabled = true;
             refineBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Refining...';
+            document.getElementById('proposalStatus').classList.add('hidden');
 
             updateLoadingSteps('Refining draft with your feedback...');
 
-            const refinePrompt = `Your original idea was: ${lastSeedIdea}\n\nHere is the current draft:\n\n${currentDraft}\n\nRefine the draft based on this feedback: ${refineInput}\n\n${lastAdditionalContext ? 'Additional context: ' + lastAdditionalContext : ''}`;
+            const refinePrompt = `The previously detected draft type was: ${detectedType}. Original idea: ${lastSeedIdea}\n\nHere is the current draft:\n\n${currentDraft}\n\nRefine the draft based on this feedback: ${refineInput}\n\n${lastAdditionalContext ? 'Additional context: ' + lastAdditionalContext : ''}`;
 
             try {
                 const res = await fetch('/api/generate-law-draft', {
@@ -318,8 +463,9 @@
                 document.getElementById('refineInput').value = '';
 
                 const meta = document.getElementById('draftMeta');
-                const existingMeta = meta.innerHTML;
-                meta.innerHTML = existingMeta + ` <span class="text-party-accent"><i class="fas fa-sync mr-1"></i>Refined at ${new Date().toLocaleTimeString()}</span>`;
+                meta.innerHTML = meta.innerHTML + ` <span class="text-party-accent"><i class="fas fa-sync mr-1"></i>Refined at ${new Date().toLocaleTimeString()}</span>`;
+
+                renderClauses(data.relevant_clauses || []);
 
                 updateLoadingSteps('Refinement complete');
             } catch (e) {

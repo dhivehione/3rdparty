@@ -1903,11 +1903,18 @@ app.post('/api/generate-law-draft', async (req, res) => {
       ).join('\n');
     }
 
-    const systemPrompt = `You are a legal drafting assistant for the Maldives. Given a seed idea for a law, regulation, or clause, produce a well-structured draft using proper legal formatting.
+    const systemPrompt = `You are a legal drafting assistant for the Maldives. Given a seed idea, produce a well-structured draft using proper legal formatting.
 
-Structure your response with these sections:
+IMPORTANT — First, determine the appropriate scope:
+- "law" - Broad, multi-section legislation that establishes a new regulatory framework
+- "regulation" - Specific rules under an existing law, narrower in scope
+- "clause" - A single provision or amendment to an existing law
+
+The FIRST LINE of your response MUST be: **Draft Type:** law (or regulation, or clause)
+
+Then structure your response with these sections:
 ## Title
-A clear, concise title for the proposed law/regulation/clause.
+A clear, concise title for the proposal.
 
 ## Preamble
 A brief statement of purpose and rationale (2-3 sentences).
@@ -1927,7 +1934,7 @@ Consequences for non-compliance (if applicable).
 ## Commencement
 When the law takes effect.
 
-Draft in a formal legal style. Use "shall" for obligations, "may" for permissions. Be specific and enforceable. Do NOT include placeholder text or markdown formatting instructions in the output.`;
+Draft in a formal legal style. Use "shall" for obligations, "may" for permissions. Be specific and enforceable. Keep the draft proportional to the scope — a clause should be a few paragraphs, a law can be several pages. Do NOT include placeholder text or markdown formatting instructions in the output.`;
 
     let userPrompt = `Seed idea: ${seed_idea.trim()}\n\n`;
 
@@ -1935,15 +1942,32 @@ Draft in a formal legal style. Use "shall" for obligations, "may" for permission
       userPrompt += `Here are relevant existing Maldivian law clauses for reference and inspiration:\n\n${clausesContext}\n\n`;
     }
 
-    userPrompt += 'Please generate a complete draft law/regulation/clause based on the seed idea above.';
+    userPrompt += 'Analyze the seed idea above and generate an appropriate draft. Remember: the first line must indicate the draft type.';
 
-    const draft = await callOpenRouter(systemPrompt, userPrompt);
+    const rawDraft = await callOpenRouter(systemPrompt, userPrompt);
+
+    let detectedType = 'law';
+    let draft = rawDraft;
+    const typeMatch = rawDraft.match(/^\*\*Draft Type:\*\*\s*(law|regulation|clause)/im);
+    if (typeMatch) {
+      detectedType = typeMatch[1].toLowerCase();
+      draft = rawDraft.replace(/^\*\*Draft Type:.*?\*\*\s*\n?/im, '').trim();
+    }
 
     res.json({
       success: true,
       draft,
+      detected_type: detectedType,
       keywords_used: keywords,
       clauses_referenced: relevantClauses.length,
+      relevant_clauses: relevantClauses.map(c => ({
+        law_name: c.law_name,
+        category_name: c.category_name,
+        article_number: c.article_number,
+        article_title: c.article_title,
+        sub_article_label: c.sub_article_label,
+        text_content: c.text_content
+      })),
       timestamp: new Date().toISOString()
     });
   } catch (error) {
