@@ -8,6 +8,7 @@ function getPageName() {
     if (path.includes('how')) return 'how-it-works';
     if (path.includes('whitepaper')) return 'whitepaper';
     if (path.includes('generate-law')) return 'generate-law';
+    if (path.includes('enroll')) return 'enroll';
     if (path.includes('laws') && !path.includes('law-stats')) return 'laws';
     if (path.includes('law-stats')) return 'law-stats';
     if (path.includes('legislature')) return 'legislature';
@@ -44,8 +45,9 @@ function createNavigation() {
                 <a href="/how-it-works" class="hover:text-party-accent transition ${currentPage === 'how-it-works' ? 'text-party-accent font-bold' : 'text-gray-300'}">How</a>
                 <a href="/whitepaper" class="hover:text-party-accent transition ${currentPage === 'whitepaper' ? 'text-party-accent font-bold' : 'text-gray-300'}">Whitepaper</a>
                 <a href="/laws" class="hover:text-party-accent transition ${currentPage === 'laws' ? 'text-party-accent font-bold' : 'text-gray-300'}">Laws</a>
-                <a href="/generate-law" class="hover:text-party-accent transition ${currentPage === 'generate-law' ? 'text-party-accent font-bold' : 'text-gray-300'}">Generate Law</a>
+                <a href="/generate-law" class="hover:text-party-accent transition ${currentPage === 'generate-law' ? 'text-party-accent font-bold' : 'text-gray-300'}">Craft a Law</a>
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
+                <a href="/enroll" class="hover:text-party-accent transition ${currentPage === 'enroll' ? 'text-party-accent font-bold' : 'text-gray-300'}">Enroll</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
@@ -75,12 +77,19 @@ function createFooter() {
                     <div class="text-xl font-bold text-party-accent mb-2">3d Party</div>
                     <p class="text-gray-500 text-sm">The actual third option. Still not insurance.</p>
                 </div>
-                <div class="flex gap-6 text-sm">
+                <div class="flex gap-6 text-sm flex-wrap">
                     <a href="/intro" class="text-gray-400 hover:text-party-accent">Intro</a>
+                    <a href="/how-it-works" class="text-gray-400 hover:text-party-accent">How</a>
                     <a href="/whitepaper" class="text-gray-400 hover:text-party-accent">Whitepaper</a>
                     <a href="/laws" class="text-gray-400 hover:text-party-accent">Laws</a>
+                    <a href="/generate-law" class="text-gray-400 hover:text-party-accent">Craft a Law</a>
                     <a href="/proposals" class="text-gray-400 hover:text-party-accent">Proposals</a>
+                    <a href="/enroll" class="text-gray-400 hover:text-party-accent">Enroll</a>
                     <a href="/wall" class="text-gray-400 hover:text-party-accent">Wall</a>
+                    <a href="/events" class="text-gray-400 hover:text-party-accent">Events</a>
+                    <a href="/faq" class="text-gray-400 hover:text-party-accent">FAQ</a>
+                    <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
+                    <a href="/donate" class="text-gray-400 hover:text-party-accent">Donate</a>
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="https://github.com/3dparty" target="_blank" rel="noopener" class="text-gray-400 hover:text-party-accent">
@@ -91,7 +100,7 @@ function createFooter() {
                 </div>
             </div>
             <div class="text-center mt-6 text-gray-600 text-xs">
-                © 2024 3d Party Maldives. Built with ❤️ for digital democracy.
+                © 2026 3d Party Maldives. Built with ❤️ for digital democracy.
             </div>
         </div>
     `;

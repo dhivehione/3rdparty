@@ -4315,6 +4315,10 @@ app.get('/faq', (req, res) => {
   res.sendFile(path.join(__dirname, 'faq.html'));
 });
 
+app.get('/enroll', (req, res) => {
+  res.sendFile(path.join(__dirname, 'enroll.html'));
+});
+
 // ==================== COMPREHENSIVE MIGRATIONS ====================
 const migrations = [
   // signups table - already handled above

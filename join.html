@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join the 3d Party</title>
+    <meta name="description" content="Join the 3d Party — a citizen-powered political movement in the Maldives. 45 seconds. Phone + NID only.">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -39,7 +40,8 @@
     
     <div class="max-w-2xl mx-auto px-4 py-16">
         <h1 class="text-4xl font-bold mb-2">Join the 3d Party</h1>
-        <p class="text-gray-400 mb-8">45 seconds. That's all it takes. (We timed it.)</p>
+        <p class="text-gray-400 mb-2">45 seconds. That's all it takes. (We timed it.)</p>
+        <p class="text-gray-500 text-sm mb-8">Already <span id="memberCount" class="text-party-accent font-bold">—</span> citizens have joined.</p>
         
         <!-- Contribution Selection (shown if no type in URL) -->
         <div id="contributionSelection" class="mb-8">
@@ -201,6 +203,16 @@
         </div>
     
     <script>
+        // Fetch member count
+        fetch('/api/signups/count')
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    document.getElementById('memberCount').textContent = (d.total || 0).toLocaleString();
+                }
+            })
+            .catch(() => {});
+
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         let selectedTypes = [];
