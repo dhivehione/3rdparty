@@ -6,6 +6,7 @@
     <title>Proposals — 3d Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -257,8 +258,8 @@
                     // Check if this is an AI-generated law draft
                     let isAiDraft = false;
                     let execSummary = '';
-                    let fullDraft = '';
-                    let descriptionHtml = '';
+                    let fullProposalText = '';
+                    let execSummaryHtml = '';
                     const aiMatch = p.description.match(/^\[AI_LAW_DRAFT\]/);
                     
                     if (aiMatch) {
@@ -267,19 +268,27 @@
                         const summaryMatch = descBody.match(/##\s*Executive Summary\s*\n([\s\S]*?)(?=\n---)/);
                         const draftMatch = descBody.match(/---\n+\n*##\s*Full Draft\s*\n([\s\S]*)/);
                         if (summaryMatch) {
-                            execSummary = summaryMatch[1].trim()
+                            execSummary = summaryMatch[1].trim();
+                            execSummaryHtml = execSummary
                                 .replace(/</g, '&lt;').replace(/>/g, '&gt;')
                                 .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
                                 .replace(/\n/g, '<br>');
-                            descriptionHtml = execSummary;
                         }
                         if (draftMatch) {
-                            fullDraft = draftMatch[1].trim();
+                            fullProposalText = draftMatch[1].trim();
                         } else {
-                            fullDraft = descBody;
+                            fullProposalText = descBody;
                         }
                     } else {
-                        descriptionHtml = escapeHtml(p.description);
+                        // Regular proposal: first 200 chars as summary, full text is entire description
+                        const rawText = p.description;
+                        if (rawText.length > 200) {
+                            execSummary = rawText.substring(0, 200) + '...';
+                        } else {
+                            execSummary = rawText;
+                        }
+                        execSummaryHtml = escapeHtml(execSummary);
+                        fullProposalText = rawText;
                     }
                     
                     const el = document.createElement('div');
@@ -296,26 +305,47 @@
                                 <span class="text-gray-500 text-sm block">passing</span>
                             </div>
                         </div>
-                        ${isAiDraft ? `
-                            ${execSummary ? `
-                            <div class="bg-gradient-to-r from-party-accent/10 to-transparent border border-party-accent/30 rounded-lg p-4 mb-3">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="fas fa-star text-party-accent text-xs"></i>
-                                    <span class="font-bold text-party-accent text-xs uppercase tracking-wide">Executive Summary</span>
-                                </div>
-                                <div class="text-gray-200 text-sm leading-relaxed">${descriptionHtml}</div>
+
+                        <!-- Executive Summary (always visible) -->
+                        ${execSummary ? `
+                        <div class="${isAiDraft ? 'bg-gradient-to-r from-party-accent/10 to-transparent border border-party-accent/30' : 'bg-gray-800/50 border border-gray-700'} rounded-lg p-4 mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-star text-party-accent text-xs"></i>
+                                <span class="font-bold text-party-accent text-xs uppercase tracking-wide">Executive Summary</span>
                             </div>
-                            ` : ''}
-                            ${fullDraft ? `
-                                <button onclick="toggleAiDraft(this)" class="w-full flex items-center justify-center gap-2 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-party-accent/50 transition text-gray-400 hover:text-white text-sm mb-3">
-                                    <i class="fas fa-chevron-down toggle-icon"></i>
-                                    <span class="toggle-label">Read Full Proposal</span>
+                            <div class="text-gray-200 text-sm leading-relaxed">${execSummaryHtml}</div>
+                        </div>
+                        ` : ''}
+
+                        <!-- Read Full Proposal Toggle -->
+                        <button onclick="toggleFullProposal(this, 'fp-${p.id}')" class="w-full flex items-center justify-center gap-2 py-2 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-party-accent/50 transition text-gray-400 hover:text-white text-sm mb-3">
+                            <i class="fas fa-chevron-down toggle-icon"></i>
+                            <span class="toggle-label">Read Full Proposal</span>
+                        </button>
+
+                        <!-- Full Proposal Section (hidden) -->
+                        <div id="fp-${p.id}" class="hidden mb-3" data-proposal-id="${p.id}" data-original-text="${escapeHtml(fullProposalText)}" data-proposal-title="${escapeHtml(p.title)}" data-proposal-summary="${escapeHtml(execSummary)}">
+                            <div class="flex items-center justify-end gap-2 mb-2">
+                                <button onclick="editProposal(this, ${p.id})" class="edit-btn text-xs px-3 py-1.5 border border-gray-600 rounded text-gray-400 hover:text-white hover:border-party-accent transition">
+                                    <i class="fas fa-pen mr-1"></i>Edit
                                 </button>
-                                <div class="ai-full-draft hidden bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-gray-300 max-h-[400px] overflow-y-auto mb-3">${escapeHtml(fullDraft)}</div>
-                            ` : ''}
-                        ` : `
-                            <p class="text-gray-300 mb-3">${descriptionHtml}</p>
-                        `}
+                                <button onclick="downloadPdf('fp-${p.id}', event)" class="text-xs px-3 py-1.5 border border-gray-600 rounded text-gray-400 hover:text-white hover:border-party-accent transition">
+                                    <i class="fas fa-download mr-1"></i>PDF
+                                </button>
+                            </div>
+                            <div class="full-draft bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-gray-300 max-h-[400px] overflow-y-auto">${escapeHtml(fullProposalText)}</div>
+                            <!-- Edit mode (hidden by default) -->
+                            <div class="edit-mode hidden mt-2">
+                                <textarea class="edit-textarea w-full bg-gray-800 border border-party-accent rounded-lg px-4 py-3 text-sm text-gray-200 focus:outline-none min-h-[200px] font-mono leading-relaxed" rows="10" id="ta-${p.id}">SET_BY_JS</textarea>
+                                <div class="flex gap-2 mt-2">
+                                    <button onclick="saveProposal(this, ${p.id})" class="text-xs px-4 py-2 bg-party-accent text-party-dark rounded-lg font-bold hover:scale-105 transition">Save Changes</button>
+                                    <button onclick="cancelEdit(this, ${p.id})" class="text-xs px-4 py-2 border border-gray-600 rounded-lg text-gray-400 hover:text-white transition">Cancel</button>
+                                </div>
+                                <p class="edit-status text-xs mt-2 hidden"></p>
+                            </div>
+                        </div>
+
+                        <!-- Vote Bar -->
                         <div class="bg-party-dark rounded-lg p-4 mb-4">
                             <div class="flex justify-between text-sm mb-2">
                                 <span class="text-party-green">✓ Yes: ${p.yes_votes}</span>
@@ -341,6 +371,10 @@
                         <p class="text-gray-600 text-xs mt-3">${p.userVote ? 'You voted: ' + p.userVote.toUpperCase() : 'Click to cast your vote'}</p>
                     `;
                     container.appendChild(el);
+                    
+                    // Set raw textarea value (must use textContent, not innerHTML)
+                    const ta = document.getElementById('ta-' + p.id);
+                    if (ta) ta.value = p.description;
                 });
             } catch (e) { console.error(e); }
         }
@@ -547,19 +581,136 @@
             return new Date(timestamp).toLocaleDateString();
         }
 
-        function toggleAiDraft(btn) {
-            const draftDiv = btn.nextElementSibling;
+        function toggleFullProposal(btn, sectionId) {
+            const section = document.getElementById(sectionId);
             const icon = btn.querySelector('.toggle-icon');
             const label = btn.querySelector('.toggle-label');
-            if (draftDiv.classList.contains('hidden')) {
-                draftDiv.classList.remove('hidden');
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
                 icon.className = 'fas fa-chevron-up toggle-icon';
                 label.textContent = 'Hide Full Proposal';
             } else {
-                draftDiv.classList.add('hidden');
+                section.classList.add('hidden');
                 icon.className = 'fas fa-chevron-down toggle-icon';
                 label.textContent = 'Read Full Proposal';
             }
+        }
+
+        function editProposal(btn, proposalId) {
+            const section = btn.closest('[id^="fp-"]');
+            const draftDiv = section.querySelector('.full-draft');
+            const editMode = section.querySelector('.edit-mode');
+            const editBtn = section.querySelector('.edit-btn');
+            const statusEl = section.querySelector('.edit-status');
+            
+            draftDiv.classList.add('hidden');
+            editBtn.classList.add('hidden');
+            editMode.classList.remove('hidden');
+            if (statusEl) statusEl.classList.add('hidden');
+        }
+
+        function cancelEdit(btn, proposalId) {
+            const section = btn.closest('[id^="fp-"]');
+            const draftDiv = section.querySelector('.full-draft');
+            const editMode = section.querySelector('.edit-mode');
+            const editBtn = section.querySelector('.edit-btn');
+            
+            editMode.classList.add('hidden');
+            draftDiv.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+        }
+
+        async function saveProposal(btn, proposalId) {
+            const section = btn.closest('[id^="fp-"]');
+            const textarea = section.querySelector('.edit-textarea');
+            const draftDiv = section.querySelector('.full-draft');
+            const editMode = section.querySelector('.edit-mode');
+            const editBtn = section.querySelector('.edit-btn');
+            const statusEl = section.querySelector('.edit-status');
+            const description = textarea.value.trim();
+            
+            if (description.length < 20) {
+                if (statusEl) {
+                    statusEl.classList.remove('hidden');
+                    statusEl.className = 'edit-status text-xs mt-2 text-party-red';
+                    statusEl.textContent = 'Description must be at least 20 characters';
+                }
+                return;
+            }
+            
+            try {
+                const resp = await fetch(`/api/proposals/${proposalId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    draftDiv.textContent = description;
+                    draftDiv.classList.remove('hidden');
+                    editMode.classList.add('hidden');
+                    editBtn.classList.remove('hidden');
+                    if (statusEl) {
+                        statusEl.classList.remove('hidden');
+                        statusEl.className = 'edit-status text-xs mt-2 text-party-green';
+                        statusEl.textContent = 'Saved!';
+                        setTimeout(() => statusEl.classList.add('hidden'), 2000);
+                    }
+                    setTimeout(() => loadBinaryProposals(), 1500);
+                } else {
+                    if (statusEl) {
+                        statusEl.classList.remove('hidden');
+                        statusEl.className = 'edit-status text-xs mt-2 text-party-red';
+                        statusEl.textContent = data.error || 'Failed to save';
+                    }
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.classList.remove('hidden');
+                    statusEl.className = 'edit-status text-xs mt-2 text-party-red';
+                    statusEl.textContent = 'Error saving. Try again.';
+                }
+            }
+        }
+
+        function downloadPdf(sectionId, event) {
+            event.stopPropagation();
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            
+            const draftDiv = section.querySelector('.full-draft');
+            const fullText = draftDiv ? draftDiv.textContent : '';
+            const titleRaw = section.getAttribute('data-proposal-title') || 'Proposal';
+            const summaryRaw = section.getAttribute('data-proposal-summary') || '';
+            const title = escapeHtmlDecode(titleRaw);
+            const summary = escapeHtmlDecode(summaryRaw);
+            
+            const pdfContent = document.createElement('div');
+            pdfContent.style.cssText = 'padding:40px;font-family:Arial,sans-serif;color:#000;background:#fff;';
+            pdfContent.innerHTML = `
+                <h1 style="font-size:24px;margin-bottom:10px;color:#111;">${title}</h1>
+                <hr style="border:1px solid #ddd;margin-bottom:20px;">
+                <h2 style="font-size:16px;color:#555;margin-bottom:10px;">Executive Summary</h2>
+                <p style="font-size:14px;line-height:1.6;color:#333;margin-bottom:20px;">${summary}</p>
+                <h2 style="font-size:16px;color:#555;margin-bottom:10px;">Full Proposal</h2>
+                <pre style="font-size:13px;line-height:1.7;color:#333;white-space:pre-wrap;font-family:Arial,sans-serif;">${fullText}</pre>
+            `;
+            
+            const opt = {
+                margin: [10, 10, 10, 10],
+                filename: title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(pdfContent).save();
+        }
+
+        function escapeHtmlDecode(str) {
+            const el = document.createElement('div');
+            el.innerHTML = str;
+            return el.textContent;
         }
 
         // Init

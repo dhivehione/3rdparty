@@ -1135,6 +1135,52 @@ app.post('/api/vote', (req, res) => {
   }
 });
 
+// PATCH /api/proposals/:id - Edit a proposal
+app.patch('/api/proposals/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+  
+  try {
+    const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found', success: false });
+    }
+    
+    const updates = [];
+    const params = [];
+    
+    if (title !== undefined) {
+      const trimmedTitle = sanitizeHTML(String(title).trim());
+      if (trimmedTitle.length < 5) {
+        return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
+      }
+      updates.push('title = ?');
+      params.push(trimmedTitle);
+    }
+    
+    if (description !== undefined) {
+      const trimmedDesc = sanitizeHTML(String(description).trim());
+      if (trimmedDesc.length < 20) {
+        return res.status(400).json({ error: 'Description must be at least 20 characters', success: false });
+      }
+      updates.push('description = ?');
+      params.push(trimmedDesc);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Nothing to update', success: false });
+    }
+    
+    params.push(id);
+    db.prepare(`UPDATE proposals SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    
+    res.json({ message: 'Proposal updated!', success: true });
+  } catch (error) {
+    console.error('Proposal update error:', error);
+    res.status(500).json({ error: 'Could not update proposal', success: false });
+  }
+});
+
 // GET /api/proposal-stats - Get proposal engagement stats
 app.get('/api/proposal-stats', (req, res) => {
   try {
