@@ -198,6 +198,9 @@ try {
     // Phone still has NOT NULL — migration is needed
     const hasLastLogin = cols.some(c => c.name === 'last_login');
 
+    // Disable foreign keys during migration to allow table drop/recreate
+    db.pragma('foreign_keys = OFF');
+
     // Clean up any stale temp table to avoid duplicate data
     db.exec('DROP TABLE IF EXISTS signups_v2');
 
@@ -235,6 +238,10 @@ try {
 
     db.exec('DROP TABLE signups');
     db.exec('ALTER TABLE signups_v2 RENAME TO signups');
+
+    // Re-enable foreign key enforcement
+    db.pragma('foreign_keys = ON');
+
     console.log('✓ Migration: Made phone and nid nullable in signups');
   } else {
     console.log('✓ Phone/NID already nullable');

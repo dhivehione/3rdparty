@@ -1204,7 +1204,9 @@
                     id: ++pendingEnrollmentIdCounter,
                     name: r.name || r.full_name || '',
                     address: r.address || r.street || r.ward || r.location || r.house_name || r.building || '',
-                    island: r.island_name || r.island || r.atoll || r.city || ''
+                    island: r.island_name || r.island || r.atoll || r.city || '',
+                    phone: r.contact || r.phone || '',
+                    nid: r.nid || ''
                 };
                 console.log('[Pending] created entry:', entry);
 
@@ -1239,7 +1241,12 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Phone</label>
-                            <input type="tel" id="pend-phone-${e.id}" value="${escapeHtml(e.phone || '')}" placeholder="7-digit (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            ${e.phone ? `
+                            <input type="hidden" id="pend-phone-${e.id}" value="${escapeHtml(e.phone)}">
+                            <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
+                            ` : `
+                            <input type="tel" id="pend-phone-${e.id}" placeholder="7-digit (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            `}
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Island</label>
@@ -1249,7 +1256,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">NID</label>
+                            ${e.nid ? `
+                            <input type="hidden" id="pend-nid-${e.id}" value="${escapeHtml(e.nid)}">
+                            <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
+                            ` : `
                             <input type="text" id="pend-nid-${e.id}" placeholder="A123456 (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            `}
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Relation *</label>
