@@ -310,7 +310,13 @@
                     body: JSON.stringify({ seed_idea: fullIdea })
                 });
 
-                const data = await res.json();
+                const rawText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. Please try again.');
+                }
 
                 if (!data.success) {
                     throw new Error(data.error || 'Generation failed');
@@ -352,6 +358,7 @@
                 <span class="px-2 py-0.5 rounded text-xs border ${typeBadge} font-bold uppercase">${detectedType}</span>
                 <span><i class="fas fa-tags mr-1"></i>Keywords: ${(data.keywords_used || []).join(', ') || 'none'}</span>
                 <span><i class="fas fa-scale-balanced mr-1"></i>Clauses referenced: ${data.relevant_clauses ? data.relevant_clauses.length : 0}</span>
+                ${data.fallback_used ? `<span class="text-yellow-400"><i class="fas fa-triangle-exclamation mr-1"></i>Generated with fallback model</span>` : ''}
                 <span><i class="fas fa-clock mr-1"></i>${new Date(data.timestamp).toLocaleString()}</span>
             `;
 
@@ -454,7 +461,13 @@
                     body: JSON.stringify({ seed_idea: refinePrompt })
                 });
 
-                const data = await res.json();
+                const rawText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. Please try again.');
+                }
 
                 if (!data.success) throw new Error(data.error || 'Refinement failed');
 

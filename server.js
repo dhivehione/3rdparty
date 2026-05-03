@@ -1790,6 +1790,7 @@ let userId = null;
 
 const OPENROUTER_API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 const OPENROUTER_MODEL = (process.env.OPENROUTER_MODEL || 'openai/gpt-4o').trim();
+const OPENROUTER_FALLBACK_MODEL = (process.env.OPENROUTER_FALLBACK_MODEL || 'openai/gpt-oss-120b:free').trim();
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
@@ -1853,7 +1854,7 @@ function searchLawsForKeywords(keywords) {
   return results.slice(0, 20);
 }
 
-async function callOpenRouter(systemPrompt, userPrompt) {
+async function tryOpenRouterModel(model, systemPrompt, userPrompt) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -1861,7 +1862,7 @@ async function callOpenRouter(systemPrompt, userPrompt) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -1871,13 +1872,45 @@ async function callOpenRouter(systemPrompt, userPrompt) {
     })
   });
 
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`OpenRouter returned ${response.status}: ${errBody}`);
+    let errInfo = rawBody;
+    try { errInfo = JSON.parse(rawBody).error?.message || rawBody; } catch (e) {}
+    throw new Error(`OpenRouter returned ${response.status}: ${errInfo}`);
   }
 
-  const data = await response.json();
+  if (!rawBody || rawBody.trim().length === 0) {
+    throw new Error('OpenRouter returned an empty response');
+  }
+
+  let data;
+  try {
+    data = JSON.parse(rawBody);
+  } catch (e) {
+    console.error(`OpenRouter parse error (model: ${model}). Raw body (first 500 chars):`, rawBody.substring(0, 500));
+    throw new Error('Failed to parse OpenRouter response');
+  }
+
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    console.error(`OpenRouter unexpected response structure (model: ${model}):`, JSON.stringify(data).substring(0, 500));
+    throw new Error('OpenRouter returned an unexpected response structure');
+  }
+
   return data.choices[0].message.content;
+}
+
+async function callOpenRouter(systemPrompt, userPrompt) {
+  try {
+    console.log(`[OpenRouter] Trying primary model: ${OPENROUTER_MODEL}`);
+    const content = await tryOpenRouterModel(OPENROUTER_MODEL, systemPrompt, userPrompt);
+    return { content, model: OPENROUTER_MODEL, fallback_used: false };
+  } catch (primaryError) {
+    console.warn(`[OpenRouter] Primary model failed: ${primaryError.message}`);
+    console.log(`[OpenRouter] Falling back to: ${OPENROUTER_FALLBACK_MODEL}`);
+    const content = await tryOpenRouterModel(OPENROUTER_FALLBACK_MODEL, systemPrompt, userPrompt);
+    return { content, model: OPENROUTER_FALLBACK_MODEL, fallback_used: true };
+  }
 }
 
 // POST /api/generate-law-draft - Generate a law draft from a seed idea
@@ -1944,7 +1977,8 @@ Draft in a formal legal style. Use "shall" for obligations, "may" for permission
 
     userPrompt += 'Analyze the seed idea above and generate an appropriate draft. Remember: the first line must indicate the draft type.';
 
-    const rawDraft = await callOpenRouter(systemPrompt, userPrompt);
+    const result = await callOpenRouter(systemPrompt, userPrompt);
+    const rawDraft = result.content;
 
     let detectedType = 'law';
     let draft = rawDraft;
@@ -1958,6 +1992,8 @@ Draft in a formal legal style. Use "shall" for obligations, "may" for permission
       success: true,
       draft,
       detected_type: detectedType,
+      model_used: result.model,
+      fallback_used: result.fallback_used,
       keywords_used: keywords,
       clauses_referenced: relevantClauses.length,
       relevant_clauses: relevantClauses.map(c => ({
