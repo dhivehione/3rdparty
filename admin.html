@@ -80,7 +80,32 @@
         </nav>
 
         <div class="max-w-7xl mx-auto px-4 py-8">
-            <!-- Stats Cards -->
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+                <button onclick="switchTab('overview')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-party-accent text-party-dark" data-tab="overview">
+                    <i class="fas fa-chart-bar mr-1"></i>Overview
+                </button>
+                <button onclick="switchTab('proposals')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="proposals">
+                    <i class="fas fa-file-alt mr-1"></i>Proposals
+                </button>
+                <button onclick="switchTab('donations')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="donations">
+                    <i class="fas fa-coins mr-1"></i>Donations & Treasury
+                </button>
+                <button onclick="switchTab('wall')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="wall">
+                    <i class="fas fa-gavel mr-1"></i>Wall Moderation
+                </button>
+                <button onclick="switchTab('events')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="events">
+                    <i class="fas fa-calendar-alt mr-1"></i>Events
+                </button>
+                <button onclick="switchTab('leadership')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="leadership">
+                    <i class="fas fa-users-cog mr-1"></i>Leadership
+                </button>
+                <button onclick="switchTab('settings')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="settings">
+                    <i class="fas fa-cogs mr-1"></i>Settings
+                </button>
+            </div>
+
+            <!-- Stats Cards (always visible) -->
             <div class="grid md:grid-cols-5 gap-6 mb-8">
                 <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                     <div class="text-gray-400 text-sm mb-2">Total Members</div>
@@ -104,7 +129,10 @@
                     <div class="text-xs text-gray-500 mt-1" id="leadershipThreshold">Threshold: 1000</div>
                 </div>
                 </div>
+            </div>
 
+            <!-- Proposals Tab -->
+            <div id="tab-proposals" class="tab-content hidden">
                 <!-- Proposals Management Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -120,7 +148,10 @@
                         <div class="text-center py-8 text-gray-500">Loading proposals...</div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Donations & Treasury Tab -->
+            <div id="tab-donations" class="tab-content hidden">
                 <!-- Donation Verification Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -224,7 +255,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Wall Moderation Tab -->
+            <div id="tab-wall" class="tab-content hidden">
                 <!-- Wall Moderation Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -240,7 +274,10 @@
                         <div class="text-center py-8 text-gray-500">Loading flagged posts...</div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Events Tab -->
+            <div id="tab-events" class="tab-content hidden">
                 <!-- Events Management Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -296,23 +333,10 @@
                         <div class="text-center py-8 text-gray-500">Loading events...</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- System Settings Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-cogs text-party-accent mr-3"></i>
-                            System Settings
-                        </h2>
-                        <button onclick="loadSystemSettings()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
-                    </div>
-                    <div id="systemSettingsPanel" class="space-y-6">
-                        <div class="text-center py-8 text-gray-500">Loading settings...</div>
-                    </div>
-                </div>
-
+            <!-- Leadership Tab -->
+            <div id="tab-leadership" class="tab-content hidden">
                 <!-- Leadership Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -455,84 +479,76 @@
                     </div>
                 </div>
             </div>
+            </div>
 
-            <!-- SMS OTP Settings -->
-            <div class="bg-party-dark/50 rounded-lg p-4 mb-4 border border-gray-700">
-                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-sms mr-2"></i>SMS OTP Verification</h3>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
-                        <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                            <option value="0" ${systemSettings.sms_otp_required ? '' : 'selected'}>No (optional)</option>
-                            <option value="1" ${systemSettings.sms_otp_required ? 'selected' : ''}>Yes (required)</option>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
+            <!-- Settings Tab -->
+            <div id="tab-settings" class="tab-content hidden">
+                <!-- System Settings Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-cogs text-party-accent mr-3"></i>
+                            System Settings
+                        </h2>
+                        <button onclick="loadSystemSettings()" class="text-party-accent hover:underline text-sm">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">SMS Provider</label>
-                        <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                            <option value="" ${!systemSettings.sms_provider ? 'selected' : ''}>None (dev mode)</option>
-                            <option value="twilio" ${systemSettings.sms_provider === 'twilio' ? 'selected' : ''}>Twilio</option>
-                            <option value="webhook" ${systemSettings.sms_provider === 'webhook' ? 'selected' : ''}>HTTP Webhook</option>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">OTP Code Length</label>
-                        <input type="number" id="ss_sms_otp_length" value="${systemSettings.sms_otp_length || 6}" min="4" max="8"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                        <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
-                        <input type="number" id="ss_sms_otp_expiry_minutes" value="${systemSettings.sms_otp_expiry_minutes || 10}" min="1" max="60"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                        <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
-                        <input type="text" id="ss_sms_twilio_phone_number" value="${systemSettings.sms_twilio_phone_number || ''}"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
-                               placeholder="+9601234567">
-                        <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Webhook URL</label>
-                        <input type="text" id="ss_sms_webhook_url" value="${systemSettings.sms_webhook_url || ''}"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
-                               placeholder="https://your-gateway.com/sms">
-                        <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
+                    <div id="systemSettingsPanel" class="space-y-6">
+                        <div class="text-center py-8 text-gray-500">Loading settings...</div>
                     </div>
                 </div>
-                <p class="text-xs text-yellow-500 mt-3"><i class="fas fa-info-circle mr-1"></i> For Twilio: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment variables (or use admin settings above — insecure for secrets).</p>
-            </div>
-            </div>
 
-            <!-- Actions -->
-            <div class="flex flex-wrap gap-4 mb-8">
-                <button onclick="exportToCSV()" 
-                        class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition inline-flex items-center space-x-2">
-                    <i class="fas fa-download"></i>
-                    <span>Export CSV</span>
-                </button>
-                <select id="filterType" onchange="applyFilter()" 
-                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
-                    <option value="all">All Types</option>
-                    <option value="skills">Skills & Expertise</option>
-                    <option value="action">On-the-Ground Action</option>
-                    <option value="ideas">Ideas & Proposals</option>
-                    <option value="donation">Support & Donations</option>
-                </select>
-                <select id="filterStatus" onchange="applyFilter()" 
-                        class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
-                    <option value="all">All Status</option>
-                    <option value="verified">Verified</option>
-                    <option value="unregistered">Unregistered</option>
-                </select>
-                <input type="text" id="searchInput" oninput="applyFilter()" 
-                       class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent flex-1 min-w-[200px]"
-                       placeholder="Search by name, phone, or NID...">
-
+                <!-- SMS OTP Settings -->
+                <div class="bg-party-dark/50 rounded-lg p-4 mb-4 border border-gray-700">
+                    <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-sms mr-2"></i>SMS OTP Verification</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
+                            <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                <option value="0">No (optional)</option>
+                                <option value="1">Yes (required)</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">SMS Provider</label>
+                            <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                <option value="">None (dev mode)</option>
+                                <option value="twilio">Twilio</option>
+                                <option value="webhook">HTTP Webhook</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">OTP Code Length</label>
+                            <input type="number" id="ss_sms_otp_length" value="6" min="4" max="8"
+                                   class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
+                            <input type="number" id="ss_sms_otp_expiry_minutes" value="10" min="1" max="60"
+                                   class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
+                            <input type="text" id="ss_sms_twilio_phone_number" value=""
+                                   class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                                   placeholder="+9601234567">
+                            <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Webhook URL</label>
+                            <input type="text" id="ss_sms_webhook_url" value=""
+                                   class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                                   placeholder="https://your-gateway.com/sms">
+                            <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-yellow-500 mt-3"><i class="fas fa-info-circle mr-1"></i> For Twilio: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment variables (or use admin settings above — insecure for secrets).</p>
+                </div>
             </div>
 
             <!-- Table -->
@@ -623,9 +639,38 @@
         let currentPage = 1;
         let totalPages = 1;
         const PAGE_SIZE = 50;
+        let loadedTabs = new Set();
 
         if (authToken) {
             showDashboard();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(t => {
+                t.classList.remove('bg-party-accent', 'text-party-dark');
+                t.classList.add('bg-gray-800', 'text-gray-400');
+            });
+            document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.add('bg-party-accent', 'text-party-dark');
+            document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.remove('bg-gray-800', 'text-gray-400');
+
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+            if (!loadedTabs.has(tab)) {
+                loadedTabs.add(tab);
+                loadTabData(tab);
+            }
+        }
+
+        function loadTabData(tab) {
+            switch(tab) {
+                case 'proposals': loadProposalsAdmin(); break;
+                case 'donations': loadPendingDonations(); loadTreasuryLedger(); break;
+                case 'wall': loadFlaggedPosts(); break;
+                case 'events': loadAdminEvents(); break;
+                case 'leadership': loadLeadershipData(); break;
+                case 'settings': loadSystemSettings(); break;
+            }
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -658,11 +703,8 @@
         function showDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
+            loadedTabs.add('overview');
             refreshData();
-            loadProposalsAdmin();
-            loadPendingDonations();
-            loadTreasuryLedger();
-            loadAdminEvents();
         }
 
         function logout() {
@@ -1793,10 +1835,20 @@ async function loadSystemSettings() {
         if (data.success) {
             systemSettings = data.settings;
             renderSystemSettings();
+            renderSmsSettings();
         }
     } catch (err) {
         console.error('Error loading system settings:', err);
     }
+}
+
+function renderSmsSettings() {
+    document.getElementById('ss_sms_otp_required').value = systemSettings.sms_otp_required ? '1' : '0';
+    document.getElementById('ss_sms_provider').value = systemSettings.sms_provider || '';
+    document.getElementById('ss_sms_otp_length').value = systemSettings.sms_otp_length || 6;
+    document.getElementById('ss_sms_otp_expiry_minutes').value = systemSettings.sms_otp_expiry_minutes || 10;
+    document.getElementById('ss_sms_twilio_phone_number').value = systemSettings.sms_twilio_phone_number || '';
+    document.getElementById('ss_sms_webhook_url').value = systemSettings.sms_webhook_url || '';
 }
 
 function renderSystemSettings() {
@@ -2274,6 +2326,7 @@ async function saveSystemSettings(e) {
             alert('Settings saved successfully!');
             systemSettings = result.settings;
             renderSystemSettings();
+            renderSmsSettings();
         } else {
             alert('Error: ' + result.error);
         }
@@ -2345,6 +2398,7 @@ async function resetSystemSettings() {
             alert('Settings reset to defaults!');
             systemSettings = result.settings;
             renderSystemSettings();
+            renderSmsSettings();
         }
     } catch (err) {
         alert('Failed to reset settings');
@@ -2439,14 +2493,7 @@ async function deleteWallPost(id) {
     } catch (err) { alert('Error'); }
 }
 
-// Load data on page load
-        setTimeout(() => {
-            loadProposalsAdmin();
-            loadPendingDonations();
-            loadTreasuryLedger();
-            loadFlaggedPosts();
-            loadAdminEvents();
-        }, 1000);
+// Load data on page load (handled by tab switching lazy loading)
     </script>
 </body>
 </html>

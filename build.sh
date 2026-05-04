@@ -8,7 +8,7 @@ set -e
 
 IMAGE_NAME="dhimarketer/3rdparty"
 
-echo "Committing and pushing to GitHub..."
+echo "Committing and pushing to GitHub (main)..."
 
 # Check if there are changes to commit
 if git diff --quiet --cached && git diff --quiet; then
@@ -18,28 +18,13 @@ else
     git commit -m "Update $(date '+%Y-%m-%d %H:%M:%S')"
 fi
 
-# Push to remote if there are commits
-LOCAL_COMMITS=$(git rev-list --count HEAD)
-if [ "$LOCAL_COMMITS" -gt 0 ]; then
-    # Check if remote exists
-    BRANCH=$(git branch --show-current)
-    if git rev-parse --verify origin/$BRANCH >/dev/null 2>&1; then
-        # Check if ahead of remote
-        AHEAD=$(git rev-list --count origin/$BRANCH..HEAD 2>/dev/null || echo "0")
-        if [ "$AHEAD" -gt 0 ]; then
-            echo "Pushing $AHEAD commit(s) to GitHub..."
-            git push 2>&1 || {
-                echo "WARNING: GitHub push failed."
-                echo "To fix, add your GitHub token to git remote:"
-                echo "  git remote set-url origin https://YOUR_TOKEN@github.com/user/repo.git"
-            }
-        else
-            echo "Branch is up-to-date with remote."
-        fi
-    else
-        echo "No remote configured. Run: git remote add origin <your-github-repo-url>"
-    fi
-fi
+# Push to main branch
+echo "Pushing to GitHub main branch..."
+git push origin main 2>&1 || {
+    echo "WARNING: GitHub push failed."
+    echo "To fix, add your GitHub token to git remote:"
+    echo "  git remote set-url origin https://YOUR_TOKEN@github.com/user/repo.git"
+}
 
 echo ""
 # Auto-generate version if not provided
