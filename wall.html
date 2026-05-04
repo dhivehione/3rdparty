@@ -17,129 +17,155 @@
             }
         }
     </script>
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-0PED1M435Y');
     </script>
     <script src="nav.js"></script>
+    <style>
+        .sort-active { color: #FFD700; border-bottom: 2px solid #FFD700; }
+        .vote-active-up { color: #4ade80; }
+        .vote-active-down { color: #f87171; }
+        .reply-thread { border-left: 3px solid #374151; }
+        .reply-thread-nested { border-left: 3px solid #1f2937; }
+        @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+        .post-new { animation: slideIn 0.3s ease-out; }
+    </style>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
-    <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="max-w-3xl mx-auto px-4 py-8">
         
         <!-- Context for cold visitors -->
-        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
+        <div class="bg-party-card rounded-xl p-6 mb-6 border border-gray-700">
             <p class="text-gray-400 mb-3">
-                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives — still not an insurance company. 
-                The Wall is a public message board where anyone can share ideas.
+                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives. 
+                The Wall is the public square — discuss, debate, and connect with the movement. Everyone is welcome.
             </p>
-            <a href="/join" class="text-party-accent hover:underline text-sm">Join the movement →</a>
+            <div class="flex flex-wrap gap-3">
+                <a href="/join" class="text-party-accent hover:underline text-sm">Join the movement →</a>
+                <span class="text-gray-600">|</span>
+                <a href="/how" class="text-party-accent hover:underline text-sm">How it works →</a>
+            </div>
         </div>
         
         <!-- Public Stats Bar -->
-        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
-            <div class="flex flex-wrap justify-center gap-8 text-center">
+        <div class="bg-party-card rounded-xl p-5 mb-6 border border-gray-700">
+            <div class="flex flex-wrap justify-center gap-6 text-center">
                 <div>
-                    <div class="text-3xl font-bold text-party-accent" id="memberCount">—</div>
-                    <div class="text-gray-500 text-sm">Members</div>
+                    <div class="text-2xl font-bold text-party-accent" id="memberCount">—</div>
+                    <div class="text-gray-500 text-xs">Members</div>
                 </div>
                 <div>
-                    <div class="text-3xl font-bold text-party-accent" id="wallCount">—</div>
-                    <div class="text-gray-500 text-sm">Wall Posts</div>
+                    <div class="text-2xl font-bold text-party-accent" id="wallCount">—</div>
+                    <div class="text-gray-500 text-xs">Wall Posts</div>
                 </div>
                 <div>
-                    <div class="text-3xl font-bold text-green-400" id="treasuryCount">—</div>
-                    <div class="text-gray-500 text-sm">Treasury (MVR)</div>
+                    <div class="text-2xl font-bold text-green-400" id="treasuryCount">—</div>
+                    <div class="text-gray-500 text-xs">Treasury (MVR)</div>
                 </div>
                 <div>
-                    <div class="text-3xl font-bold text-green-400" id="progressPercent">—</div>
-                    <div class="text-gray-500 text-sm">To 13,000 Goal</div>
+                    <div class="text-2xl font-bold text-green-400" id="progressPercent">—</div>
+                    <div class="text-gray-500 text-xs">To 13,000 Goal</div>
                 </div>
             </div>
         </div>
 
         <!-- New Members Welcome Thread -->
-        <div class="bg-gradient-to-r from-green-900/30 to-party-card rounded-xl p-6 mb-8 border border-green-600/50">
-            <div class="flex items-center gap-2 mb-4">
-                <span class="text-2xl">🌴</span>
-                <h2 class="text-xl font-bold text-green-400">New Members Welcome Thread</h2>
+        <div class="bg-gradient-to-r from-green-900/30 to-party-card rounded-xl p-5 mb-6 border border-green-600/50">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xl">🌴</span>
+                <h2 class="text-lg font-bold text-green-400">New Members Welcome Thread</h2>
             </div>
-            <p class="text-gray-400 text-sm mb-4">Watch the movement grow! Every signature matters — we're building a better Maldives together.</p>
-            <div id="welcomeThread" class="space-y-3">
+            <p class="text-gray-400 text-xs mb-3">Every signature counts — we're building a better Maldives together.</p>
+            <div id="welcomeThread" class="space-y-2 max-h-64 overflow-y-auto">
                 <!-- Welcome posts loaded here -->
             </div>
-            <div id="noWelcomePosts" class="text-center py-4 text-gray-500 hidden">
-                <p class="text-sm">No new members yet. <a href="/join" class="text-green-400 hover:underline">Be the first to join!</a></p>
+            <div id="noWelcomePosts" class="text-center py-3 text-gray-500 hidden">
+                <p class="text-xs">No new members yet. <a href="/join" class="text-green-400 hover:underline">Be the first to join!</a></p>
             </div>
         </div>
 
-        <!-- Intro -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold mb-3">The Wall</h1>
-            <p class="text-gray-400">
-                Anyone can post. No signup required. Just a nickname and your message.
-            </p>
+        <!-- User status bar (shown when logged in) -->
+        <div id="userStatusBar" class="bg-party-card rounded-xl p-3 mb-6 border border-gray-700 hidden">
+            <div class="flex items-center gap-2 text-sm">
+                <i class="fas fa-user-check text-green-400"></i>
+                <span>Posting as <strong id="loggedInName" class="text-party-accent"></strong></span>
+                <span class="text-gray-500">— merit earned for engagement</span>
+            </div>
         </div>
 
         <!-- Post Form -->
-        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
-            <form id="postForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-2">Your Nickname</label>
+        <div class="bg-party-card rounded-xl p-5 mb-6 border border-gray-700">
+            <div id="replyContext" class="hidden bg-gray-800/50 rounded-lg p-3 mb-3 text-sm border border-gray-600">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-400">Replying to <strong id="replyToName" class="text-party-accent"></strong></span>
+                    <button onclick="cancelReply()" class="text-gray-500 hover:text-red-400"><i class="fas fa-times"></i></button>
+                </div>
+                <p id="replyToPreview" class="text-gray-600 text-xs mt-1 truncate"></p>
+            </div>
+            <form id="postForm" class="space-y-3">
+                <div id="nicknameField">
+                    <label class="block text-xs text-gray-400 mb-1">Your Nickname</label>
                     <input type="text" id="nickname" required 
-                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-party-accent"
                            placeholder="Pick any name" maxlength="50">
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-400 mb-2">Your Message</label>
+                    <label class="block text-xs text-gray-400 mb-1" id="messageLabel">Your Message</label>
                     <textarea id="message" required rows="3"
-                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
-                              placeholder="Say something. Support the movement. Share an idea. Or just say hi."
+                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-party-accent resize-y"
+                              placeholder="Share an idea. Support the movement. Or just say hello."
                               maxlength="500"></textarea>
-                    <p class="text-gray-600 text-xs mt-1 text-right"><span id="charCount">0</span>/500</p>
+                    <p class="text-gray-600 text-xs mt-1 text-right"><span id="charCount">0</span>/<span id="maxChars">500</span></p>
                 </div>
                 <button type="submit" 
-                        class="w-full bg-party-accent text-party-dark py-3 rounded-lg font-bold hover:scale-[1.02] transform transition">
-                    Post to the Wall
+                        class="w-full bg-party-accent text-party-dark py-2.5 rounded-lg font-bold hover:scale-[1.01] transform transition text-sm">
+                    <span id="submitBtnText">Post to the Wall</span>
                 </button>
             </form>
-            <p id="postError" class="text-red-400 text-sm mt-4 text-center hidden"></p>
-            <p id="postSuccess" class="text-green-400 text-sm mt-4 text-center hidden"></p>
+            <p id="postError" class="text-red-400 text-xs mt-3 text-center hidden"></p>
+            <p id="postSuccess" class="text-green-400 text-xs mt-3 text-center hidden"></p>
         </div>
 
-        <!-- Posts -->
-        <div class="space-y-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Recent Posts</h2>
-                <button onclick="loadPosts()" class="text-gray-500 hover:text-party-accent text-sm">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
+        <!-- Sort Tabs -->
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold">Discussions</h2>
+            <div class="flex gap-1 text-sm">
+                <button onclick="changeSort('new')" id="sortNew" class="sort-active px-3 py-1.5 rounded-t hover:bg-gray-800 transition">New</button>
+                <button onclick="changeSort('hot')" id="sortHot" class="px-3 py-1.5 rounded-t hover:bg-gray-800 transition">Hot</button>
+                <button onclick="changeSort('top')" id="sortTop" class="px-3 py-1.5 rounded-t hover:bg-gray-800 transition">Top</button>
             </div>
-            <div id="postsContainer" class="space-y-4">
-                <!-- Posts loaded here -->
-            </div>
-            <div id="noPosts" class="text-center py-12 text-gray-500 hidden">
-                <div class="text-4xl mb-4">💬</div>
-                <p>No posts yet. Be the first!</p>
-            </div>
-            <div id="loadingPosts" class="text-center py-8 text-gray-500">
-                <i class="fas fa-spinner fa-spin mr-2"></i> Loading posts...
-            </div>
+        </div>
+
+        <!-- Posts Container -->
+        <div id="postsContainer" class="space-y-3">
+            <!-- Posts loaded here -->
+        </div>
+        <div id="noPosts" class="text-center py-12 text-gray-500 hidden">
+            <div class="text-4xl mb-3">💬</div>
+            <p>No posts yet. Be the first!</p>
+        </div>
+        <div id="loadingPosts" class="text-center py-8 text-gray-500">
+            <i class="fas fa-spinner fa-spin mr-2"></i> Loading posts...
+        </div>
+        <div id="loadMoreContainer" class="text-center mt-4 hidden">
+            <button onclick="loadMore()" class="border border-gray-600 text-gray-400 px-6 py-2 rounded-lg hover:border-party-accent hover:text-party-accent transition text-sm">
+                Load More
+            </button>
         </div>
 
         <!-- CTA -->
-        <div class="text-center mt-12 pt-8 border-t border-gray-800">
-            <p class="text-gray-400 mb-4">Want to do more?</p>
-            <div class="flex flex-wrap justify-center gap-4">
-                <a href="/join" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition">
+        <div class="text-center mt-10 pt-8 border-t border-gray-800">
+            <p class="text-gray-400 mb-3 text-sm">Want to do more?</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                <a href="/join" class="bg-party-accent text-party-dark px-5 py-2.5 rounded-lg font-bold hover:scale-105 transform transition text-sm">
                     Join the Party
                 </a>
-                <a href="/how" class="border border-party-accent text-party-accent px-6 py-3 rounded-lg font-bold hover:bg-party-accent/10 transition">
+                <a href="/how" class="border border-party-accent text-party-accent px-5 py-2.5 rounded-lg font-bold hover:bg-party-accent/10 transition text-sm">
                     Learn More
                 </a>
             </div>
@@ -147,163 +173,515 @@
 
     </div>
 
+    <!-- Flag Modal -->
+    <div id="flagModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700 max-w-md w-full mx-4">
+            <h3 class="text-lg font-bold mb-3">Report Post</h3>
+            <p class="text-gray-400 text-sm mb-3">Why are you reporting this post?</p>
+            <textarea id="flagReason" rows="3" placeholder="Explain the issue (min 5 characters)..." 
+                      class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-red-400 mb-3"></textarea>
+            <div class="flex gap-2 justify-end">
+                <button onclick="closeFlagModal()" class="px-4 py-2 text-gray-400 hover:text-white text-sm">Cancel</button>
+                <button onclick="submitFlag()" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700">Report</button>
+            </div>
+            <p id="flagError" class="text-red-400 text-xs mt-2 hidden"></p>
+        </div>
+    </div>
+
     <script>
-        // Load stats
+        // ── State ──
+        let currentSort = 'new';
+        let currentPage = 1;
+        let replyParentId = null;
+        let flagPostId = null;
+        let isLoggedIn = false;
+        let loggedInName = '';
+        let authToken = null;
+
+        // ── Auth detection ──
+        function detectAuth() {
+            try {
+                const tokenKey = localStorage.getItem('auth_token');
+                if (!tokenKey) {
+                    const stored = localStorage.getItem('user');
+                    if (stored) {
+                        const user = JSON.parse(stored);
+                        authToken = user.auth_token || user.token || null;
+                        isLoggedIn = !!authToken;
+                        loggedInName = user.name || user.username || '';
+                    }
+                } else {
+                    authToken = tokenKey;
+                    isLoggedIn = true;
+                    const stored = localStorage.getItem('user');
+                    if (stored) {
+                        const user = JSON.parse(stored);
+                        loggedInName = user.name || user.username || '';
+                    }
+                }
+            } catch(e) {}
+
+            if (isLoggedIn) {
+                document.getElementById('nicknameField').classList.add('hidden');
+                document.getElementById('userStatusBar').classList.remove('hidden');
+                document.getElementById('loggedInName').textContent = loggedInName || 'Member';
+                document.getElementById('message').placeholder = 'Share an idea. Discuss the movement. Or just say hello.';
+            }
+        }
+
+        function getHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) {
+                headers['Authorization'] = 'Bearer ' + authToken;
+            }
+            return headers;
+        }
+
+        // ── Stats ──
         let goalTreasury = 13000;
         async function loadStats() {
             try {
                 const settingsRes = await fetch('/api/public-settings');
                 if (settingsRes.ok) {
                     const settingsData = await settingsRes.json();
-                    if (settingsData.target_treasury) {
-                        goalTreasury = settingsData.target_treasury;
-                    }
+                    if (settingsData.target_treasury) goalTreasury = settingsData.target_treasury;
                 }
                 const response = await fetch('/api/wall-stats');
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('memberCount').textContent = data.members || 0;
-                    document.getElementById('wallCount').textContent = data.wallPosts || 0;
+                    document.getElementById('memberCount').textContent = (data.members || 0).toLocaleString();
+                    document.getElementById('wallCount').textContent = (data.wallPosts || 0).toLocaleString();
                     document.getElementById('treasuryCount').textContent = (data.treasury || 0).toLocaleString();
-                    
                     const percent = Math.min((data.treasury / goalTreasury) * 100, 100).toFixed(2);
                     document.getElementById('progressPercent').textContent = percent + '%';
                 }
-            } catch (e) {
-                console.error('Stats error:', e);
-            }
+            } catch (e) { console.error('Stats error:', e); }
         }
-        
-        // Load welcome thread posts (thread_id = 'new_members_welcome')
+
+        // ── Welcome Thread ──
         async function loadWelcomeThread() {
             try {
                 const response = await fetch('/api/wall/thread/new_members_welcome');
                 const data = await response.json();
-                
                 if (data.posts && data.posts.length > 0) {
                     const container = document.getElementById('welcomeThread');
                     container.innerHTML = '';
                     data.posts.forEach(post => {
-                        const postEl = document.createElement('div');
-                        postEl.className = 'bg-party-dark/50 rounded-lg p-4 border border-green-600/30';
-                        postEl.innerHTML = `
-                            <div class="flex items-start justify-between mb-2">
-                                <span class="font-bold text-green-400">${escapeHtml(post.nickname)}</span>
-                                <span class="text-gray-600 text-sm">${formatTime(post.timestamp)}</span>
+                        const el = document.createElement('div');
+                        el.className = 'bg-party-dark/50 rounded-lg p-3 border border-green-600/30 text-sm';
+                        el.innerHTML = `
+                            <div class="flex items-start justify-between mb-1">
+                                <span class="font-bold text-green-400 text-xs">${escapeHtml(post.nickname)}</span>
+                                <span class="text-gray-600 text-xs">${formatTime(post.timestamp)}</span>
                             </div>
-                            <p class="text-gray-300">${escapeHtml(post.message)}</p>
+                            <p class="text-gray-300 text-xs">${escapeHtml(post.message)}</p>
                         `;
-                        container.appendChild(postEl);
+                        container.appendChild(el);
                     });
                     document.getElementById('noWelcomePosts').classList.add('hidden');
                 } else {
                     document.getElementById('noWelcomePosts').classList.remove('hidden');
                 }
             } catch (e) {
-                console.error('Welcome thread error:', e);
                 document.getElementById('noWelcomePosts').classList.remove('hidden');
             }
         }
 
-        // Load posts
-        async function loadPosts() {
-            document.getElementById('loadingPosts').classList.remove('hidden');
-            document.getElementById('postsContainer').innerHTML = '';
-            document.getElementById('noPosts').classList.add('hidden');
-            
+        // ── Posts ──
+        async function loadPosts(append = false) {
+            if (!append) {
+                document.getElementById('loadingPosts').classList.remove('hidden');
+                document.getElementById('postsContainer').innerHTML = '';
+                document.getElementById('noPosts').classList.add('hidden');
+                document.getElementById('loadMoreContainer').classList.add('hidden');
+            }
+
             try {
-                const response = await fetch('/api/wall');
+                const response = await fetch(`/api/wall?sort=${currentSort}&page=${currentPage}`, {
+                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                });
                 const data = await response.json();
-                
+
                 document.getElementById('loadingPosts').classList.add('hidden');
-                
+
                 if (data.posts && data.posts.length > 0) {
-                    data.posts.forEach(post => {
-                        const postEl = document.createElement('div');
-                        postEl.className = 'bg-party-card rounded-xl p-5 border border-gray-700';
-                        postEl.innerHTML = `
-                            <div class="flex items-start justify-between mb-2">
-                                <span class="font-bold text-party-accent">${escapeHtml(post.nickname)}</span>
-                                <span class="text-gray-600 text-sm">${formatTime(post.timestamp)}</span>
-                            </div>
-                            <p class="text-gray-300">${escapeHtml(post.message)}</p>
-                        `;
-                        document.getElementById('postsContainer').appendChild(postEl);
-                    });
-                } else {
+                    if (!append) document.getElementById('postsContainer').innerHTML = '';
+                    data.posts.forEach(post => renderPost(post, 'postsContainer'));
+                    document.getElementById('noPosts').classList.add('hidden');
+                    if (data.showMore) {
+                        document.getElementById('loadMoreContainer').classList.remove('hidden');
+                    } else {
+                        document.getElementById('loadMoreContainer').classList.add('hidden');
+                    }
+                } else if (!append) {
                     document.getElementById('noPosts').classList.remove('hidden');
                 }
             } catch (e) {
                 document.getElementById('loadingPosts').classList.add('hidden');
-                document.getElementById('noPosts').classList.remove('hidden');
+                if (!append) document.getElementById('noPosts').classList.remove('hidden');
             }
         }
 
-        // Post a message
-        document.getElementById('postForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const nickname = document.getElementById('nickname').value.trim();
-            const message = document.getElementById('message').value.trim();
-            
-            document.getElementById('postError').classList.add('hidden');
-            document.getElementById('postSuccess').classList.add('hidden');
+        async function loadReplies(parentId, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<div class="text-center py-3 text-gray-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i> Loading replies...</div>';
             
             try {
+                const response = await fetch(`/api/wall/replies/${parentId}`, {
+                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                });
+                const data = await response.json();
+                container.innerHTML = '';
+
+                if (data.replies && data.replies.length > 0) {
+                    data.replies.forEach(reply => renderPost(reply, containerId, true));
+                } else {
+                    container.innerHTML = '<p class="text-gray-600 text-xs text-center py-2">No replies yet. Be the first!</p>';
+                }
+            } catch (e) {
+                container.innerHTML = '<p class="text-gray-600 text-xs text-center py-2">Could not load replies.</p>';
+            }
+        }
+
+        function renderPost(post, containerId, isReply = false) {
+            const container = document.getElementById(containerId);
+            const card = document.createElement('div');
+            const indentClass = isReply ? 'ml-6' : '';
+            card.className = `bg-party-card rounded-xl p-4 border border-gray-700 ${indentClass} post-new`;
+            card.id = `post-${post.id}`;
+
+            const voteScore = (post.upvotes || 0) - (post.downvotes || 0);
+            const userVote = post.user_vote || 0;
+            const displayName = post.display_name || post.nickname || 'Anonymous';
+            const hasMerit = post.user_merit > 0;
+            const replyCount = post.reply_count || 0;
+            const isOwnPost = isLoggedIn && post.user_id && post.user_id === getMyUserId();
+
+            card.innerHTML = `
+                <div class="flex gap-3">
+                    <!-- Vote column -->
+                    <div class="flex flex-col items-center gap-0.5 min-w-[36px]">
+                        <button onclick="votePost(${post.id}, 1)" class="vote-btn-up-${post.id} text-gray-500 hover:text-green-400 text-lg leading-none ${userVote === 1 ? 'vote-active-up' : ''}" title="Upvote">
+                            <i class="fas fa-caret-up"></i>
+                        </button>
+                        <span id="voteScore-${post.id}" class="text-xs font-bold ${voteScore > 0 ? 'text-green-400' : voteScore < 0 ? 'text-red-400' : 'text-gray-400'}">
+                            ${voteScore}
+                        </span>
+                        <button onclick="votePost(${post.id}, -1)" class="vote-btn-down-${post.id} text-gray-500 hover:text-red-400 text-lg leading-none ${userVote === -1 ? 'vote-active-down' : ''}" title="Downvote">
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                    </div>
+
+                    <!-- Content column -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="font-bold text-party-accent text-sm">${escapeHtml(displayName)}</span>
+                            ${hasMerit ? `<span class="text-xs bg-party-accent/20 text-party-accent px-1.5 py-0.5 rounded">★ ${post.user_merit}</span>` : ''}
+                            ${post.user_id ? '<span class="text-xs text-green-500"><i class="fas fa-check-circle"></i> Member</span>' : ''}
+                            <span class="text-gray-600 text-xs">· ${formatTime(post.timestamp)}</span>
+                            ${post.is_flagged ? '<span class="text-xs text-yellow-500"><i class="fas fa-flag"></i></span>' : ''}
+                        </div>
+                        <div class="text-gray-300 text-sm whitespace-pre-wrap break-words">${escapeHtml(post.message)}</div>
+                        <div class="flex items-center gap-4 mt-2 text-xs">
+                            <button onclick="toggleReplyForm(${post.id})" class="text-gray-500 hover:text-party-accent flex items-center gap-1">
+                                <i class="fas fa-reply"></i> Reply
+                            </button>
+                            ${!isOwnPost ? `<button onclick="openFlagModal(${post.id})" class="text-gray-600 hover:text-yellow-500 flex items-center gap-1">
+                                <i class="fas fa-flag"></i> Report
+                            </button>` : ''}
+                            ${replyCount > 0 ? `<button onclick="toggleReplies(${post.id})" class="text-gray-500 hover:text-party-accent flex items-center gap-1">
+                                <i class="fas fa-comments"></i> <span id="replyLabel-${post.id}">${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}</span>
+                            </button>` : ''}
+                        </div>
+
+                        <!-- Inline reply form -->
+                        <div id="replyForm-${post.id}" class="hidden mt-3 pl-2 border-l-2 border-gray-700">
+                            <textarea id="replyText-${post.id}" rows="2" placeholder="Write a reply..." maxlength="1000"
+                                      class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-party-accent mb-2"></textarea>
+                            <div class="flex gap-2">
+                                <button onclick="submitReply(${post.id})" class="bg-party-accent text-party-dark px-4 py-1.5 rounded text-xs font-bold">Post Reply</button>
+                                <button onclick="toggleReplyForm(${post.id})" class="text-gray-500 text-xs hover:text-white">Cancel</button>
+                            </div>
+                            <p id="replyError-${post.id}" class="text-red-400 text-xs mt-1 hidden"></p>
+                        </div>
+
+                        <!-- Replies container -->
+                        <div id="replies-${post.id}" class="hidden mt-3"></div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(card);
+        }
+
+        function toggleReplyForm(postId) {
+            const form = document.getElementById(`replyForm-${postId}`);
+            const isHidden = form.classList.contains('hidden');
+            if (isHidden) {
+                form.classList.remove('hidden');
+                document.getElementById(`replyText-${postId}`).focus();
+            } else {
+                form.classList.add('hidden');
+            }
+        }
+
+        function toggleReplies(postId) {
+            const container = document.getElementById(`replies-${postId}`);
+            const isHidden = container.classList.contains('hidden');
+            if (isHidden) {
+                container.classList.remove('hidden');
+                loadReplies(postId, `replies-${postId}`);
+            } else {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+            }
+        }
+
+        async function submitReply(parentId) {
+            const text = document.getElementById(`replyText-${parentId}`).value.trim();
+            const errorEl = document.getElementById(`replyError-${parentId}`);
+            errorEl.classList.add('hidden');
+
+            if (!text) {
+                errorEl.textContent = 'Please write something';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const body = { message: text, parent_id: parentId };
+                if (!isLoggedIn) body.nickname = document.getElementById('nickname').value.trim() || 'Anon';
+
                 const response = await fetch('/api/wall', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, message })
+                    headers: getHeaders(),
+                    body: JSON.stringify(body)
                 });
-                
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    document.getElementById('postSuccess').textContent = result.message;
-                    document.getElementById('postSuccess').classList.remove('hidden');
-                    document.getElementById('nickname').value = '';
-                    document.getElementById('message').value = '';
-                    document.getElementById('charCount').textContent = '0';
-                    loadPosts();
+                    document.getElementById(`replyText-${parentId}`).value = '';
+                    toggleReplyForm(parentId);
+                    // Reload replies
+                    const container = document.getElementById(`replies-${parentId}`);
+                    container.classList.remove('hidden');
+                    loadReplies(parentId, `replies-${parentId}`);
                     loadStats();
                 } else {
-                    document.getElementById('postError').textContent = result.error;
-                    document.getElementById('postError').classList.remove('hidden');
+                    errorEl.textContent = result.error;
+                    errorEl.classList.remove('hidden');
                 }
-            } catch (error) {
-                document.getElementById('postError').textContent = 'Connection error. Try again.';
-                document.getElementById('postError').classList.remove('hidden');
+            } catch (e) {
+                errorEl.textContent = 'Connection error. Try again.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // ── Voting ──
+        async function votePost(postId, voteValue) {
+            const endpoint = voteValue === 1 ? 'upvote' : 'downvote';
+            try {
+                const response = await fetch(`/api/wall/${postId}/${endpoint}`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById(`voteScore-${postId}`).textContent = result.upvotes - result.downvotes;
+                    const scoreEl = document.getElementById(`voteScore-${postId}`);
+                    const score = result.upvotes - result.downvotes;
+                    scoreEl.className = `text-xs font-bold ${score > 0 ? 'text-green-400' : score < 0 ? 'text-red-400' : 'text-gray-400'}`;
+
+                    // Update button states
+                    const upBtn = document.querySelector(`.vote-btn-up-${postId}`);
+                    const downBtn = document.querySelector(`.vote-btn-down-${postId}`);
+                    if (result.user_vote === 1) {
+                        upBtn.classList.add('vote-active-up');
+                        downBtn.classList.remove('vote-active-down');
+                    } else if (result.user_vote === -1) {
+                        downBtn.classList.add('vote-active-down');
+                        upBtn.classList.remove('vote-active-up');
+                    } else {
+                        upBtn.classList.remove('vote-active-up');
+                        downBtn.classList.remove('vote-active-down');
+                    }
+                } else {
+                    alert(result.error);
+                }
+            } catch (e) {
+                console.error('Vote error:', e);
+            }
+        }
+
+        function getMyUserId() {
+            try {
+                const stored = localStorage.getItem('user');
+                if (stored) {
+                    const user = JSON.parse(stored);
+                    return user.id || null;
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        // ── Flag / Report ──
+        function openFlagModal(postId) {
+            flagPostId = postId;
+            document.getElementById('flagModal').classList.remove('hidden');
+            document.getElementById('flagReason').value = '';
+            document.getElementById('flagError').classList.add('hidden');
+        }
+
+        function closeFlagModal() {
+            document.getElementById('flagModal').classList.add('hidden');
+            flagPostId = null;
+        }
+
+        async function submitFlag() {
+            const reason = document.getElementById('flagReason').value.trim();
+            const errorEl = document.getElementById('flagError');
+
+            if (!reason || reason.length < 5) {
+                errorEl.textContent = 'Please provide at least 5 characters';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/wall/${flagPostId}/flag`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ reason })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    closeFlagModal();
+                    alert(result.message);
+                } else {
+                    errorEl.textContent = result.error;
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (e) {
+                errorEl.textContent = 'Connection error';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // ── Sort ──
+        function changeSort(sort) {
+            currentSort = sort;
+            currentPage = 1;
+            document.getElementById('sortNew').classList.toggle('sort-active', sort === 'new');
+            document.getElementById('sortHot').classList.toggle('sort-active', sort === 'hot');
+            document.getElementById('sortTop').classList.toggle('sort-active', sort === 'top');
+            loadPosts();
+        }
+
+        function loadMore() {
+            currentPage++;
+            loadPosts(true);
+        }
+
+        // ── Main post form ──
+        document.getElementById('postForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const message = document.getElementById('message').value.trim();
+            const errorEl = document.getElementById('postError');
+            const successEl = document.getElementById('postSuccess');
+            errorEl.classList.add('hidden');
+            successEl.classList.add('hidden');
+
+            try {
+                const body = { message };
+                if (replyParentId) {
+                    body.parent_id = replyParentId;
+                }
+                if (!isLoggedIn) {
+                    const nickname = document.getElementById('nickname').value.trim();
+                    if (!nickname || nickname.length < 2) {
+                        errorEl.textContent = 'Please enter a nickname (at least 2 characters)';
+                        errorEl.classList.remove('hidden');
+                        return;
+                    }
+                    body.nickname = nickname;
+                }
+
+                const response = await fetch('/api/wall', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    successEl.textContent = result.message;
+                    successEl.classList.remove('hidden');
+                    document.getElementById('message').value = '';
+                    document.getElementById('charCount').textContent = '0';
+                    if (!isLoggedIn) document.getElementById('nickname').value = '';
+                    cancelReply();
+                    loadPosts();
+                    loadStats();
+                    setTimeout(() => successEl.classList.add('hidden'), 5000);
+                } else {
+                    errorEl.textContent = result.error;
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error. Try again.';
+                errorEl.classList.remove('hidden');
             }
         });
 
-        // Character count
+        function cancelReply() {
+            replyParentId = null;
+            document.getElementById('replyContext').classList.add('hidden');
+            document.getElementById('submitBtnText').textContent = 'Post to the Wall';
+            document.getElementById('message').placeholder = isLoggedIn ? 'Share an idea. Discuss the movement. Or just say hello.' : 'Say something. Support the movement. Share an idea. Or just say hi.';
+            document.getElementById('messageLabel').textContent = 'Your Message';
+            document.getElementById('maxChars').textContent = '500';
+            document.getElementById('message').maxLength = 500;
+        }
+
+        // ── Character count ──
         document.getElementById('message').addEventListener('input', function() {
             document.getElementById('charCount').textContent = this.value.length;
         });
 
-        // Helpers
+        // ── Helpers ──
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
         function formatTime(timestamp) {
+            if (!timestamp) return '';
             const date = new Date(timestamp);
             const now = new Date();
             const diff = Math.floor((now - date) / 1000);
-            
             if (diff < 60) return 'just now';
             if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
             if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+            if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
             return date.toLocaleDateString();
         }
 
-        // Init
+        // ── Init ──
+        detectAuth();
         loadStats();
         loadPosts();
         loadWelcomeThread();
         setInterval(loadStats, 30000);
+
+        // Close flag modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeFlagModal();
+        });
     </script>
 </body>
 </html>

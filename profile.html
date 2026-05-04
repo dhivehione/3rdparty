@@ -204,7 +204,7 @@
                     <div class="text-center">
                         <div class="text-3xl font-bold text-green-400" id="clauseVotesCount">—</div>
                         <div class="text-gray-500 text-sm">Clauses Voted</div>
-                        <div class="text-gray-600 text-xs mt-1">+2.5 pts each</div>
+                        <div class="text-gray-600 text-xs mt-1">(logged in votes)</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold text-blue-400" id="articleVotesCount">—</div>
@@ -214,12 +214,11 @@
                     <div class="text-center">
                         <div class="text-3xl font-bold text-purple-400" id="lawVotesCount">—</div>
                         <div class="text-gray-500 text-sm">Laws Voted</div>
-                        <div class="text-gray-600 text-xs mt-1">(no points)</div>
+                        <div class="text-gray-600 text-xs mt-1">+2.5 pts each</div>
                     </div>
                 </div>
                 <p class="text-gray-500 text-xs mt-6 text-center">
-                    Law-level votes don't add to merit score because voting on 1 law = voting on ~100 clauses.<br>
-                    Each vote counts as one action regardless of scope.
+                    Law-level votes award 2.5 merit pts when you vote as a signed-in member.
                 </p>
             </div>
 
@@ -637,7 +636,7 @@
                 document.getElementById('editIsland').value = user.island || '';
                 
                 // Scores
-                document.getElementById('meritScore').textContent = user.initial_merit_estimate;
+                document.getElementById('meritScore').textContent = Math.round(user.dynamic_score || user.initial_merit_estimate);
                 document.getElementById('clauseVotesCount').textContent = data.stats.clauseVotesCount;
                 document.getElementById('articleVotesCount').textContent = data.stats.articleVotesCount;
                 document.getElementById('lawVotesCount').textContent = data.stats.lawVotesCount;
@@ -914,9 +913,10 @@
                     return;
                 }
                 
-                if (user.initial_merit_estimate < status.min_merit_required) {
+                const userScore = Math.round(user.dynamic_score || user.initial_merit_estimate);
+                if (userScore < status.min_merit_required) {
                     document.getElementById('leadershipNotEligible').classList.remove('hidden');
-                    document.getElementById('eligibilityMessage').textContent = `Need ${status.min_merit_required} merit. Your score: ${user.initial_merit_estimate}`;
+                    document.getElementById('eligibilityMessage').textContent = `Need ${status.min_merit_required} merit. Your score: ${userScore}`;
                     return;
                 }
                 

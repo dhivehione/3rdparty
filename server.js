@@ -58,7 +58,18 @@ const DEFAULT_SETTINGS = {
   voting_window_extended_days: 3,
   voting_weight_primary: 1.0,
   voting_weight_extended: 0.5,
-  proposal_cooldown_hours: 8
+  proposal_cooldown_hours: 8,
+  merit_vote_pass: 2.5,
+  merit_vote_fail: 1.0,
+  merit_proposal_author: 200,
+  sms_provider: '',
+  sms_twilio_account_sid: '',
+  sms_twilio_auth_token: '',
+  sms_twilio_phone_number: '',
+  sms_webhook_url: '',
+  sms_otp_length: 6,
+  sms_otp_expiry_minutes: 10,
+  sms_otp_required: 0
 };
 
 function getSettings() {
@@ -149,6 +160,7 @@ function closeExpiredProposals() {
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'voting', ?, ?, 'proposal', ?, ?)
           `).run(voter.user_id, points, proposal.id, desc, new Date().toISOString());
+          maybeEngageReferral(voter.user_id);
         }
       });
 
@@ -247,6 +259,11 @@ try {
 } catch (e) {
   // Column already exists or other error - ignore
 }
+
+// Migration: SMS OTP verification columns
+try { db.exec(`ALTER TABLE signups ADD COLUMN otp_code TEXT`); console.log('✓ Migration: Added otp_code to signups'); } catch (e) {}
+try { db.exec(`ALTER TABLE signups ADD COLUMN otp_expires_at TEXT`); console.log('✓ Migration: Added otp_expires_at to signups'); } catch (e) {}
+try { db.exec(`ALTER TABLE signups ADD COLUMN otp_verified INTEGER DEFAULT 0`); console.log('✓ Migration: Added otp_verified to signups'); } catch (e) {}
 
 // Fix signups table schema - remove CHECK constraint if it exists
 // Only run once: if signups_new already exists we know this migration was done before
@@ -617,6 +634,49 @@ try {
 } catch (e) {
   // Column already exists, ignore error
 }
+
+// Migration: Wall 2.0 — threaded comments / voting / moderation
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN parent_id INTEGER`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN user_id INTEGER`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN user_name TEXT`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN score REAL DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN is_flagged INTEGER DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN flagged_by_ip TEXT`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN flag_reason TEXT`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN is_hidden INTEGER DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE wall_posts ADD COLUMN reply_count INTEGER DEFAULT 0`); } catch (e) {}
+
+// Wall vote tracking (one vote per user per post)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS wall_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER,
+    ip_address TEXT,
+    vote INTEGER NOT NULL CHECK(vote IN (-1, 0, 1)),
+    created_at TEXT NOT NULL,
+    UNIQUE(post_id, COALESCE(user_id, -1), COALESCE(ip_address, 'anon')),
+    FOREIGN KEY (post_id) REFERENCES wall_posts(id)
+  )
+`);
+
+// Wall flag/report tracking
+db.exec(`
+  CREATE TABLE IF NOT EXISTS wall_flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    reporter_id INTEGER,
+    reporter_ip TEXT,
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    resolved_by INTEGER,
+    resolved_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (post_id) REFERENCES wall_posts(id)
+  )
+`);
 
 // Policy proposals table
 db.exec(`
@@ -1315,12 +1375,133 @@ function adminAuth(req, res, next) {
 }
 
 // ==================== PUBLIC WALL API (No Signup Required) ====================
-// GET /api/wall - Get all posts
+
+// Profanity and troll filter — heuristic scoring with word blacklist
+// Returns: { passed: bool, score: number (0=clean, higher=troll), reason: string|null }
+function moderateWallContent(text) {
+  const lower = text.toLowerCase().trim();
+  let score = 0;
+  let reasons = [];
+
+  // Word blacklist — profanity, slurs, hate speech
+  const blacklist = [
+    // Profanity
+    'fuck', 'shit', 'asshole', 'bastard', 'bitch', 'cunt', 'dick', 'piss', 'douche',
+    'motherfucker', 'motherfucking',
+    // Hate speech / slurs
+    'nigger', 'nigga', 'faggot', 'retard', 'retarded', 'chink', 'kike', 'spic',
+    'wetback', 'tranny', 'fag', 'dyke', 'paki',
+    // Maldivian profanity
+    'huththu', 'kaley', 'manyaa', 'handi', 'meyraa', 'thaakathu',
+    // Aggressive trolling / violence
+    'kill yourself', 'kys', 'go die', 'suicide', 'hang yourself', 'shoot yourself',
+    // Generic harassment
+    'you are worthless', 'nobody cares', 'just shut up', 'you are stupid'
+  ];
+
+  for (const word of blacklist) {
+    const regex = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    const matches = lower.match(regex);
+    if (matches) {
+      score += matches.length * 25;
+      reasons.push('profanity/hate-speech');
+      break; // One blacklist hit is enough for rejection
+    }
+  }
+
+  // ALL CAPS trolling (more than 70% uppercase in messages longer than 20 chars)
+  if (text.length > 20) {
+    const upperCount = (text.match(/[A-Z]/g) || []).length;
+    const letterCount = (text.match(/[a-zA-Z]/g) || []).length;
+    if (letterCount > 0 && (upperCount / letterCount) > 0.7) {
+      score += 30;
+      reasons.push('excessive-caps');
+    }
+  }
+
+  // Repeated character spam (e.g., "helloooooo!!!!!!")
+  const repeatedChars = (text.match(/(.)\1{4,}/g) || []);
+  if (repeatedChars.length > 0) {
+    score += repeatedChars.length * 5;
+    reasons.push('char-spam');
+  }
+
+  // Excessive punctuation
+  const exclamationCount = (text.match(/!/g) || []).length;
+  const questionCount = (text.match(/\?/g) || []).length;
+  if (exclamationCount > 5 || questionCount > 5) {
+    score += 10;
+    reasons.push('excessive-punctuation');
+  }
+
+  // Extremely short with all caps
+  if (text.length < 5 && text === text.toUpperCase() && text.match(/[A-Z]{2,}/)) {
+    score += 15;
+    reasons.push('shout-post');
+  }
+
+  return {
+    passed: score < 20,
+    score,
+    reason: reasons.length > 0 ? reasons.join(', ') : null
+  };
+}
+
+// GET /api/wall - Get posts (top-level only, no replies). Supports ?sort=hot|new|top
 app.get('/api/wall', (req, res) => {
+  const { sort = 'new', page = 1, limit: rawLimit } = req.query;
+  const pageNum = Math.max(1, parseInt(page) || 1);
+  const limit = Math.min(100, Math.max(5, parseInt(rawLimit) || getSettings().wall_posts_limit));
+  const offset = (pageNum - 1) * limit;
+
   try {
-    const posts = db.prepare(`SELECT * FROM wall_posts WHERE is_approved = 1 ORDER BY timestamp DESC LIMIT ?`).all(getSettings().wall_posts_limit);
-    const count = db.prepare('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1').get();
-    res.json({ posts, total: count.total, success: true });
+    let orderClause;
+    if (sort === 'hot') {
+      orderClause = `ORDER BY (upvotes - downvotes + 1.0) / (MAX((julianday('now') - julianday(timestamp)) * 24 + 2, 1)) DESC`;
+    } else if (sort === 'top') {
+      orderClause = 'ORDER BY (upvotes - downvotes) DESC, timestamp DESC';
+    } else {
+      orderClause = 'ORDER BY timestamp DESC';
+    }
+
+    const posts = db.prepare(`
+      SELECT wp.*,
+        COALESCE(s.username, wp.nickname) as display_name,
+        COALESCE(s.initial_merit_estimate, 0) as user_merit
+      FROM wall_posts wp
+      LEFT JOIN signups s ON wp.user_id = s.id
+      WHERE wp.is_approved = 1 AND wp.parent_id IS NULL AND wp.is_hidden = 0
+      ${orderClause}
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+
+    const count = db.prepare(`
+      SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1 AND parent_id IS NULL AND is_hidden = 0
+    `).get();
+
+    // Add vote state for authenticated user
+    let userVotes = {};
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) {
+          const votes = db.prepare(`SELECT post_id, vote FROM wall_votes WHERE user_id = ? AND post_id IN (${posts.map(() => '?').join(',')})`)
+            .all(user.id, ...posts.map(p => p.id));
+          votes.forEach(v => { userVotes[v.post_id] = v.vote; });
+        }
+      } catch (e) {}
+    }
+
+    res.json({
+      posts: posts.map(p => ({ ...p, user_vote: userVotes[p.id] || 0 })),
+      total: count.total,
+      page: pageNum,
+      totalPages: Math.ceil(count.total / limit),
+      showMore: (offset + limit) < count.total,
+      success: true
+    });
   } catch (error) {
     console.error('Wall fetch error:', error);
     res.status(500).json({ error: 'Could not fetch posts', success: false });
@@ -1333,7 +1514,7 @@ app.get('/api/wall/thread/:threadId', (req, res) => {
   try {
     const posts = db.prepare(`
       SELECT * FROM wall_posts 
-      WHERE is_approved = 1 AND thread_id = ?
+      WHERE is_approved = 1 AND thread_id = ? AND is_hidden = 0
       ORDER BY timestamp DESC 
       LIMIT 50
     `).all(threadId);
@@ -1341,6 +1522,78 @@ app.get('/api/wall/thread/:threadId', (req, res) => {
   } catch (error) {
     console.error('Wall thread fetch error:', error);
     res.status(500).json({ error: 'Could not fetch thread posts', success: false });
+  }
+});
+
+// GET /api/wall/post/:id — Get a single post with its replies (threaded)
+app.get('/api/wall/post/:id', (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const post = db.prepare(`
+      SELECT wp.*,
+        COALESCE(s.username, wp.nickname) as display_name,
+        COALESCE(s.initial_merit_estimate, 0) as user_merit
+      FROM wall_posts wp
+      LEFT JOIN signups s ON wp.user_id = s.id
+      WHERE wp.id = ? AND wp.is_hidden = 0
+    `).get(postId);
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found', success: false });
+    }
+
+    const replies = db.prepare(`
+      SELECT wp.*,
+        COALESCE(s.username, wp.nickname) as display_name,
+        COALESCE(s.initial_merit_estimate, 0) as user_merit
+      FROM wall_posts wp
+      LEFT JOIN signups s ON wp.user_id = s.id
+      WHERE wp.parent_id = ? AND wp.is_approved = 1 AND wp.is_hidden = 0
+      ORDER BY (wp.upvotes - wp.downvotes) DESC, wp.timestamp ASC
+      LIMIT 100
+    `).all(postId);
+
+    post.replies = replies;
+
+    // Get vote state if authenticated
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) {
+          const voteRow = db.prepare('SELECT vote FROM wall_votes WHERE post_id = ? AND user_id = ?').get(postId, user.id);
+          post.user_vote = voteRow ? voteRow.vote : 0;
+        }
+      } catch (e) {}
+    }
+
+    res.json({ post, success: true });
+  } catch (error) {
+    console.error('Wall post detail error:', error);
+    res.status(500).json({ error: 'Could not fetch post', success: false });
+  }
+});
+
+// GET /api/wall/replies/:parentId — Get replies for a parent post (flat)
+app.get('/api/wall/replies/:parentId', (req, res) => {
+  const parentId = parseInt(req.params.parentId);
+  try {
+    const replies = db.prepare(`
+      SELECT wp.*,
+        COALESCE(s.username, wp.nickname) as display_name,
+        COALESCE(s.initial_merit_estimate, 0) as user_merit
+      FROM wall_posts wp
+      LEFT JOIN signups s ON wp.user_id = s.id
+      WHERE wp.parent_id = ? AND wp.is_approved = 1 AND wp.is_hidden = 0
+      ORDER BY (wp.upvotes - wp.downvotes) DESC, wp.timestamp ASC
+      LIMIT 100
+    `).all(parentId);
+
+    res.json({ replies, success: true });
+  } catch (error) {
+    console.error('Wall replies error:', error);
+    res.status(500).json({ error: 'Could not fetch replies', success: false });
   }
 });
 
@@ -1415,6 +1668,26 @@ app.post('/api/proposals', (req, res) => {
         });
       }
     }
+  } else {
+    const settings = getSettings();
+    const cooldownHours = settings.proposal_cooldown_hours || 8;
+    const cooldownMs = cooldownHours * 60 * 60 * 1000;
+    const userIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const lastAnonProposal = db.prepare(`
+      SELECT timestamp FROM activity_log 
+      WHERE action_type = 'proposal_created' AND ip_address = ? AND user_id IS NULL
+      ORDER BY timestamp DESC LIMIT 1
+    `).get(userIP);
+    if (lastAnonProposal) {
+      const hoursSince = (Date.now() - new Date(lastAnonProposal.timestamp).getTime()) / (1000 * 60 * 60);
+      if (hoursSince < cooldownHours) {
+        return res.status(429).json({
+          error: `Proposal cooldown active. Wait ${(cooldownHours - hoursSince).toFixed(1)} more hours.`,
+          success: false,
+          next_proposal_at: new Date(new Date(lastAnonProposal.timestamp).getTime() + cooldownMs).toISOString()
+        });
+      }
+    }
   }
 
   if (!title || title.trim().length < 5) {
@@ -1446,6 +1719,7 @@ app.post('/api/proposals', (req, res) => {
     );
 
     if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
+    else logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
     res.status(201).json({
       message: 'Proposal created! Members can now vote.',
       success: true,
@@ -2300,6 +2574,14 @@ let userId = null;
         INSERT INTO votes (article_id, user_id, vote, reasoning, voted_at, user_ip)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(article_id, userId, vote, reasoning || null, votedAt, userIP);
+      if (userId) {
+        const s = getSettings();
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+          VALUES (?, 'law_vote', ?, ?, 'article', 'Voted on a law article', ?)
+        `).run(userId, s.merit_vote_pass || 2.5, article_id, votedAt);
+        maybeEngageReferral(userId);
+      }
     }
     
     res.json({ message: 'Vote recorded!', success: true });
@@ -2547,33 +2829,109 @@ Draft in a formal legal style. Use "shall" for obligations, "may" for permission
   }
 });
 
-// POST /api/wall - Add a post (no signup required)
+// POST /api/wall - Add a post or reply (auth optional)
 app.post('/api/wall', (req, res) => {
-  const { nickname, message } = req.body;
+  const { nickname, message, parent_id } = req.body;
   
-  if (!nickname || nickname.trim().length < 2) {
-    return res.status(400).json({ error: 'Please enter a nickname (at least 2 characters)', success: false });
+  // Determine if this is a reply
+  const parentId = parent_id ? parseInt(parent_id) : null;
+  if (parentId && (isNaN(parentId) || parentId < 1)) {
+    return res.status(400).json({ error: 'Invalid parent_id', success: false });
   }
   
+  // Check if replying to a valid parent post
+  if (parentId) {
+    const parentPost = db.prepare('SELECT id FROM wall_posts WHERE id = ? AND is_approved = 1 AND is_hidden = 0').get(parentId);
+    if (!parentPost) {
+      return res.status(404).json({ error: 'Parent post not found', success: false });
+    }
+  }
+  
+  // For top-level posts, require nickname if unauthenticated
+  let userId = null;
+  let userName = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const user = db.prepare('SELECT id, username, name FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+      if (user) {
+        userId = user.id;
+        userName = user.name || user.username;
+      }
+    } catch (e) {}
+  }
+  
+  if (!userId && !parentId) {
+    if (!nickname || nickname.trim().length < 2) {
+      return res.status(400).json({ error: 'Please enter a nickname (at least 2 characters, or log in)', success: false });
+    }
+  }
+
   if (!message || message.trim().length < 1) {
     return res.status(400).json({ error: 'Please write something', success: false });
   }
   
-  if (message.length > getSettings().wall_post_max_length) {
-    return res.status(400).json({ error: `Message too long (max ${getSettings().wall_post_max_length} characters)`, success: false });
+  const maxLen = parentId ? 1000 : getSettings().wall_post_max_length;
+  if (message.length > maxLen) {
+    return res.status(400).json({ error: `Message too long (max ${maxLen} characters)`, success: false });
+  }
+  
+  // Moderation filter
+  const modResult = moderateWallContent(message);
+  if (!modResult.passed) {
+    return res.status(400).json({
+      error: `Content filtered: ${modResult.reason}. Please revise and try again.`,
+      success: false,
+      moderation_score: modResult.score
+    });
   }
   
   try {
     const timestamp = new Date().toISOString();
-    const cleanedNickname = sanitizeHTML(nickname.trim().substring(0, getSettings().nickname_max_length));
-    const cleanedMessage = sanitizeHTML(message.trim().substring(0, getSettings().wall_post_max_length));
-    const stmt = db.prepare('INSERT INTO wall_posts (nickname, message, timestamp) VALUES (?, ?, ?)');
-    const result = stmt.run(cleanedNickname, cleanedMessage, timestamp);
+    const cleanedNickname = (nickname && !userId) ? sanitizeHTML(nickname.trim().substring(0, getSettings().nickname_max_length)) : null;
+    const cleanedMessage = sanitizeHTML(message.trim().substring(0, maxLen));
+    const displayNickname = userId ? (userName || 'Member') : cleanedNickname;
+    
+    // Auto-flag borderline content for review
+    const needsReview = modResult.score >= 10;
+    
+    const stmt = db.prepare(`
+      INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(displayNickname, cleanedMessage, parentId, userId, userName, needsReview ? 1 : 1, timestamp);
+    const newPostId = result.lastInsertRowid;
+    
+    // Update parent reply count
+    if (parentId) {
+      db.prepare('UPDATE wall_posts SET reply_count = reply_count + 1 WHERE id = ?').run(parentId);
+    }
+    
+    // Merit for signed-in wall participation
+    if (userId) {
+      const wallMerit = parentId ? 5 : 15; // 5 pts for reply, 15 for top-level post
+      db.prepare(`
+        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+        VALUES (?, 'wall_post', ?, ?, 'wall', ?, ?)
+      `).run(userId, wallMerit, newPostId, (parentId ? 'Replied' : 'Posted') + ' to The Wall', timestamp);
+      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+        .run(wallMerit, userId);
+      logActivity('wall_post', userId, newPostId, { parent_id: parentId, moderated: needsReview }, req);
+      maybeEngageReferral(userId);
+    } else {
+      logActivity('wall_post', null, newPostId, { nickname: displayNickname, parent_id: parentId, moderated: needsReview }, req);
+    }
+    
+    const responseMessage = parentId
+      ? 'Reply posted!'
+      : (needsReview ? 'Posted! Your message is live, but flagged for moderation review.' : 'Posted! Thanks for your support.');
     
     res.status(201).json({ 
-      message: 'Posted! Thanks for your support.',
+      message: responseMessage,
       success: true,
-      id: result.lastInsertRowid
+      id: newPostId,
+      moderated: needsReview
     });
   } catch (error) {
     console.error('Wall post error:', error);
@@ -2590,7 +2948,7 @@ app.get('/api/wall-stats', (req, res) => {
 
   try {
     const members = safeQuery('SELECT COUNT(*) as total FROM signups');
-    const wallPosts = safeQuery('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1');
+    const wallPosts = safeQuery('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1 AND is_hidden = 0');
     const signupTreasury = safeQuery('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0');
     const donationTreasury = safeQuery('SELECT SUM(amount) as total FROM donations WHERE status = "verified"');
     const treasury = signupTreasury + donationTreasury;
@@ -2601,9 +2959,419 @@ app.get('/api/wall-stats', (req, res) => {
   }
 });
 
+// POST /api/wall/:id/upvote — Upvote a wall post
+app.post('/api/wall/:id/upvote', wallVoteHandler(1));
+
+// POST /api/wall/:id/downvote — Downvote a wall post
+app.post('/api/wall/:id/downvote', wallVoteHandler(-1));
+
+// POST /api/wall/:id/flag — Flag/report a wall post
+app.post('/api/wall/:id/flag', (req, res) => {
+  const postId = parseInt(req.params.id);
+  const { reason } = req.body;
+
+  if (!reason || reason.trim().length < 5) {
+    return res.status(400).json({ error: 'Please provide a reason (at least 5 characters)', success: false });
+  }
+
+  try {
+    const post = db.prepare('SELECT id FROM wall_posts WHERE id = ? AND is_hidden = 0').get(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found', success: false });
+    }
+
+    // Track reporter — try auth first, fallback to IP
+    let reporterId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) reporterId = user.id;
+      } catch (e) {}
+    }
+    const reporterIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    // Check for duplicate flag from same reporter
+    const existingFlag = db.prepare(
+      'SELECT id FROM wall_flags WHERE post_id = ? AND (reporter_id = ? OR reporter_ip = ?)'
+    ).get(postId, reporterId, reporterIP);
+    if (existingFlag) {
+      return res.status(409).json({ error: 'You already reported this post', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO wall_flags (post_id, reporter_id, reporter_ip, reason, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(postId, reporterId, reporterIP, reason.trim().substring(0, 200), now);
+
+    // Auto-flag the post
+    db.prepare('UPDATE wall_posts SET is_flagged = 1, flagged_by_ip = ?, flag_reason = ? WHERE id = ?')
+      .run(reporterIP, reason.trim().substring(0, 200), postId);
+
+    res.json({ success: true, message: 'Post reported. A moderator will review it.' });
+  } catch (error) {
+    console.error('Wall flag error:', error);
+    res.status(500).json({ error: 'Could not report post', success: false });
+  }
+});
+
+// Shared wall vote handler
+function wallVoteHandler(voteValue) {
+  return (req, res) => {
+    const postId = parseInt(req.params.id);
+
+    try {
+      const post = db.prepare('SELECT id, upvotes, downvotes, user_id FROM wall_posts WHERE id = ? AND is_hidden = 0').get(postId);
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found', success: false });
+      }
+
+      // Identify voter
+      let voterId = null;
+      let voterIP = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.split(' ')[1];
+          const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+          if (user) voterId = user.id;
+        } catch (e) {}
+      }
+      if (!voterId) {
+        voterIP = req.ip || req.connection.remoteAddress || 'unknown';
+      }
+
+      // Cannot vote on own post
+      if (voterId && post.user_id === voterId) {
+        return res.status(400).json({ error: 'Cannot vote on your own post', success: false });
+      }
+
+      // Check existing vote
+      const existingVote = db.prepare(
+        'SELECT id, vote FROM wall_votes WHERE post_id = ? AND (user_id = ? OR ip_address = ?)'
+      ).get(postId, voterId, voterIP);
+
+      const now = new Date().toISOString();
+
+      if (existingVote) {
+        if (existingVote.vote === voteValue) {
+          // Cancel vote (toggle off)
+          db.prepare('DELETE FROM wall_votes WHERE id = ?').run(existingVote.id);
+          if (voteValue === 1) {
+            db.prepare('UPDATE wall_posts SET upvotes = MAX(upvotes - 1, 0) WHERE id = ?').run(postId);
+          } else {
+            db.prepare('UPDATE wall_posts SET downvotes = MAX(downvotes - 1, 0) WHERE id = ?').run(postId);
+          }
+          const updatedPost = db.prepare('SELECT upvotes, downvotes FROM wall_posts WHERE id = ?').get(postId);
+          return res.json({ success: true, upvotes: updatedPost.upvotes, downvotes: updatedPost.downvotes, user_vote: 0, action: 'removed' });
+        } else {
+          // Change vote
+          db.prepare('UPDATE wall_votes SET vote = ?, created_at = ? WHERE id = ?').run(voteValue, now, existingVote.id);
+          if (voteValue === 1) {
+            db.prepare('UPDATE wall_posts SET upvotes = upvotes + 1, downvotes = MAX(downvotes - 1, 0) WHERE id = ?').run(postId);
+          } else {
+            db.prepare('UPDATE wall_posts SET downvotes = downvotes + 1, upvotes = MAX(upvotes - 1, 0) WHERE id = ?').run(postId);
+          }
+          const updatedPost = db.prepare('SELECT upvotes, downvotes FROM wall_posts WHERE id = ?').get(postId);
+          return res.json({ success: true, upvotes: updatedPost.upvotes, downvotes: updatedPost.downvotes, user_vote: voteValue, action: 'changed' });
+        }
+      }
+
+      // New vote
+      db.prepare('INSERT INTO wall_votes (post_id, user_id, ip_address, vote, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(postId, voterId, voterIP, voteValue, now);
+
+      if (voteValue === 1) {
+        db.prepare('UPDATE wall_posts SET upvotes = upvotes + 1 WHERE id = ?').run(postId);
+        // Award merit to post author when post gets upvoted (if author is a verified user)
+        if (post.user_id) {
+          const newUpvotes = db.prepare('SELECT upvotes FROM wall_posts WHERE id = ?').get(postId).upvotes;
+          if (newUpvotes > 0 && newUpvotes % 5 === 0) {
+            const voteMerit = Math.min(newUpvotes, 25);
+            db.prepare(`
+              INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+              VALUES (?, 'wall_upvoted', ?, ?, 'wall', ?, ?)
+            `).run(post.user_id, voteMerit, postId, `Post reached ${newUpvotes} upvotes`, now);
+            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+              .run(voteMerit, post.user_id);
+          }
+        }
+        // Award small merit to voter for engagement
+        if (voterId) {
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'wall_vote', 1, ?, 'wall', 'Upvoted a wall post', ?)
+          `).run(voterId, postId, now);
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + 1 WHERE id = ?').run(voterId);
+          maybeEngageReferral(voterId);
+        }
+      } else {
+        db.prepare('UPDATE wall_posts SET downvotes = downvotes + 1 WHERE id = ?').run(postId);
+      }
+
+      const updatedPost = db.prepare('SELECT upvotes, downvotes FROM wall_posts WHERE id = ?').get(postId);
+      res.json({ success: true, upvotes: updatedPost.upvotes, downvotes: updatedPost.downvotes, user_vote: voteValue, action: 'added' });
+    } catch (error) {
+      console.error('Wall vote error:', error);
+      res.status(500).json({ error: 'Could not process vote', success: false });
+    }
+  };
+}
+
 // ==================== API ENDPOINTS ====================
+// ==================== SMS OTP FUNCTIONS ====================
+
+function generateOTP(length) {
+  const len = parseInt(length) || 6;
+  let otp = '';
+  for (let i = 0; i < len; i++) {
+    otp += Math.floor(Math.random() * 10).toString();
+  }
+  return otp;
+}
+
+async function sendSMS(phone, message, settings) {
+  const provider = (settings.sms_provider || '').toLowerCase();
+  
+  if (!provider) {
+    // No SMS provider configured — OTP will be returned in API response for dev/testing
+    console.log(`[SMS] No provider configured. OTP for ${phone}: ${message}`);
+    return { sent: false, error: 'No SMS provider configured', dev_message: message };
+  }
+
+  // Clean phone number for Maldives (+960)
+  let cleaned = phone.replace(/[^0-9+]/g, '');
+  if (!cleaned.startsWith('+')) {
+    if (cleaned.startsWith('960') && cleaned.length === 10) {
+      cleaned = '+' + cleaned;
+    } else if (cleaned.length === 7) {
+      cleaned = '+960' + cleaned;
+    } else if (cleaned.length === 10 && cleaned.startsWith('0')) {
+      cleaned = '+960' + cleaned.substring(1);
+    }
+  }
+
+  if (provider === 'twilio') {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || settings.sms_twilio_account_sid;
+    const authToken = process.env.TWILIO_AUTH_TOKEN || settings.sms_twilio_auth_token;
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER || settings.sms_twilio_phone_number;
+
+    if (!accountSid || !authToken || !fromNumber) {
+      console.log(`[SMS] Twilio not configured. OTP for ${phone}: ${message}`);
+      return { sent: false, error: 'Twilio credentials missing', dev_message: message };
+    }
+
+    try {
+      const https = await import('https');
+      const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      const body = new URLSearchParams({
+        To: cleaned,
+        From: fromNumber,
+        Body: message
+      }).toString();
+
+      return new Promise((resolve) => {
+        const req = https.request({
+          hostname: 'api.twilio.com',
+          path: `/2010-04-01/Accounts/${accountSid}/Messages.json`,
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(body)
+          }
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error_code) {
+                console.error('[SMS] Twilio error:', parsed.message);
+                resolve({ sent: false, error: parsed.message });
+              } else {
+                console.log(`[SMS] Sent to ${phone}: ${parsed.sid}`);
+                resolve({ sent: true, sid: parsed.sid });
+              }
+            } catch (e) {
+              resolve({ sent: false, error: 'Twilio parse error' });
+  }
+});
+
+// POST /api/verify-otp — Verify OTP code to activate account
+app.post('/api/verify-otp', (req, res) => {
+  const { phone, otp } = req.body;
+
+  if (!phone || !otp) {
+    return res.status(400).json({ error: 'Phone and OTP code required', success: false });
+  }
+
+  const cleanedPhone = phone.replace(/\D/g, '');
+
+  try {
+    const user = db.prepare(
+      'SELECT id, otp_code, otp_expires_at, otp_verified FROM signups WHERE phone = ? AND is_verified = 0'
+    ).get(cleanedPhone);
+
+    if (!user) {
+      return res.status(404).json({ error: 'No pending verification found for this phone', success: false });
+    }
+
+    if (user.otp_verified) {
+      return res.status(400).json({ error: 'Account already verified', success: false });
+    }
+
+    if (new Date(user.otp_expires_at) < new Date()) {
+      return res.status(400).json({ error: 'OTP has expired. Please request a new code.', success: false });
+    }
+
+    if (user.otp_code !== otp.trim()) {
+      return res.status(400).json({ error: 'Incorrect verification code. Please try again.', success: false });
+    }
+
+    // Verify the account
+    const authToken = crypto.randomBytes(32).toString('hex');
+    const now = new Date().toISOString();
+    db.prepare(
+      'UPDATE signups SET is_verified = 1, otp_verified = 1, auth_token = ?, otp_code = NULL, otp_expires_at = NULL, last_login = ? WHERE id = ?'
+    ).run(authToken, now, user.id);
+
+    // Auto-post welcome
+    const verifiedUser = db.prepare('SELECT name, username FROM signups WHERE id = ?').get(user.id);
+    const displayName = sanitizeHTML(verifiedUser.name || verifiedUser.username || 'A new member');
+    const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
+    const targetMembers = getSettings().target_members || 13000;
+    const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
+    try {
+      db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
+        .run('admin', `🌴 ${displayName} verified and joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`, now, 'new_members_welcome');
+    } catch (e) {}
+
+    // Handle referral completion
+    const pendingReferral = db.prepare(`
+      SELECT * FROM referrals WHERE status = 'pending_waiting' AND details LIKE ?
+    `).get(`%${phone}%`);
+    if (pendingReferral) {
+      try {
+        const details = JSON.parse(pendingReferral.details || '{}');
+        if (details.phone === phone) {
+          const inviteCount = db.prepare(`SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ? AND status IN ('joined', 'active')`).get(pendingReferral.referrer_id).count;
+          const basePoints = getReferralPoints(inviteCount + 1, false);
+          db.prepare(`UPDATE referrals SET referred_id = ?, status = 'joined', base_reward_given = ?, referred_joined_at = ? WHERE id = ?`)
+            .run(user.id, basePoints, now, pendingReferral.id);
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+            .run(basePoints, pendingReferral.referrer_id);
+        }
+      } catch (e) {}
+    }
+
+    logActivity('user_verified', user.id, null, {}, req);
+
+    res.json({
+      success: true,
+      message: 'Phone verified! Welcome to the 3d Party.',
+      token: authToken,
+      user_id: user.id
+    });
+  } catch (error) {
+    console.error('OTP verify error:', error);
+    res.status(500).json({ error: 'Verification failed', success: false });
+  }
+});
+
+// POST /api/resend-otp — Resend OTP code
+app.post('/api/resend-otp', async (req, res) => {
+  const { phone } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ error: 'Phone number required', success: false });
+  }
+
+  const cleanedPhone = phone.replace(/\D/g, '');
+
+  try {
+    const user = db.prepare(
+      'SELECT id, otp_verified FROM signups WHERE phone = ? AND is_verified = 0'
+    ).get(cleanedPhone);
+
+    if (!user) {
+      return res.status(404).json({ error: 'No pending verification found for this phone', success: false });
+    }
+
+    if (user.otp_verified) {
+      return res.status(400).json({ error: 'Account already verified', success: false });
+    }
+
+    const settings = getSettings();
+    const newOTP = generateOTP(settings.sms_otp_length);
+    const newExpiry = new Date(Date.now() + (settings.sms_otp_expiry_minutes * 60 * 1000)).toISOString();
+
+    db.prepare('UPDATE signups SET otp_code = ?, otp_expires_at = ? WHERE id = ?')
+      .run(newOTP, newExpiry, user.id);
+
+    // Try to send SMS
+    const smsResult = await sendSMS(phone, `Your 3d Party verification code: ${newOTP}. Valid for ${settings.sms_otp_expiry_minutes} minutes.`, settings);
+
+    const response = {
+      success: true,
+      message: 'New verification code sent',
+      otp_sent: smsResult ? smsResult.sent : false
+    };
+
+    if (!settings.sms_provider) {
+      response.dev_otp = newOTP;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ error: 'Could not resend code', success: false });
+  }
+});
+        });
+        req.on('error', (e) => {
+          console.error('[SMS] Request error:', e.message);
+          resolve({ sent: false, error: e.message });
+        });
+        req.write(body);
+        req.end();
+      });
+    } catch (e) {
+      console.error('[SMS] Twilio setup error:', e.message);
+      return { sent: false, error: e.message };
+    }
+  }
+
+  if (provider === 'webhook') {
+    const webhookUrl = settings.sms_webhook_url;
+    if (!webhookUrl) {
+      return { sent: false, error: 'Webhook URL not configured' };
+    }
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleaned, message })
+      });
+      if (response.ok) {
+        console.log(`[SMS] Webhook sent to ${phone}`);
+        return { sent: true };
+      }
+      return { sent: false, error: `Webhook returned ${response.status}` };
+    } catch (e) {
+      console.error('[SMS] Webhook error:', e.message);
+      return { sent: false, error: e.message };
+    }
+  }
+
+  console.log(`[SMS] Unknown provider '${provider}'. OTP for ${phone}: ${message}`);
+  return { sent: false, error: `Unknown provider: ${provider}`, dev_message: message };
+}
+
 // POST /api/signup - New signup
-app.post('/api/signup', (req, res) => {
+app.post('/api/signup', async (req, res) => {
   const { phone, nid, name, username, email, island, contribution_types, donation_amount } = req.body;
   
   // Validate mandatory fields
@@ -2710,8 +3478,16 @@ app.post('/api/signup', (req, res) => {
    try {
      const timestamp = new Date().toISOString();
      const contributionTypeJson = JSON.stringify(typesArray);
+
+     // Generate OTP
+     const otpCode = generateOTP(settings.sms_otp_length);
+     const otpExpiry = new Date(Date.now() + (settings.sms_otp_expiry_minutes * 60 * 1000)).toISOString();
+     const requireOTP = settings.sms_otp_required;
+     const initialVerifyState = requireOTP ? 0 : 1;
+     const initialAuthToken = requireOTP ? null : crypto.randomBytes(32).toString('hex');
+
      const stmt = db.prepare(
-       'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+       'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, otp_code, otp_expires_at, otp_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
      );
      const result = stmt.run(
        cleanedPhone, 
@@ -2723,81 +3499,98 @@ app.post('/api/signup', (req, res) => {
        contributionTypeJson, 
        finalDonation,
        initialMerit,
-       1,
-       null,
+       initialVerifyState,
+       otpCode,
+       otpExpiry,
+       requireOTP ? 0 : 1,
+       initialAuthToken,
        timestamp
      );
     
-      // Auto-login after signup
-      const authToken = crypto.randomBytes(32).toString('hex');
-      db.prepare('UPDATE signups SET auth_token = ? WHERE id = ?').run(authToken, result.lastInsertRowid);
-    
-    // Check for pending referrals
-    const pendingReferral = db.prepare(`
-      SELECT * FROM referrals 
-      WHERE status = 'pending_waiting' AND details LIKE ?
-    `).get(`%${phone}%`);
-    
-    if (pendingReferral) {
-      const details = JSON.parse(pendingReferral.details || '{}');
-      if (details.phone === phone) {
-        // Count successful invites for this referrer
-        const inviteCount = db.prepare(`
-          SELECT COUNT(*) as count FROM referrals 
-          WHERE referrer_id = ? AND status IN ('joined', 'active')
-        `).get(pendingReferral.referrer_id).count;
-        
-        const basePoints = getReferralPoints(inviteCount + 1, false);
-        
-        // Update referral with new user
-        db.prepare(`
-          UPDATE referrals SET referred_id = ?, status = 'joined', 
-          base_reward_given = ?, referred_joined_at = ?
-          WHERE id = ?
-        `).run(result.lastInsertRowid, basePoints, timestamp, pendingReferral.id);
-        
-        // Award points to referrer
-        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-          .run(basePoints, pendingReferral.referrer_id);
-        
-        // Log the activity
-        logActivity('referral_completed', pendingReferral.referrer_id, result.lastInsertRowid, {
-          base_points_awarded: basePoints,
-          referrer_invite_count: inviteCount + 1
-        }, req);
-      }
+    // Send SMS OTP
+    let smsResult = null;
+    if (requireOTP) {
+      smsResult = await sendSMS(phone, `Your 3d Party verification code: ${otpCode}. Valid for ${settings.sms_otp_expiry_minutes} minutes.`, settings);
+    }
+
+    // Auto-login after signup (only if OTP not required)
+    let authToken = initialAuthToken;
+    if (!requireOTP) {
+      const userLoginToken = db.prepare('SELECT auth_token FROM signups WHERE id = ?').get(result.lastInsertRowid);
+      authToken = userLoginToken ? userLoginToken.auth_token : authToken;
+    } else if (requireOTP && !settings.sms_provider) {
+      // Dev mode: auto-verify immediately if no SMS provider configured
+      authToken = crypto.randomBytes(32).toString('hex');
+      db.prepare('UPDATE signups SET is_verified = 1, otp_verified = 1, auth_token = ? WHERE id = ?')
+        .run(authToken, result.lastInsertRowid);
     }
     
-    // Log the signup activity
-    logActivity('user_signup', result.lastInsertRowid, null, {
-      phone: phone.substring(0, 3) + 'xxxx',
-      has_username: !!username
-    }, req);
-    
-    // Get current member count for progress percentage
-    const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
-    const settings = getSettings();
-    const targetMembers = settings.target_members || 13000;
-    const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
-    const progressMsg = `[size=${memberCount}] [progress=${percentComplete}%]`;
-    
-    // Auto-post to welcome thread
-    const displayName = sanitizeHTML(name || username || 'A new member');
-    const welcomeMsg = `🌴 ${displayName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`;
-    try {
-      db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
-        .run('admin', welcomeMsg, timestamp, 'new_members_welcome');
-    } catch (e) {
-      console.log('Could not post welcome to wall:', e.message);
+    // Only process referrals, activity log, and welcome post if user is verified
+    if (authToken) {
+      // Check for pending referrals
+      const pendingReferral = db.prepare(`
+        SELECT * FROM referrals 
+        WHERE status = 'pending_waiting' AND details LIKE ?
+      `).get(`%${phone}%`);
+      
+      if (pendingReferral) {
+        const details = JSON.parse(pendingReferral.details || '{}');
+        if (details.phone === phone) {
+          const inviteCount = db.prepare(`
+            SELECT COUNT(*) as count FROM referrals 
+            WHERE referrer_id = ? AND status IN ('joined', 'active')
+          `).get(pendingReferral.referrer_id).count;
+          
+          const basePoints = getReferralPoints(inviteCount + 1, false);
+          
+          db.prepare(`
+            UPDATE referrals SET referred_id = ?, status = 'joined', 
+            base_reward_given = ?, referred_joined_at = ?
+            WHERE id = ?
+          `).run(result.lastInsertRowid, basePoints, timestamp, pendingReferral.id);
+          
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+            .run(basePoints, pendingReferral.referrer_id);
+          
+          logActivity('referral_completed', pendingReferral.referrer_id, result.lastInsertRowid, {
+            base_points_awarded: basePoints,
+            referrer_invite_count: inviteCount + 1
+          }, req);
+        }
+      }
+      
+      // Log the signup activity
+      logActivity('user_signup', result.lastInsertRowid, null, {
+        phone: phone.substring(0, 3) + 'xxxx',
+        has_username: !!username
+      }, req);
+      
+      // Get current member count
+      const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
+      const targetMembers = getSettings().target_members || 13000;
+      const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
+      
+      // Auto-post to welcome thread
+      const displayName = sanitizeHTML(name || username || 'A new member');
+      const welcomeMsg = `🌴 ${displayName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`;
+      try {
+        db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
+          .run('admin', welcomeMsg, timestamp, 'new_members_welcome');
+      } catch (e) {
+        console.log('Could not post welcome to wall:', e.message);
+      }
     }
     
     // Get the user data to return
     const user = db.prepare('SELECT * FROM signups WHERE id = ?').get(result.lastInsertRowid);
     
-    res.status(201).json({ 
+    const responseBody = { 
       message: `Welcome to the 3d Party! Your initial Merit Score estimate is ${initialMerit} points.`,
       success: true,
       token: authToken,
+      otp_required: requireOTP && !authToken,
+      otp_sent: smsResult ? smsResult.sent : false,
+      otp_expires_in_minutes: requireOTP ? settings.sms_otp_expiry_minutes : 0,
       user: {
         id: user.id,
         phone: user.phone,
@@ -2811,9 +3604,17 @@ app.post('/api/signup', (req, res) => {
         })() : [],
         donation_amount: user.donation_amount,
         initial_merit_estimate: user.initial_merit_estimate,
-        timestamp: user.timestamp
+        timestamp: user.timestamp,
+        is_verified: !!authToken
       }
-    });
+    };
+
+    // In dev mode (no SMS provider), include OTP in response for testing
+    if (requireOTP && !settings.sms_provider && !authToken) {
+      responseBody.dev_otp = otpCode;
+    }
+
+    res.status(201).json(responseBody);
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ 
@@ -3152,6 +3953,38 @@ function getReferralPoints(inviteCount, isEngagementBonus = false) {
   if (inviteCount <= s.referral_tier1_limit) return s.referral_base_t1;
   if (inviteCount <= s.referral_tier2_limit) return s.referral_base_t2;
   return s.referral_base_t3;
+}
+
+function maybeEngageReferral(userId) {
+  if (!userId) return;
+  try {
+    const referral = db.prepare(`
+      SELECT r.id, r.referrer_id, r.first_action_at
+      FROM referrals r WHERE r.referred_id = ? AND r.status != 'removed'
+      LIMIT 1
+    `).get(userId);
+    if (!referral || referral.first_action_at) return;
+    const s = getSettings();
+    const now = new Date().toISOString();
+    db.prepare(`UPDATE referrals SET first_action_at = ? WHERE id = ?`).run(now, referral.id);
+    const inviteCount = db.prepare(`
+      SELECT COUNT(*) as count FROM referrals 
+      WHERE referrer_id = ? AND (status = 'joined' OR status = 'active') AND base_reward_given > 0
+    `).get(referral.referrer_id).count;
+    const engagePoints = getReferralPoints(inviteCount, true);
+    db.prepare(`
+      UPDATE referrals SET engagement_bonus_given = ? WHERE id = ?
+    `).run(engagePoints, referral.id);
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'engagement_bonus', ?, ?, 'referral', 'Referred member took first action', ?)
+    `).run(referral.referrer_id, engagePoints, referral.id, now);
+    db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+      .run(engagePoints, referral.referrer_id);
+    logActivity('engagement_bonus_awarded', referral.referrer_id, userId, { referral_id: referral.id, points: engagePoints, invite_count: inviteCount });
+  } catch (e) {
+    console.error('Engage referral error:', e);
+  }
 }
 
 // POST /api/referral/introduce - Introduce a new member
@@ -5224,6 +6057,11 @@ app.get('/api/user/profile', userAuth, (req, res) => {
     } catch (e) {}
   }
   
+  const activeThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const hasRecentActivity = db.prepare(`
+    SELECT COUNT(*) as cnt FROM merit_events WHERE user_id = ? AND created_at > ?
+  `).get(user.id, activeThreshold).cnt > 0;
+
   res.json({
     success: true,
     user: {
@@ -5240,6 +6078,10 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       })() : [],
       donation_amount: user.donation_amount,
       initial_merit_estimate: user.initial_merit_estimate,
+      dynamic_score: (() => { try { return calculateDecayedScore(user.id, user.timestamp); } catch(e) { return user.initial_merit_estimate; } })(),
+      static_score: (() => { try { return calculateStaticScore(user.id); } catch(e) { return user.initial_merit_estimate; } })(),
+      loyalty_coefficient: (() => { try { return getLoyaltyCoefficient(user.timestamp); } catch(e) { return 1.0; } })(),
+      is_active: hasRecentActivity,
       timestamp: user.timestamp,
       last_login: user.last_login,
       password_hash: !!user.password_hash
@@ -5451,6 +6293,17 @@ app.post('/api/mvlaws/vote-law', (req, res) => {
         INSERT INTO law_level_votes (law_id, vote, reasoning, voted_at, user_ip, user_phone)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(law_id, vote, reasoning || null, votedAt, userIP, phone || null);
+      if (phone) {
+        const signupUser = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
+        if (signupUser) {
+          const s = getSettings();
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'law_vote', ?, ?, 'law', 'Voted on a law', ?)
+          `).run(signupUser.id, s.merit_vote_pass || 2.5, law_id, votedAt);
+          maybeEngageReferral(signupUser.id);
+        }
+      }
     }
     
     res.json({ message: 'Law vote recorded!', success: true });
@@ -6163,15 +7016,38 @@ app.post('/api/admin/donations/:id/verify', adminAuth, (req, res) => {
       .run(new Date().toISOString(), 'admin', donationId);
 
     // Update user's donation amount if linked to a user
+    let verifiedUserId = null;
     if (donation.user_id) {
+      verifiedUserId = donation.user_id;
       db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
         .run(donation.amount, donation.user_id);
     } else if (donation.phone && donation.nid) {
-      // Try to find user by phone/nid
       const user = db.prepare('SELECT id FROM signups WHERE phone = ? AND nid = ?').get(donation.phone, donation.nid);
       if (user) {
+        verifiedUserId = user.id;
         db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
           .run(donation.amount, user.id);
+      }
+    }
+
+    if (verifiedUserId) {
+      const s = getSettings();
+      let donationMerit;
+      if (s.donation_formula === 'flat') {
+        donationMerit = Math.floor(donation.amount / s.donation_divisor_mvr) * s.donation_bonus_per_100;
+      } else {
+        const amountUsd = donation.amount / s.donation_usd_mvr_rate;
+        donationMerit = Math.round(s.donation_log_multiplier * Math.log(amountUsd + 1) / Math.log(5));
+      }
+      if (donationMerit > 0) {
+        const now = new Date().toISOString();
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+          VALUES (?, 'donation_verified', ?, ?, 'donation', ?, ?)
+        `).run(verifiedUserId, donationMerit, donationId, 'Donation verified: ' + donation.amount + ' MVR', now);
+        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+          .run(donationMerit, verifiedUserId);
+        maybeEngageReferral(verifiedUserId);
       }
     }
 
@@ -6194,6 +7070,92 @@ app.post('/api/admin/donations/:id/reject', adminAuth, (req, res) => {
     res.json({ success: true, message: 'Donation rejected' });
   } catch (error) {
     res.status(500).json({ error: 'Could not reject donation', success: false });
+  }
+});
+
+// ==================== ADMIN WALL MODERATION ====================
+
+// GET /api/admin/wall/flagged — List flagged/hidden posts for moderation
+app.get('/api/admin/wall/flagged', adminAuth, (req, res) => {
+  try {
+    const posts = db.prepare(`
+      SELECT wp.*,
+        COALESCE(s.username, wp.nickname) as display_name,
+        (SELECT COUNT(*) FROM wall_flags WHERE post_id = wp.id) as flag_count,
+        (SELECT reason FROM wall_flags WHERE post_id = wp.id ORDER BY created_at DESC LIMIT 1) as latest_flag_reason
+      FROM wall_posts wp
+      LEFT JOIN signups s ON wp.user_id = s.id
+      WHERE wp.is_flagged = 1 OR wp.is_hidden = 1
+      ORDER BY wp.is_hidden ASC, wp.is_flagged DESC, wp.timestamp DESC
+      LIMIT 50
+    `).all();
+
+    res.json({ posts, success: true });
+  } catch (error) {
+    console.error('Admin wall flagged error:', error);
+    res.status(500).json({ error: 'Could not fetch flagged posts', success: false });
+  }
+});
+
+// POST /api/admin/wall/:id/hide — Hide a wall post
+app.post('/api/admin/wall/:id/hide', adminAuth, (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const post = db.prepare('SELECT id FROM wall_posts WHERE id = ?').get(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found', success: false });
+    }
+    db.prepare('UPDATE wall_posts SET is_hidden = 1, is_flagged = 0 WHERE id = ?').run(postId);
+    db.prepare('UPDATE wall_flags SET status = "resolved", resolved_at = ? WHERE post_id = ?')
+      .run(new Date().toISOString(), postId);
+
+    logActivity('wall_post_hidden', null, postId, { hidden_by: 'admin' }, req);
+    res.json({ success: true, message: 'Post hidden' });
+  } catch (error) {
+    console.error('Admin wall hide error:', error);
+    res.status(500).json({ error: 'Could not hide post', success: false });
+  }
+});
+
+// POST /api/admin/wall/:id/approve — Approve (unflag) a wall post
+app.post('/api/admin/wall/:id/approve', adminAuth, (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const post = db.prepare('SELECT id FROM wall_posts WHERE id = ?').get(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found', success: false });
+    }
+    db.prepare('UPDATE wall_posts SET is_flagged = 0, is_hidden = 0, flag_reason = NULL, flagged_by_ip = NULL WHERE id = ?').run(postId);
+    db.prepare('UPDATE wall_flags SET status = "dismissed", resolved_at = ? WHERE post_id = ?')
+      .run(new Date().toISOString(), postId);
+
+    logActivity('wall_post_approved', null, postId, {}, req);
+    res.json({ success: true, message: 'Post approved and unflagged' });
+  } catch (error) {
+    console.error('Admin wall approve error:', error);
+    res.status(500).json({ error: 'Could not approve post', success: false });
+  }
+});
+
+// POST /api/admin/wall/:id/delete — Permanently delete a wall post
+app.post('/api/admin/wall/:id/delete', adminAuth, (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const post = db.prepare('SELECT id FROM wall_posts WHERE id = ?').get(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found', success: false });
+    }
+    // Also delete replies to this post
+    db.prepare('DELETE FROM wall_votes WHERE post_id = ?').run(postId);
+    db.prepare('DELETE FROM wall_flags WHERE post_id = ?').run(postId);
+    db.prepare('DELETE FROM wall_posts WHERE parent_id = ?').run(postId);
+    db.prepare('DELETE FROM wall_posts WHERE id = ?').run(postId);
+
+    logActivity('wall_post_deleted', null, postId, {}, req);
+    res.json({ success: true, message: 'Post permanently deleted' });
+  } catch (error) {
+    console.error('Admin wall delete error:', error);
+    res.status(500).json({ error: 'Could not delete post', success: false });
   }
 });
 

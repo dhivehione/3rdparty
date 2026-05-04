@@ -137,6 +137,22 @@
                     </div>
                 </div>
 
+                <!-- Wall Moderation Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-gavel text-yellow-400 mr-3"></i>
+                            Wall Moderation
+                        </h2>
+                        <button onclick="loadFlaggedPosts()" class="text-party-accent hover:underline text-sm">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div id="flaggedPostsList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">Loading flagged posts...</div>
+                    </div>
+                </div>
+
                 <!-- Events Management Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -348,9 +364,60 @@
                             <h3 class="text-lg font-bold mb-4">Performance Appraisals</h3>
                             <p class="text-gray-400 mb-4">Yearly appraisals required for all leadership positions per whitepaper requirements.</p>
                             <div id="appraisalsList" class="space-y-4"></div>
-                        </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- SMS OTP Settings -->
+            <div class="bg-party-dark/50 rounded-lg p-4 mb-4 border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-sms mr-2"></i>SMS OTP Verification</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
+                        <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <option value="0" ${systemSettings.sms_otp_required ? '' : 'selected'}>No (optional)</option>
+                            <option value="1" ${systemSettings.sms_otp_required ? 'selected' : ''}>Yes (required)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">SMS Provider</label>
+                        <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <option value="" ${!systemSettings.sms_provider ? 'selected' : ''}>None (dev mode)</option>
+                            <option value="twilio" ${systemSettings.sms_provider === 'twilio' ? 'selected' : ''}>Twilio</option>
+                            <option value="webhook" ${systemSettings.sms_provider === 'webhook' ? 'selected' : ''}>HTTP Webhook</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">OTP Code Length</label>
+                        <input type="number" id="ss_sms_otp_length" value="${systemSettings.sms_otp_length || 6}" min="4" max="8"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
+                        <input type="number" id="ss_sms_otp_expiry_minutes" value="${systemSettings.sms_otp_expiry_minutes || 10}" min="1" max="60"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
+                        <input type="text" id="ss_sms_twilio_phone_number" value="${systemSettings.sms_twilio_phone_number || ''}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                               placeholder="+9601234567">
+                        <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Webhook URL</label>
+                        <input type="text" id="ss_sms_webhook_url" value="${systemSettings.sms_webhook_url || ''}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                               placeholder="https://your-gateway.com/sms">
+                        <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
+                    </div>
+                </div>
+                <p class="text-xs text-yellow-500 mt-3"><i class="fas fa-info-circle mr-1"></i> For Twilio: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment variables (or use admin settings above — insecure for secrets).</p>
+            </div>
             </div>
 
             <!-- Actions -->
@@ -1865,6 +1932,86 @@ function renderSystemSettings() {
                 </div>
             </div>
 
+            <!-- Voting Thresholds & Windows -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-balance-scale mr-2"></i>Voting Thresholds & Windows</h3>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Routine Approval Threshold</label>
+                        <input type="number" id="ss_approval_threshold_routine" value="${systemSettings.approval_threshold_routine}" step="0.01"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Pass threshold for routine proposals (default: 0.50)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Policy Approval Threshold</label>
+                        <input type="number" id="ss_approval_threshold_policy" value="${systemSettings.approval_threshold_policy}" step="0.01"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Pass threshold for policy proposals (default: 0.60)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Constitutional Approval Threshold</label>
+                        <input type="number" id="ss_approval_threshold_constitutional" value="${systemSettings.approval_threshold_constitutional}" step="0.01"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Pass threshold for constitutional proposals (default: 0.80)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Primary Voting Window (days)</label>
+                        <input type="number" id="ss_voting_window_primary_days" value="${systemSettings.voting_window_primary_days}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Days for primary voting period (default: 7)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Extended Voting Window (days)</label>
+                        <input type="number" id="ss_voting_window_extended_days" value="${systemSettings.voting_window_extended_days}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Extra days if threshold not met (default: 3)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Primary Vote Weight</label>
+                        <input type="number" id="ss_voting_weight_primary" value="${systemSettings.voting_weight_primary}" step="0.1"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Vote weight multiplier in primary window (default: 1.0)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Extended Vote Weight</label>
+                        <input type="number" id="ss_voting_weight_extended" value="${systemSettings.voting_weight_extended}" step="0.1"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Vote weight multiplier in extended window (default: 0.5)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proposal & Vote Merit -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-trophy mr-2"></i>Proposal & Vote Merit</h3>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Proposal Cooldown (hours)</label>
+                        <input type="number" id="ss_proposal_cooldown_hours" value="${systemSettings.proposal_cooldown_hours}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Hours between proposals per user/IP (default: 8)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Vote Pass Merit</label>
+                        <input type="number" id="ss_merit_vote_pass" value="${systemSettings.merit_vote_pass}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Merit pts for voting on passing proposal (default: 2.5)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Vote Fail Merit</label>
+                        <input type="number" id="ss_merit_vote_fail" value="${systemSettings.merit_vote_fail}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Merit pts for voting on failing proposal (default: 1.0)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Proposal Author Merit</label>
+                        <input type="number" id="ss_merit_proposal_author" value="${systemSettings.merit_proposal_author}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Merit awarded to author of passing proposal (default: 200)</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex gap-4">
                 <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
                     <i class="fas fa-save mr-2"></i>Save All Settings
@@ -1920,7 +2067,24 @@ async function saveSystemSettings(e) {
         endorsement_tier1_pts: parseFloat(document.getElementById('ss_endorsement_tier1_pts').value),
         endorsement_tier2_pts: parseFloat(document.getElementById('ss_endorsement_tier2_pts').value),
         endorsement_tier3_pts: parseFloat(document.getElementById('ss_endorsement_tier3_pts').value),
-        endorsement_tier4_pts: parseFloat(document.getElementById('ss_endorsement_tier4_pts').value)
+        endorsement_tier4_pts: parseFloat(document.getElementById('ss_endorsement_tier4_pts').value),
+        approval_threshold_routine: parseFloat(document.getElementById('ss_approval_threshold_routine').value),
+        approval_threshold_policy: parseFloat(document.getElementById('ss_approval_threshold_policy').value),
+        approval_threshold_constitutional: parseFloat(document.getElementById('ss_approval_threshold_constitutional').value),
+        voting_window_primary_days: parseInt(document.getElementById('ss_voting_window_primary_days').value),
+        voting_window_extended_days: parseInt(document.getElementById('ss_voting_window_extended_days').value),
+        voting_weight_primary: parseFloat(document.getElementById('ss_voting_weight_primary').value),
+        voting_weight_extended: parseFloat(document.getElementById('ss_voting_weight_extended').value),
+        proposal_cooldown_hours: parseInt(document.getElementById('ss_proposal_cooldown_hours').value),
+        merit_vote_pass: parseFloat(document.getElementById('ss_merit_vote_pass').value),
+        merit_vote_fail: parseFloat(document.getElementById('ss_merit_vote_fail').value),
+        merit_proposal_author: parseInt(document.getElementById('ss_merit_proposal_author').value),
+        sms_provider: document.getElementById('ss_sms_provider').value,
+        sms_otp_required: parseInt(document.getElementById('ss_sms_otp_required').value),
+        sms_otp_length: parseInt(document.getElementById('ss_sms_otp_length').value),
+        sms_otp_expiry_minutes: parseInt(document.getElementById('ss_sms_otp_expiry_minutes').value),
+        sms_twilio_phone_number: document.getElementById('ss_sms_twilio_phone_number').value,
+        sms_webhook_url: document.getElementById('ss_sms_webhook_url').value
     };
     
     try {
@@ -1985,7 +2149,13 @@ async function resetSystemSettings() {
         endorsement_tier1_pts: 2.0,
         endorsement_tier2_pts: 1.0,
         endorsement_tier3_pts: 0.5,
-        endorsement_tier4_pts: 0.1
+        endorsement_tier4_pts: 0.1,
+        sms_provider: '',
+        sms_otp_required: 0,
+        sms_otp_length: 6,
+        sms_otp_expiry_minutes: 10,
+        sms_twilio_phone_number: '',
+        sms_webhook_url: ''
     };
     
     try {
@@ -2005,10 +2175,99 @@ async function resetSystemSettings() {
     }
 }
 
+// ── Wall Moderation ──
+async function loadFlaggedPosts() {
+    const container = document.getElementById('flaggedPostsList');
+    try {
+        const res = await fetch('/api/admin/wall/flagged', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        const data = await res.json();
+        if (data.success && data.posts && data.posts.length > 0) {
+            container.innerHTML = data.posts.map(p => `
+                <div class="bg-party-card rounded-xl p-5 border ${p.is_hidden ? 'border-red-600/50' : 'border-yellow-600/50'}">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-party-accent">${escapeHtml(p.display_name || p.nickname)}</span>
+                            ${p.user_id ? '<span class="text-xs text-green-400">Member</span>' : '<span class="text-xs text-gray-500">Guest</span>'}
+                            ${p.is_hidden ? '<span class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded">Hidden</span>' : ''}
+                            <span class="text-xs text-yellow-500"><i class="fas fa-flag mr-1"></i>${p.flag_count} flags</span>
+                        </div>
+                        <span class="text-gray-600 text-xs">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
+                    </div>
+                    <p class="text-gray-300 text-sm mb-3 whitespace-pre-wrap">${escapeHtml(p.message || '')}</p>
+                    ${p.latest_flag_reason ? `<p class="text-yellow-400/70 text-xs mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>${escapeHtml(p.latest_flag_reason)}</p>` : ''}
+                    <div class="flex gap-2 text-xs">
+                        ${!p.is_hidden ? `<button onclick="hideWallPost(${p.id})" class="bg-red-600/80 text-white px-3 py-1.5 rounded hover:bg-red-700">Hide</button>` : ''}
+                        ${p.is_flagged || p.is_hidden ? `<button onclick="approveWallPost(${p.id})" class="bg-green-600/80 text-white px-3 py-1.5 rounded hover:bg-green-700">Approve</button>` : ''}
+                        <button onclick="deleteWallPost(${p.id})" class="bg-gray-600/80 text-white px-3 py-1.5 rounded hover:bg-gray-700">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">✅</div><p>No flagged posts to review.</p></div>';
+        }
+    } catch (err) {
+        container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading flagged posts.</div>';
+    }
+}
+
+async function hideWallPost(id) {
+    if (!confirm('Hide this post? It will no longer be visible on the wall.')) return;
+    try {
+        const res = await fetch(`/api/admin/wall/${id}/hide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            loadFlaggedPosts();
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { alert('Error'); }
+}
+
+async function approveWallPost(id) {
+    if (!confirm('Approve this post? It will be un-flagged and visible again.')) return;
+    try {
+        const res = await fetch(`/api/admin/wall/${id}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            loadFlaggedPosts();
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { alert('Error'); }
+}
+
+async function deleteWallPost(id) {
+    if (!confirm('PERMANENTLY delete this post and all its replies? This cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/admin/wall/${id}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            loadFlaggedPosts();
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { alert('Error'); }
+}
+
 // Load data on page load
         setTimeout(() => {
             loadProposalsAdmin();
             loadPendingDonations();
+            loadFlaggedPosts();
             loadAdminEvents();
         }, 1000);
     </script>
