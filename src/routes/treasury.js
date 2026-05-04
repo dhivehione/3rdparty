@@ -1,22 +1,22 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTreasuryBalance, getSettings }) {
+module.exports = function({ queries, adminAuth, logActivity, addTreasuryEntry, getTreasuryBalance, getSettings }) {
   router.get('/api/treasury/summary', (req, res) => {
     try {
-      const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
-      const expenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'expenditure' AND status = 'verified'`).get();
-      const txCount = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger WHERE status = 'verified'`).get();
-      const donationCount = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
+      const income = queries.treasury.getIncomeTotal();
+      const expenses = queries.treasury.getExpensesTotal();
+      const txCount = queries.treasury.getTransactionCount();
+      const donationCount = queries.treasury.getDonationCount();
       const settings = getSettings();
 
       res.json({
         success: true,
-        balance: Math.round((income.total - expenses.total) * 100) / 100,
-        total_income: Math.round(income.total * 100) / 100,
-        total_expenses: Math.round(expenses.total * 100) / 100,
-        transaction_count: txCount.total,
-        donation_count: donationCount.total,
+        balance: Math.round((income - expenses) * 100) / 100,
+        total_income: Math.round(income * 100) / 100,
+        total_expenses: Math.round(expenses * 100) / 100,
+        transaction_count: txCount,
+        donation_count: donationCount,
         target_treasury: settings.target_treasury
       });
     } catch (error) {
@@ -44,8 +44,7 @@ module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTre
         params.push(filterCategory);
       }
 
-      const countRow = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger ${whereClause}`).get(...params);
-      const rows = db.prepare(`SELECT * FROM treasury_ledger ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+      const { count, rows } = queries.treasury.getLedgerFiltered(whereClause, params, limit, offset);
       const balance = getTreasuryBalance();
 
       res.json({
@@ -54,8 +53,8 @@ module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTre
         transactions: rows,
         page,
         limit,
-        total: countRow.total,
-        totalPages: Math.ceil(countRow.total / limit)
+        total: count,
+        totalPages: Math.ceil(count / limit)
       });
     } catch (error) {
       res.status(500).json({ error: 'Could not fetch treasury ledger', success: false });
@@ -64,14 +63,8 @@ module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTre
 
   router.get('/api/admin/treasury/expenditures', adminAuth, (req, res) => {
     try {
-      const expenditures = db.prepare(`
-        SELECT * FROM treasury_ledger 
-        WHERE type = 'expenditure' 
-        ORDER BY created_at DESC
-      `).all();
-
+      const expenditures = queries.treasury.getExpenditures();
       const balance = getTreasuryBalance();
-
       res.json({ success: true, expenditures, balance });
     } catch (error) {
       res.status(500).json({ error: 'Could not fetch expenditures', success: false });
@@ -125,8 +118,7 @@ module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTre
       const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
       const offset = (page - 1) * limit;
 
-      const countRow = db.prepare('SELECT COUNT(*) as total FROM treasury_ledger').get();
-      const rows = db.prepare('SELECT * FROM treasury_ledger ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+      const { count, rows } = queries.treasury.getLedgerAdmin(limit, offset);
 
       res.json({
         success: true,
@@ -134,8 +126,8 @@ module.exports = function({ db, adminAuth, logActivity, addTreasuryEntry, getTre
         balance: getTreasuryBalance(),
         page,
         limit,
-        total: countRow.total,
-        totalPages: Math.ceil(countRow.total / limit)
+        total: count,
+        totalPages: Math.ceil(count / limit)
       });
     } catch (error) {
       res.status(500).json({ error: 'Could not fetch treasury ledger', success: false });

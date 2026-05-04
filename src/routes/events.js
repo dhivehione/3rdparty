@@ -1,14 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, adminAuth, logActivity }) {
+module.exports = function({ queries, adminAuth, logActivity }) {
   router.get('/api/events', (req, res) => {
     try {
-      const events = db.prepare(`
-        SELECT * FROM events 
-        WHERE event_date >= date('now') 
-        ORDER BY event_date ASC
-      `).all();
+      const events = queries.events.getUpcoming();
       res.json({ events, success: true });
     } catch (error) {
       res.json({ events: [], success: true });
@@ -17,10 +13,7 @@ module.exports = function({ db, adminAuth, logActivity }) {
 
   router.get('/api/admin/events', adminAuth, (req, res) => {
     try {
-      const events = db.prepare(`
-        SELECT * FROM events 
-        ORDER BY event_date ASC
-      `).all();
+      const events = queries.events.getAll();
       res.json({ events, success: true });
     } catch (error) {
       res.json({ events: [], success: true });
@@ -39,15 +32,12 @@ module.exports = function({ db, adminAuth, logActivity }) {
     }
 
     try {
-      const createdAt = new Date().toISOString();
-      const stmt = db.prepare(`
-        INSERT INTO events (title, description, event_date, location, created_at)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-      const result = stmt.run(title.trim(), description || null, event_date, location || null, createdAt);
+      const result = queries.events.create({
+        title: title.trim(), description: description || null,
+        event_date, location: location || null, created_at: new Date().toISOString()
+      });
 
       logActivity('event_created', null, result.lastInsertRowid, { title }, req);
-
       res.json({ success: true, message: 'Event created', id: result.lastInsertRowid });
     } catch (error) {
       console.error('Create event error:', error);
@@ -64,18 +54,13 @@ module.exports = function({ db, adminAuth, logActivity }) {
     }
 
     try {
-      const existing = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
+      const existing = queries.events.getById(eventId);
       if (!existing) {
         return res.status(404).json({ error: 'Event not found', success: false });
       }
 
-      db.prepare(`
-        UPDATE events SET title = ?, description = ?, event_date = ?, location = ?
-        WHERE id = ?
-      `).run(title.trim(), description || null, event_date, location || null, eventId);
-
+      queries.events.update(eventId, title.trim(), description || null, event_date, location || null);
       logActivity('event_updated', null, eventId, { title }, req);
-
       res.json({ success: true, message: 'Event updated' });
     } catch (error) {
       console.error('Update event error:', error);
@@ -87,15 +72,13 @@ module.exports = function({ db, adminAuth, logActivity }) {
     const eventId = parseInt(req.params.id);
 
     try {
-      const existing = db.prepare('SELECT id, title FROM events WHERE id = ?').get(eventId);
+      const existing = queries.events.getById(eventId);
       if (!existing) {
         return res.status(404).json({ error: 'Event not found', success: false });
       }
 
-      db.prepare('DELETE FROM events WHERE id = ?').run(eventId);
-
+      queries.events.delete(eventId);
       logActivity('event_deleted', null, eventId, { title: existing.title }, req);
-
       res.json({ success: true, message: 'Event deleted' });
     } catch (error) {
       console.error('Delete event error:', error);

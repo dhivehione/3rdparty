@@ -54,7 +54,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
   try { db.exec(`ALTER TABLE signups ADD COLUMN otp_verified INTEGER DEFAULT 0`); console.log('✓ Migration: Added otp_verified to signups'); } catch (e) {}
 
   // Fix signups table schema - remove CHECK constraint if it exists
-  // Only run once: if signups_new already exists we know this migration was done before
   try {
     const signupsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='signups'`).get();
     const signupsNewExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='signups_new'`).get();
@@ -165,7 +164,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Migration: Add missing columns to referrals
   try {
     db.exec('ALTER TABLE referrals ADD COLUMN details TEXT');
   } catch (e) {}
@@ -303,7 +301,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     });
   }
 
-  // ==================== ROLE-BASED STIPENDS ====================
+  // ROLE-BASED STIPENDS
   db.exec(`
     CREATE TABLE IF NOT EXISTS leadership_stipends (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -344,17 +342,14 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Migration: Add is_approved column to existing wall_posts table
   try {
     db.exec(`ALTER TABLE wall_posts ADD COLUMN is_approved INTEGER DEFAULT 1`);
   } catch (e) {}
 
-  // Migration: Add thread_id column for grouping related posts
   try {
     db.exec(`ALTER TABLE wall_posts ADD COLUMN thread_id TEXT`);
   } catch (e) {}
 
-  // Migration: Wall 2.0
   try { db.exec(`ALTER TABLE wall_posts ADD COLUMN parent_id INTEGER`); } catch (e) {}
   try { db.exec(`ALTER TABLE wall_posts ADD COLUMN user_id INTEGER`); } catch (e) {}
   try { db.exec(`ALTER TABLE wall_posts ADD COLUMN user_name TEXT`); } catch (e) {}
@@ -414,7 +409,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // ==================== MERIT SYSTEM ====================
+  // MERIT SYSTEM
   db.exec(`
     CREATE TABLE IF NOT EXISTS merit_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -429,30 +424,25 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Migration: Add user_id to votes table if not exists
   try {
     db.exec('ALTER TABLE votes ADD COLUMN user_id INTEGER');
   } catch (e) {}
 
-  // Migration: Add weighted_vote columns
   try {
     db.exec('ALTER TABLE votes ADD COLUMN vote_weight REAL DEFAULT 1.0');
     db.exec('ALTER TABLE votes ADD COLUMN loyalty_coefficient REAL DEFAULT 1.0');
     db.exec('ALTER TABLE votes ADD COLUMN days_since_created INTEGER DEFAULT 0');
   } catch (e) {}
 
-  // Migration: Add category column to proposals
   try {
     db.exec('ALTER TABLE proposals ADD COLUMN approval_threshold REAL');
   } catch (e) {}
 
-  // Migration: Add is_closed and passed columns to proposals
   try {
     db.exec('ALTER TABLE proposals ADD COLUMN is_closed INTEGER DEFAULT 0');
     db.exec('ALTER TABLE proposals ADD COLUMN passed INTEGER DEFAULT 0');
   } catch (e) {}
 
-  // Migration: Add amendment support to proposals
   try {
     db.exec('ALTER TABLE proposals ADD COLUMN amendment_of INTEGER');
     db.exec('ALTER TABLE proposals ADD COLUMN original_yes_votes INTEGER DEFAULT 0');
@@ -504,7 +494,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Migrate database schema if needed
   try {
     const tableInfo = db.prepare('PRAGMA table_info(signups)').all();
     const columns = tableInfo.map(col => col.name);
@@ -541,7 +530,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // ==================== EVENTS TABLE ====================
+  // EVENTS TABLE
   db.exec(`
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -553,7 +542,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // ==================== DONATIONS TABLE ====================
+  // DONATIONS TABLE
   db.exec(`
     CREATE TABLE IF NOT EXISTS donations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -575,7 +564,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     db.exec(`ALTER TABLE donations ADD COLUMN remarks TEXT`);
   } catch (e) {}
 
-  // Migration: Make phone and nid nullable in donations table
   try {
     const donationCols = db.prepare(`PRAGMA table_info(donations)`).all();
     const phoneColDonations = donationCols.find(c => c.name === 'phone');
@@ -626,7 +614,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     console.log('⚠ Donations phone/nid nullable migration error:', e.message);
   }
 
-  // ==================== LIVE TREASURY LEDGER ====================
+  // LIVE TREASURY LEDGER
   db.exec(`
     CREATE TABLE IF NOT EXISTS treasury_ledger (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -644,7 +632,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Add category/donor_nickname/verified_by columns if not exists
   try {
     const ledgerCols = db.prepare(`PRAGMA table_info(treasury_ledger)`).all();
     if (!ledgerCols.find(c => c.name === 'category')) {
@@ -682,7 +669,197 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     console.log('⚠ Treasury ledger migration note:', e.message);
   }
 
-  // ==================== LEADERSHIP STRUCTURE TABLES ====================
+  // Votes table (for proposal voting)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      proposal_id INTEGER NOT NULL,
+      choice TEXT NOT NULL,
+      voter_ip TEXT,
+      voted_at TEXT NOT NULL,
+      user_id INTEGER,
+      vote_weight REAL DEFAULT 1.0,
+      loyalty_coefficient REAL DEFAULT 1.0,
+      days_since_created INTEGER DEFAULT 0
+    )
+  `);
+
+  // Proposal stakes
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS proposal_stakes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      proposal_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      stake_amount REAL NOT NULL,
+      status TEXT DEFAULT 'locked' CHECK(status IN ('locked', 'refunded', 'forfeited')),
+      resolved_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (proposal_id) REFERENCES proposals(id),
+      FOREIGN KEY (user_id) REFERENCES signups(id)
+    )
+  `);
+
+  // Article quizzes and attempts
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS article_quizzes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      article_id TEXT NOT NULL,
+      article_title TEXT,
+      question TEXT NOT NULL,
+      options TEXT NOT NULL,
+      correct_answer INTEGER NOT NULL,
+      points_reward INTEGER DEFAULT 10,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS quiz_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      quiz_id INTEGER NOT NULL,
+      selected_answer INTEGER NOT NULL,
+      correct INTEGER NOT NULL,
+      attempted_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES signups(id),
+      FOREIGN KEY (quiz_id) REFERENCES article_quizzes(id)
+    )
+  `);
+
+  // Article comments and endorsements
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS article_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      article_id TEXT NOT NULL,
+      comment_text TEXT NOT NULL,
+      is_approved INTEGER DEFAULT 1,
+      endorsement_count INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES signups(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS comment_endorsements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      comment_id INTEGER NOT NULL,
+      endorser_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(comment_id, endorser_id),
+      FOREIGN KEY (comment_id) REFERENCES article_comments(id),
+      FOREIGN KEY (endorser_id) REFERENCES signups(id)
+    )
+  `);
+
+  // Amplification links and clicks
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS amplification_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      creator_user_id INTEGER NOT NULL,
+      content_type TEXT NOT NULL,
+      content_title TEXT,
+      track_code TEXT NOT NULL UNIQUE,
+      base_url TEXT NOT NULL,
+      click_count INTEGER DEFAULT 0,
+      reward_points INTEGER DEFAULT 10,
+      is_active INTEGER DEFAULT 1,
+      expires_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (creator_user_id) REFERENCES signups(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS amplification_clicks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      link_id INTEGER NOT NULL,
+      clicker_ip TEXT,
+      clicked_at TEXT NOT NULL,
+      FOREIGN KEY (link_id) REFERENCES amplification_links(id)
+    )
+  `);
+
+  // Violations and suspensions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS violations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_user_id INTEGER,
+      accused_user_id INTEGER NOT NULL,
+      violation_type TEXT NOT NULL,
+      tier INTEGER NOT NULL CHECK(tier IN (1, 2, 3)),
+      description TEXT NOT NULL,
+      evidence TEXT,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'investigating', 'resolved', 'dismissed')),
+      resolution TEXT,
+      resolved_by_user_id INTEGER,
+      resolved_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (reporter_user_id) REFERENCES signups(id),
+      FOREIGN KEY (accused_user_id) REFERENCES signups(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_suspensions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      violation_id INTEGER,
+      suspension_type TEXT NOT NULL CHECK(suspension_type IN ('warning', 'temporary', 'permanent')),
+      reason TEXT NOT NULL,
+      starts_at TEXT NOT NULL,
+      ends_at TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES signups(id),
+      FOREIGN KEY (violation_id) REFERENCES violations(id)
+    )
+  `);
+
+  // Policy hubs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS policy_hubs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      charter TEXT NOT NULL,
+      goals TEXT,
+      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed', 'dissolved')),
+      created_by_user_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (created_by_user_id) REFERENCES signups(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS hub_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hub_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT DEFAULT 'member' CHECK(role IN ('lead', 'member')),
+      joined_at TEXT NOT NULL,
+      stipend_earned REAL DEFAULT 0,
+      FOREIGN KEY (hub_id) REFERENCES policy_hubs(id),
+      FOREIGN KEY (user_id) REFERENCES signups(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS hub_stipends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hub_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      period_year INTEGER NOT NULL,
+      period_month INTEGER NOT NULL,
+      amount_awarded REAL NOT NULL,
+      awarded_at TEXT NOT NULL,
+      UNIQUE(hub_id, user_id, period_year, period_month),
+      FOREIGN KEY (hub_id) REFERENCES policy_hubs(id),
+      FOREIGN KEY (user_id) REFERENCES signups(id)
+    )
+  `);
+
+  // LEADERSHIP STRUCTURE TABLES
   db.exec(`
     CREATE TABLE IF NOT EXISTS leadership_settings (
       id INTEGER PRIMARY KEY,
@@ -760,7 +937,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Performance appraisals
   db.exec(`
     CREATE TABLE IF NOT EXISTS leadership_appraisals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -776,7 +952,6 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     )
   `);
 
-  // Standard Operating Procedures (SOPs)
   db.exec(`
     CREATE TABLE IF NOT EXISTS leadership_sops (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -804,6 +979,18 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
     sops.forEach(s => insertSOP.run(s.title, s.content, s.category, now, now));
   }
 
+  // Emeritus Council
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS emiritus_council (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      invited_at TEXT NOT NULL,
+      reason TEXT,
+      is_active INTEGER DEFAULT 1,
+      FOREIGN KEY (user_id) REFERENCES signups(id)
+    )
+  `);
+
   // System settings table
   db.exec(`
     CREATE TABLE IF NOT EXISTS system_settings (
@@ -821,7 +1008,7 @@ function runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry }) 
 
   console.log('✓ Leadership structure tables initialized');
 
-  // ==================== ADD DEMO DATA ====================
+  // ADD DEMO DATA
   const demoProposals = db.prepare('SELECT COUNT(*) as cnt FROM proposals').get();
   if (demoProposals.cnt === 0) {
     const now = new Date().toISOString();
