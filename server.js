@@ -657,10 +657,10 @@ db.exec(`
     ip_address TEXT,
     vote INTEGER NOT NULL CHECK(vote IN (-1, 0, 1)),
     created_at TEXT NOT NULL,
-    UNIQUE(post_id, COALESCE(user_id, -1), COALESCE(ip_address, 'anon')),
     FOREIGN KEY (post_id) REFERENCES wall_posts(id)
   )
 `);
+try { db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS wall_votes_unique ON wall_votes(post_id, COALESCE(user_id, -1), COALESCE(ip_address, 'anon'))`); } catch (e) {}
 
 // Wall flag/report tracking
 db.exec(`
