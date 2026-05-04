@@ -102,7 +102,7 @@ router.post('/api/proposals', (req, res) => {
         return res.status(429).json({
           error: `Proposal cooldown active. Wait ${(cooldownHours - hoursSince).toFixed(1)} more hours.`,
           success: false,
-          next_proposal_at: new Date(lastProposal.created_at.getTime() + cooldownMs).toISOString()
+          next_proposal_at: new Date(new Date(lastProposal.created_at).getTime() + cooldownMs).toISOString()
         });
       }
     }
