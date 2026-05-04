@@ -1,5 +1,4 @@
 const express = require('express');
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -9,107 +8,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==================== SYSTEM SETTINGS ====================
-// All configurable values stored in DB, with defaults
-const DEFAULT_SETTINGS = {
-  visitor_timeout_ms: 5 * 60 * 1000,
-  enroll_rate_limit_ms: 60 * 1000,
-  enroll_max_per_day: 50,
-  vote_cooldown_ms: 60 * 60 * 1000,
-  proposal_voting_days: 7,
-  wall_post_max_length: 500,
-  proposal_title_max_length: 200,
-  proposal_description_max_length: 8000,
-  nickname_max_length: 50,
-  wall_posts_limit: 100,
-  recent_votes_limit: 50,
-  signup_base_merit: 50,
-  merit_skills: 250,
-  merit_action: 200,
-  merit_ideas: 150,
-  merit_donation: 100,
-  donation_bonus_per_100: 5,
-  max_upload_bytes: 5 * 1024 * 1024,
-  target_members: 13000,
-  target_treasury: 13000,
-  signup_random_bonus_max: 50,
-  donation_divisor_mvr: 100,
-  donation_log_multiplier: 35,
-  donation_usd_mvr_rate: 15.4,
-  donation_formula: 'log',
-  referral_tier1_limit: 5,
-  referral_tier2_limit: 20,
-  referral_base_t1: 2,
-  referral_base_t2: 1,
-  referral_base_t3: 0.5,
-  referral_engage_t1: 8,
-  referral_engage_t2: 4,
-  referral_engage_t3: 0.5,
-  endorsement_tier1_limit: 10,
-  endorsement_tier2_limit: 50,
-  endorsement_tier3_limit: 200,
-  endorsement_tier1_pts: 2.0,
-  endorsement_tier2_pts: 1.0,
-  endorsement_tier3_pts: 0.5,
-  endorsement_tier4_pts: 0.1,
-  approval_threshold_routine: 0.50,
-  approval_threshold_policy: 0.60,
-  approval_threshold_constitutional: 0.80,
-  voting_window_primary_days: 7,
-  voting_window_extended_days: 3,
-  voting_weight_primary: 1.0,
-  voting_weight_extended: 0.5,
-  proposal_cooldown_hours: 8,
-  merit_vote_pass: 2.5,
-  merit_vote_fail: 1.0,
-  merit_proposal_author: 200,
-  merit_proposal_created: 10,
-  sms_provider: '',
-  sms_twilio_account_sid: '',
-  sms_twilio_auth_token: '',
-  sms_twilio_phone_number: '',
-  sms_webhook_url: '',
-  sms_otp_length: 6,
-  sms_otp_expiry_minutes: 10,
-  sms_otp_required: 0
-};
-
-function getSettings() {
-  try {
-    const row = db.prepare('SELECT settings_json FROM system_settings WHERE id = 1').get();
-    if (row && row.settings_json) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(row.settings_json) };
-    }
-  } catch (e) {}
-  return { ...DEFAULT_SETTINGS };
-}
-
-function updateSettings(newSettings) {
-  const current = getSettings();
-  const merged = { ...current, ...newSettings };
-  db.prepare('INSERT OR REPLACE INTO system_settings (id, settings_json, updated_at) VALUES (1, ?, ?)')
-    .run(JSON.stringify(merged), new Date().toISOString());
-  return merged;
-}
+const { DEFAULT_SETTINGS, init: initSettings, getSettings, updateSettings } = require('./src/config/settings');
 
 // ==================== SIMPLE ANALYTICS - ACTIVE VISITORS ====================
-// Store active visitors: { sessionId: timestamp }
-const activeVisitors = new Map();
-
-function getClientIp(req) {
-  return req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
-}
-
-function cleanupExpiredVisitors() {
-  const now = Date.now();
-  const timeout = getSettings().visitor_timeout_ms;
-  for (const [sessionId, lastSeen] of activeVisitors.entries()) {
-    if (now - lastSeen > timeout) {
-      activeVisitors.delete(sessionId);
-    }
-  }
-}
-
-setInterval(cleanupExpiredVisitors, 60000);
+const analyticsModule = require('./src/routes/analytics')({ getSettings });
+const { activeVisitors, getClientIp, cleanupExpiredVisitors } = analyticsModule;
 
 // Check and close expired proposals every minute (merit-weighted, tiered thresholds)
 function closeExpiredProposals() {
@@ -135,7 +38,7 @@ function closeExpiredProposals() {
       const raw_abstain = weightedCounts?.raw_abstain || 0;
       const raw_total = raw_yes + raw_no + raw_abstain;
 
-      const threshold = calculateApprovalThreshold(proposal.category);
+      const threshold = merit.calculateApprovalThreshold(proposal.category);
       const total_weight = weighted_yes + weighted_no;
       const passed = total_weight > 0 && (weighted_yes / total_weight) >= threshold;
 
@@ -179,7 +82,7 @@ function closeExpiredProposals() {
           .run(authorPoints, proposal.created_by_user_id);
       }
 
-      processProposalStakes(proposal.id, weighted_yes, weighted_no, total_weight);
+      merit.processProposalStakes(proposal.id, weighted_yes, weighted_no, total_weight);
     });
   } catch (e) {
     console.error('Close expired proposals error:', e);
@@ -188,35 +91,13 @@ function closeExpiredProposals() {
 setInterval(closeExpiredProposals, 60000);
 
 // ==================== DATABASE SETUP ====================
+const { initDb } = require('./src/db');
 const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+const { db, lawsDb } = initDb(dataDir);
+initSettings(db);
 
-const db = new Database(path.join(dataDir, 'signups.db'));
-
-// Laws database (from mvlaws project) - check multiple common paths
-const possiblePaths = [
-  process.env.LAWS_DB_PATH,
-  '/app/data/laws.db',
-  '/data/laws.db',
-  path.join(dataDir, 'laws.db')
-].filter(p => p && fs.existsSync(p));
-
-const lawsDbPath = possiblePaths[0] || null;
-
-let lawsDb = null;
-if (lawsDbPath) {
-  try {
-    lawsDb = new Database(lawsDbPath);
-    console.log('✓ Laws database connected:', lawsDbPath);
-  } catch (err) {
-    console.log('⚠ Could not open laws database:', err.message);
-  }
-} else {
-  console.log('⚠ Laws database not found. Checked: /app/data/laws.db, /data/laws.db, ./data/laws.db');
-  console.log('⚠ Set LAWS_DB_PATH environment variable to point to laws.db');
-}
+// ==================== AUTH MIDDLEWARE ====================
+const { ADMIN_PASSWORD, adminSessions, adminAuth, userAuth } = require('./src/middleware/auth')({ db });
 
 // Create table with updated schema
 db.exec(`
@@ -536,8 +417,6 @@ if (existingModules.cnt === 0) {
 }
 
 // ==================== ROLE-BASED STIPENDS (Whitepaper sec II.C.8) ====================
-// Council: 150 pts/month, Committee: 75 pts/month, Advisory: 50 pts/report
-const ROLE_STIPENDS = { council: 150, committee: 75, advisory: 50 };
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS leadership_stipends (
@@ -567,55 +446,6 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES signups(id)
   )
 `);
-
-function processMonthlyStipends() {
-  try {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-
-    const activeTerms = db.prepare(`
-      SELECT lt.*, lp.position_type, lp.title as position_title, s.id as user_id
-      FROM leadership_terms lt
-      JOIN leadership_positions lp ON lt.position_id = lp.id
-      JOIN signups s ON lt.user_id = s.id
-      WHERE lt.ended_at IS NULL AND lp.is_active = 1
-    `).all();
-
-    activeTerms.forEach(term => {
-      if (!term.ended_at && ROLE_STIPENDS[term.position_type]) {
-        const existing = db.prepare(`
-          SELECT id FROM leadership_stipends
-          WHERE user_id = ? AND position_id = ? AND period_year = ? AND period_month = ?
-        `).get(term.user_id, term.position_id, year, month);
-
-        if (!existing) {
-          const stipendAmount = ROLE_STIPENDS[term.position_type];
-          const awardedAt = now.toISOString();
-
-          db.prepare(`
-            INSERT INTO leadership_stipends (user_id, position_id, period_year, period_month, amount_awarded, awarded_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(term.user_id, term.position_id, year, month, stipendAmount, awardedAt);
-
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'leadership_stipend', ?, ?, 'stipend', ?, ?)
-          `).run(term.user_id, stipendAmount, term.position_id, `${term.position_title} stipend (${month}/${year})`, awardedAt);
-
-          logActivity('stipend_awarded', term.user_id, term.position_id, { amount: stipendAmount, period: `${month}/${year}` }, {});
-        }
-      }
-    });
-
-    console.log(`Stipend processing complete for ${year}-${month}`);
-  } catch (e) {
-    console.error('Stipend processing error:', e);
-  }
-}
-
-setInterval(processMonthlyStipends, 60 * 60 * 1000);
-processMonthlyStipends();
 
 // Public wall posts table (no signup required)
 db.exec(`
@@ -958,23 +788,8 @@ try {
 }
 
 // Helper: Add entry to treasury ledger
-function addTreasuryEntry(data) {
-  const { type, amount, description, category, sourceRefType, sourceRefId, donorNickname, verifiedBy, status } = data;
-  const now = new Date().toISOString();
-  const entryStatus = status || 'verified';
-  const verifiedAt = entryStatus === 'verified' ? now : null;
-  return db.prepare(`
-    INSERT INTO treasury_ledger (type, amount, description, category, source_ref_type, source_ref_id, donor_nickname, verified_by, status, created_at, verified_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(type, amount, description, category || null, sourceRefType || null, sourceRefId || null, donorNickname || null, verifiedBy || null, entryStatus, now, verifiedAt);
-}
-
-// Helper: Get treasury balance (income - expenses, verified only)
-function getTreasuryBalance() {
-  const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
-  const expenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'expenditure' AND status = 'verified'`).get();
-  return income.total - expenses.total;
-}
+// ==================== TREASURY ====================
+const { addTreasuryEntry, getTreasuryBalance } = require('./src/services/treasury')({ db });
 
 // Retroactive migration: populate treasury_ledger from existing data
 try {
@@ -1210,9 +1025,8 @@ try {
 } catch (e) {}
 
 // ==================== SECURITY HELPERS ====================
-function sanitizeHTML(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
-}
+// ==================== UTILITIES ====================
+const { sanitizeHTML, generateOTP } = require('./src/utils');
 
 // ==================== MIDDLEWARE ====================
 app.use(express.json());
@@ -1433,111 +1247,11 @@ app.post('/api/enroll/lookup', userAuth, async (req, res) => {
 });
 
 // ==================== ANALYTICS API ====================
-// POST /api/analytics/heartbeat - Track active visitor
-app.post('/api/analytics/heartbeat', (req, res) => {
-  const sessionId = req.body.session_id || getClientIp(req);
-  activeVisitors.set(sessionId, Date.now());
-  res.json({ success: true, active_count: activeVisitors.size });
-});
-
-// GET /api/analytics/active - Get active visitor count
-app.get('/api/analytics/active', (req, res) => {
-  cleanupExpiredVisitors();
-  res.json({ active: activeVisitors.size, success: true });
-});
-
-// ==================== AUTH MIDDLEWARE ====================
-if (!process.env.ADMIN_PASSWORD) {
-  console.error('FATAL: ADMIN_PASSWORD environment variable must be set');
-  process.exit(1);
-}
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const adminSessions = new Map();
-
-function adminAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Nice try, insurance agent. Wrong password.' });
-  }
-  const token = authHeader.replace(/^Bearer\s+/i, '');
-  if (!adminSessions.has(token)) {
-    return res.status(401).json({ error: 'Nice try, insurance agent. Wrong password.' });
-  }
-  next();
-}
+app.use(analyticsModule.router);
 
 // ==================== PUBLIC WALL API (No Signup Required) ====================
 
-// Profanity and troll filter — heuristic scoring with word blacklist
-// Returns: { passed: bool, score: number (0=clean, higher=troll), reason: string|null }
-function moderateWallContent(text) {
-  const lower = text.toLowerCase().trim();
-  let score = 0;
-  let reasons = [];
-
-  // Word blacklist — profanity, slurs, hate speech
-  const blacklist = [
-    // Profanity
-    'fuck', 'shit', 'asshole', 'bastard', 'bitch', 'cunt', 'dick', 'piss', 'douche',
-    'motherfucker', 'motherfucking',
-    // Hate speech / slurs
-    'nigger', 'nigga', 'faggot', 'retard', 'retarded', 'chink', 'kike', 'spic',
-    'wetback', 'tranny', 'fag', 'dyke', 'paki',
-    // Maldivian profanity
-    'huththu', 'kaley', 'manyaa', 'handi', 'meyraa', 'thaakathu',
-    // Aggressive trolling / violence
-    'kill yourself', 'kys', 'go die', 'suicide', 'hang yourself', 'shoot yourself',
-    // Generic harassment
-    'you are worthless', 'nobody cares', 'just shut up', 'you are stupid'
-  ];
-
-  for (const word of blacklist) {
-    const regex = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    const matches = lower.match(regex);
-    if (matches) {
-      score += matches.length * 25;
-      reasons.push('profanity/hate-speech');
-      break; // One blacklist hit is enough for rejection
-    }
-  }
-
-  // ALL CAPS trolling (more than 70% uppercase in messages longer than 20 chars)
-  if (text.length > 20) {
-    const upperCount = (text.match(/[A-Z]/g) || []).length;
-    const letterCount = (text.match(/[a-zA-Z]/g) || []).length;
-    if (letterCount > 0 && (upperCount / letterCount) > 0.7) {
-      score += 30;
-      reasons.push('excessive-caps');
-    }
-  }
-
-  // Repeated character spam (e.g., "helloooooo!!!!!!")
-  const repeatedChars = (text.match(/(.)\1{4,}/g) || []);
-  if (repeatedChars.length > 0) {
-    score += repeatedChars.length * 5;
-    reasons.push('char-spam');
-  }
-
-  // Excessive punctuation
-  const exclamationCount = (text.match(/!/g) || []).length;
-  const questionCount = (text.match(/\?/g) || []).length;
-  if (exclamationCount > 5 || questionCount > 5) {
-    score += 10;
-    reasons.push('excessive-punctuation');
-  }
-
-  // Extremely short with all caps
-  if (text.length < 5 && text === text.toUpperCase() && text.match(/[A-Z]{2,}/)) {
-    score += 15;
-    reasons.push('shout-post');
-  }
-
-  return {
-    passed: score < 20,
-    score,
-    reason: reasons.length > 0 ? reasons.join(', ') : null
-  };
-}
+const { moderateWallContent } = require('./src/services/wall-moderation');
 
 // GET /api/wall - Get posts (top-level only, no replies). Supports ?sort=hot|new|top
 app.get('/api/wall', (req, res) => {
@@ -1728,7 +1442,7 @@ app.get('/api/proposals', (req, res) => {
 
     proposals.forEach(p => {
       p.userVote = userVotesMap[p.id] || null;
-      p.approval_threshold = calculateApprovalThreshold(p.category);
+      p.approval_threshold = merit.calculateApprovalThreshold(p.category);
       p.passing_threshold_display = `${Math.round(p.approval_threshold * 100)}% ${p.category === 'constitutional' ? 'constitutional' : p.category === 'policy' ? 'policy shift' : 'routine'} majority required`;
       p.is_weighted = true;
       p.window_info = {
@@ -1824,7 +1538,7 @@ app.post('/api/proposals', (req, res) => {
       createdAt,
       endsAt,
       userId,
-      calculateApprovalThreshold(category || 'general')
+      merit.calculateApprovalThreshold(category || 'general')
     );
 
     if (userId) {
@@ -1879,7 +1593,7 @@ app.post('/api/vote', (req, res) => {
         if (user) {
           userId = user.id;
           userJoinDate = user.timestamp;
-          userMeritScore = calculateStaticScore(userId);
+          userMeritScore = merit.calculateStaticScore(userId);
         }
       } catch (e) {}
     }
@@ -1889,8 +1603,8 @@ app.post('/api/vote', (req, res) => {
       return res.status(404).json({ error: 'Proposal not found', success: false });
     }
 
-    const voteWeight = userJoinDate ? calculateVoteWeight(userJoinDate, proposal.created_at) : 1.0;
-    const lc = userJoinDate ? getLoyaltyCoefficient(userJoinDate) : 1.0;
+    const voteWeight = userJoinDate ? merit.calculateVoteWeight(userJoinDate, proposal.created_at) : 1.0;
+    const lc = userJoinDate ? merit.getLoyaltyCoefficient(userJoinDate) : 1.0;
     const daysSinceCreated = userJoinDate ? Math.floor((new Date() - new Date(proposal.created_at)) / (1000 * 60 * 60 * 24)) : 0;
 
     const existingVote = db.prepare('SELECT id, user_id FROM votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
@@ -3434,15 +3148,6 @@ function wallVoteHandler(voteValue) {
 // ==================== API ENDPOINTS ====================
 // ==================== SMS OTP FUNCTIONS ====================
 
-function generateOTP(length) {
-  const len = parseInt(length) || 6;
-  let otp = '';
-  for (let i = 0; i < len; i++) {
-    otp += Math.floor(Math.random() * 10).toString();
-  }
-  return otp;
-}
-
 async function sendSMS(phone, message, settings) {
   const provider = (settings.sms_provider || '').toLowerCase();
   
@@ -4266,70 +3971,10 @@ app.post('/api/user/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out' });
 });
 
-// Activity logging function for tracing issues and disputes
-function logActivity(actionType, userId, targetId, details, req) {
-  try {
-    const stmt = db.prepare(
-      'INSERT INTO activity_log (action_type, user_id, target_id, details, ip_address, user_agent, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    );
-    stmt.run(
-      actionType,
-      userId || null,
-      targetId || null,
-      details ? JSON.stringify(details) : null,
-      req ? (req.ip || req.connection.remoteAddress) : null,
-      req ? (req.get('User-Agent') || null) : null,
-      new Date().toISOString()
-    );
-  } catch (error) {
-    console.error('Failed to log activity:', error);
-  }
-}
-
-// Calculate referral points based on total successful invites
-function getReferralPoints(inviteCount, isEngagementBonus = false) {
-  const s = getSettings();
-  if (isEngagementBonus) {
-    if (inviteCount <= s.referral_tier1_limit) return s.referral_engage_t1;
-    if (inviteCount <= s.referral_tier2_limit) return s.referral_engage_t2;
-    return s.referral_engage_t3;
-  }
-  if (inviteCount <= s.referral_tier1_limit) return s.referral_base_t1;
-  if (inviteCount <= s.referral_tier2_limit) return s.referral_base_t2;
-  return s.referral_base_t3;
-}
-
-function maybeEngageReferral(userId) {
-  if (!userId) return;
-  try {
-    const referral = db.prepare(`
-      SELECT r.id, r.referrer_id, r.first_action_at
-      FROM referrals r WHERE r.referred_id = ? AND r.status != 'removed'
-      LIMIT 1
-    `).get(userId);
-    if (!referral || referral.first_action_at) return;
-    const s = getSettings();
-    const now = new Date().toISOString();
-    db.prepare(`UPDATE referrals SET first_action_at = ? WHERE id = ?`).run(now, referral.id);
-    const inviteCount = db.prepare(`
-      SELECT COUNT(*) as count FROM referrals 
-      WHERE referrer_id = ? AND (status = 'joined' OR status = 'active') AND base_reward_given > 0
-    `).get(referral.referrer_id).count;
-    const engagePoints = getReferralPoints(inviteCount, true);
-    db.prepare(`
-      UPDATE referrals SET engagement_bonus_given = ? WHERE id = ?
-    `).run(engagePoints, referral.id);
-    db.prepare(`
-      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-      VALUES (?, 'engagement_bonus', ?, ?, 'referral', 'Referred member took first action', ?)
-    `).run(referral.referrer_id, engagePoints, referral.id, now);
-    db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-      .run(engagePoints, referral.referrer_id);
-    logActivity('engagement_bonus_awarded', referral.referrer_id, userId, { referral_id: referral.id, points: engagePoints, invite_count: inviteCount });
-  } catch (e) {
-    console.error('Engage referral error:', e);
-  }
-}
+// ==================== ACTIVITY LOG & REFERRAL ====================
+const { logActivity } = require('./src/services/activity-log')({ db });
+const { getReferralPoints, maybeEngageReferral } = require('./src/services/referral')({ db, getSettings, logActivity });
+const merit = require('./src/services/merit')({ db, getSettings, logActivity });
 
 // POST /api/referral/introduce - Introduce a new member
 app.post('/api/referral/introduce', userAuth, (req, res) => {
@@ -4774,36 +4419,6 @@ app.get('/api/activity-log', adminAuth, (req, res) => {
   }
 });
 
-// Middleware to verify user auth token
-function userAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Authentication required', success: false });
-  }
-
-  const token = authHeader.replace(/^Bearer\s+/i, '');
-
-  try {
-    const user = db.prepare('SELECT * FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid or expired token', success: false });
-    }
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Authentication failed', success: false });
-  }
-}
-
-function calculateEndorsementPoints(count) {
-  const s = getSettings();
-  if (count <= 0) return 0;
-  if (count <= s.endorsement_tier1_limit) return count * s.endorsement_tier1_pts;
-  if (count <= s.endorsement_tier2_limit) return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (count - s.endorsement_tier1_limit) * s.endorsement_tier2_pts;
-  if (count <= s.endorsement_tier3_limit) return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (s.endorsement_tier2_limit - s.endorsement_tier1_limit) * s.endorsement_tier2_pts + (count - s.endorsement_tier2_limit) * s.endorsement_tier3_pts;
-  return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (s.endorsement_tier2_limit - s.endorsement_tier1_limit) * s.endorsement_tier2_pts + (s.endorsement_tier3_limit - s.endorsement_tier2_limit) * s.endorsement_tier3_pts + (count - s.endorsement_tier3_limit) * s.endorsement_tier4_pts;
-}
-
 app.post('/api/endorsements', userAuth, (req, res) => {
   const { endorsed_id } = req.body;
   const endorserId = req.user.id;
@@ -4842,7 +4457,7 @@ app.post('/api/endorsements', userAuth, (req, res) => {
     db.prepare('INSERT INTO peer_endorsements (endorser_id, endorsed_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(endorserId, endorsed_id, now, expiresAt);
 
     const endorsements = db.prepare('SELECT * FROM peer_endorsements WHERE endorsed_id = ?').all(endorsed_id);
-    const points = calculateEndorsementPoints(endorsements.length);
+    const points = merit.calculateEndorsementPoints(endorsements.length);
 
     db.prepare(`
       INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
@@ -4869,7 +4484,7 @@ app.delete('/api/endorsements/:id', userAuth, (req, res) => {
     db.prepare('DELETE FROM peer_endorsements WHERE id = ?').run(id);
 
     const remaining = db.prepare('SELECT COUNT(*) as cnt FROM peer_endorsements WHERE endorsed_id = ?').get(endorsement.endorsed_id);
-    const points = calculateEndorsementPoints(remaining.cnt);
+    const points = merit.calculateEndorsementPoints(remaining.cnt);
 
     db.prepare(`
       INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
@@ -4895,7 +4510,7 @@ app.get('/api/endorsements/received', userAuth, (req, res) => {
       ORDER BY pe.created_at DESC
     `).all(userId);
 
-    const totalPoints = calculateEndorsementPoints(endorsements.length);
+    const totalPoints = merit.calculateEndorsementPoints(endorsements.length);
 
     res.json({ success: true, endorsements, total_endorsements: endorsements.length, total_points: totalPoints });
   } catch (error) {
@@ -5372,64 +4987,6 @@ db.exec(`
   )
 `);
 
-function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
-  try {
-    const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
-    if (!proposal) return;
-
-    const supportPct = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
-    const stakes = db.prepare('SELECT * FROM proposal_stakes WHERE proposal_id = ?').all(proposalId);
-
-    if (supportPct >= 20) {
-      stakes.forEach(stake => {
-        if (stake.status === 'locked') {
-          db.prepare("UPDATE proposal_stakes SET status = 'refunded', resolved_at = ? WHERE id = ?")
-            .run(new Date().toISOString(), stake.id);
-
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_refund', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, stake.stake_amount, proposalId, 'Proposal stake refunded', new Date().toISOString());
-        }
-      });
-    } else if (supportPct < 10 && supportPct > 0) {
-      stakes.forEach(stake => {
-        if (stake.status === 'locked') {
-          const authorStakes = db.prepare("SELECT COUNT(*) as cnt FROM proposal_stakes WHERE user_id = ? AND status = 'locked'").get(stake.user_id);
-          const successfulStakes = db.prepare(`
-            SELECT COUNT(DISTINCT ps.proposal_id) as cnt FROM proposal_stakes ps
-            JOIN proposals p ON ps.proposal_id = p.id
-            WHERE ps.user_id = ? AND p.passed = 1 AND ps.status = 'refunded'
-          `).get(stake.user_id);
-
-          const failedCount = authorStakes.cnt - successfulStakes.cnt;
-          const successfulCount = successfulStakes.cnt;
-          const qualityRatio = (1 + failedCount) / (1 + successfulCount);
-          const penalty = Math.round(stake.stake_amount * qualityRatio * 100) / 100;
-
-          db.prepare("UPDATE proposal_stakes SET status = 'forfeited', resolved_at = ? WHERE id = ?")
-            .run(new Date().toISOString(), stake.id);
-
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_penalty', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, -penalty, proposalId, `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`, new Date().toISOString());
-        }
-      });
-    }
-
-    console.log(`Processed stakes for proposal ${proposalId}: ${supportPct.toFixed(1)}% support`);
-  } catch (e) {
-    console.error('Process stakes error:', e);
-  }
-}
-
-function calculateStakeAmount(userId) {
-  const events = db.prepare('SELECT SUM(points) as total FROM merit_events WHERE user_id = ?').get(userId);
-  const ms = events.total || 0;
-  return Math.max(10, Math.round(ms * 0.005 * 100) / 100);
-}
-
 app.post('/api/proposals/:id/stake', userAuth, (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
@@ -5451,7 +5008,7 @@ app.post('/api/proposals/:id/stake', userAuth, (req, res) => {
       return res.status(409).json({ error: 'Already staked this proposal', success: false });
     }
 
-    const stakeAmount = calculateStakeAmount(userId);
+    const stakeAmount = merit.calculateStakeAmount(userId);
     const now = new Date().toISOString();
 
     db.prepare('INSERT INTO proposal_stakes (proposal_id, user_id, stake_amount, created_at) VALUES (?, ?, ?, ?)')
@@ -5571,73 +5128,6 @@ db.exec(`
   )
 `);
 
-const LAMBDA_BASE = 0.001267;
-const HALF_LIFE_DAYS = 547.5;
-
-function getLoyaltyCoefficient(joinDate) {
-  const now = new Date();
-  const join = new Date(joinDate);
-  const daysSinceJoin = (now - join) / (1000 * 60 * 60 * 24);
-
-  if (daysSinceJoin < 180) return 1.0;
-  if (daysSinceJoin < 365) return 1.2;
-  return 1.5;
-}
-
-function calculateVoteWeight(joinDate, createdAt) {
-  const settings = getSettings();
-  const lc = getLoyaltyCoefficient(joinDate);
-  const created = new Date(createdAt);
-  const now = new Date();
-  const daysSinceCreated = (now - created) / (1000 * 60 * 60 * 24);
-
-  const primaryWindowDays = settings.voting_window_primary_days || 7;
-  const extendedWindowDays = settings.voting_window_extended_days || 3;
-  const primaryWeight = settings.voting_weight_primary || 1.0;
-  const extendedWeight = settings.voting_weight_extended || 0.5;
-
-  let windowWeight = primaryWeight;
-  if (daysSinceCreated > primaryWindowDays) {
-    windowWeight = extendedWeight;
-  }
-
-  const memberWeight = lc;
-
-  return memberWeight * windowWeight;
-}
-
-function calculateApprovalThreshold(category) {
-  const settings = getSettings();
-  if (category === 'constitutional') {
-    return settings.approval_threshold_constitutional || 0.80;
-  } else if (category === 'policy') {
-    return settings.approval_threshold_policy || 0.60;
-  }
-  return settings.approval_threshold_routine || 0.50;
-}
-
-function calculateDecayedScore(userId, joinDate) {
-  const lc = getLoyaltyCoefficient(joinDate);
-  const events = db.prepare('SELECT * FROM merit_events WHERE user_id = ?').all(userId);
-
-  let totalScore = 0;
-  const now = new Date();
-
-  events.forEach(event => {
-    const eventDate = new Date(event.created_at);
-    const daysSince = (now - eventDate) / (1000 * 60 * 60 * 24);
-    const decayFactor = Math.exp(-(LAMBDA_BASE / lc) * daysSince);
-    totalScore += event.points * decayFactor;
-  });
-
-  return Math.round(totalScore * 100) / 100;
-}
-
-function calculateStaticScore(userId) {
-  const result = db.prepare('SELECT SUM(points) as total FROM merit_events WHERE user_id = ?').get(userId);
-  return result.total || 0;
-}
-
 app.get('/api/merit/score', userAuth, (req, res) => {
   const userId = req.user.id;
   const user = db.prepare('SELECT timestamp FROM signups WHERE id = ?').get(userId);
@@ -5646,9 +5136,9 @@ app.get('/api/merit/score', userAuth, (req, res) => {
     return res.status(404).json({ error: 'User not found', success: false });
   }
 
-  const staticScore = calculateStaticScore(userId);
-  const dynamicScore = calculateDecayedScore(userId, user.timestamp);
-  const loyaltyCoeff = getLoyaltyCoefficient(user.timestamp);
+  const staticScore = merit.calculateStaticScore(userId);
+  const dynamicScore = merit.calculateDecayedScore(userId, user.timestamp);
+  const loyaltyCoeff = merit.getLoyaltyCoefficient(user.timestamp);
   const lcLabel = loyaltyCoeff >= 1.5 ? 'founding' : loyaltyCoeff >= 1.2 ? 'early_adopter' : 'standard';
 
   res.json({
@@ -5658,7 +5148,7 @@ app.get('/api/merit/score', userAuth, (req, res) => {
     dynamic_score: dynamicScore,
     loyalty_coefficient: lc,
     loyalty_tier: lcLabel,
-    effective_half_life_days: Math.round(HALF_LIFE_DAYS * lc)
+    effective_half_life_days: Math.round(merit.HALF_LIFE_DAYS * lc)
   });
 });
 
@@ -5700,7 +5190,7 @@ app.get('/api/merit/leaderboard', (req, res) => {
     const leaderboard = users.map((u, i) => ({
       rank: i + 1,
       ...u,
-      dynamic_score: calculateDecayedScore(u.id, db.prepare('SELECT timestamp FROM signups WHERE id = ?').get(u.id).timestamp)
+      dynamic_score: merit.calculateDecayedScore(u.id, db.prepare('SELECT timestamp FROM signups WHERE id = ?').get(u.id).timestamp)
     }));
 
     res.json({ success: true, leaderboard });
@@ -6269,6 +5759,9 @@ function processHubStipends() {
 setInterval(processHubStipends, 60 * 60 * 1000);
 processHubStipends();
 
+setInterval(merit.processMonthlyStipends, 60 * 60 * 1000);
+merit.processMonthlyStipends();
+
 app.post('/api/amplify', userAuth, (req, res) => {
   const { content_type, content_title, base_url, reward_points = 10, expires_in_days = 7 } = req.body;
   const userId = req.user.id;
@@ -6422,9 +5915,9 @@ app.get('/api/user/profile', userAuth, (req, res) => {
       })() : [],
       donation_amount: user.donation_amount,
       initial_merit_estimate: user.initial_merit_estimate,
-      dynamic_score: (() => { try { return calculateDecayedScore(user.id, user.timestamp); } catch(e) { return user.initial_merit_estimate; } })(),
-      static_score: (() => { try { return calculateStaticScore(user.id); } catch(e) { return user.initial_merit_estimate; } })(),
-      loyalty_coefficient: (() => { try { return getLoyaltyCoefficient(user.timestamp); } catch(e) { return 1.0; } })(),
+      dynamic_score: (() => { try { return merit.calculateDecayedScore(user.id, user.timestamp); } catch(e) { return user.initial_merit_estimate; } })(),
+      static_score: (() => { try { return merit.calculateStaticScore(user.id); } catch(e) { return user.initial_merit_estimate; } })(),
+      loyalty_coefficient: (() => { try { return merit.getLoyaltyCoefficient(user.timestamp); } catch(e) { return 1.0; } })(),
       is_active: hasRecentActivity,
       timestamp: user.timestamp,
       last_login: user.last_login,
@@ -7527,97 +7020,7 @@ app.post('/api/admin/wall/:id/delete', adminAuth, (req, res) => {
 });
 
 // ==================== SERVE HTML FILES ====================
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/join', (req, res) => {
-  res.sendFile(path.join(__dirname, 'join.html'));
-});
-
-app.get('/intro', (req, res) => {
-  res.sendFile(path.join(__dirname, 'intro.html'));
-});
-
-app.get('/how', (req, res) => {
-  res.redirect('/how-it-works');
-});
-
-app.get('/how-it-works', (req, res) => {
-  res.sendFile(path.join(__dirname, 'how.html'));
-});
-
-app.get('/wall', (req, res) => {
-  res.sendFile(path.join(__dirname, 'wall.html'));
-});
-
-app.get('/donate', (req, res) => {
-  res.sendFile(path.join(__dirname, 'donate.html'));
-});
-
-app.get('/treasury', (req, res) => {
-  res.sendFile(path.join(__dirname, 'treasury.html'));
-});
-
-app.get('/events', (req, res) => {
-  res.sendFile(path.join(__dirname, 'events.html'));
-});
-
-app.get('/join-success', (req, res) => {
-  res.sendFile(path.join(__dirname, 'join-success.html'));
-});
-
-app.get('/join', (req, res) => {
-  res.sendFile(path.join(__dirname, 'join.html'));
-});
-
-app.get('/whitepaper', (req, res) => {
-  res.sendFile(path.join(__dirname, 'whitepaper.html'));
-});
-
-app.get('/policies', (req, res) => {
-  res.sendFile(path.join(__dirname, 'policies.html'));
-});
-
-app.get('/proposals', (req, res) => {
-  res.sendFile(path.join(__dirname, 'proposals.html'));
-});
-
-app.get('/legislature', (req, res) => {
-  res.sendFile(path.join(__dirname, 'legislature.html'));
-});
-
-app.get('/laws', (req, res) => {
-  res.sendFile(path.join(__dirname, 'laws.html'));
-});
-
-app.get('/law-stats', (req, res) => {
-  res.sendFile(path.join(__dirname, 'law-stats.html'));
-});
-
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-app.get('/profile', (req, res) => {
-  res.sendFile(path.join(__dirname, 'profile.html'));
-});
-
-app.get('/generate-law', (req, res) => {
-  res.sendFile(path.join(__dirname, 'generate-law.html'));
-});
-
-app.get('/leadership', (req, res) => {
-  res.sendFile(path.join(__dirname, 'leadership.html'));
-});
-
-app.get('/faq', (req, res) => {
-  res.sendFile(path.join(__dirname, 'faq.html'));
-});
-
-app.get('/enroll', (req, res) => {
-  res.sendFile(path.join(__dirname, 'enroll.html'));
-});
+app.use(require('./src/routes/static-pages'));
 
 // ==================== COMPREHENSIVE MIGRATIONS ====================
 const migrations = [
