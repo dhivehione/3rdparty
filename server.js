@@ -30,7 +30,35 @@ const DEFAULT_SETTINGS = {
   donation_bonus_per_100: 5,
   max_upload_bytes: 5 * 1024 * 1024,
   target_members: 13000,
-  target_treasury: 13000
+  target_treasury: 13000,
+  signup_random_bonus_max: 50,
+  donation_divisor_mvr: 100,
+  donation_log_multiplier: 35,
+  donation_usd_mvr_rate: 15.4,
+  donation_formula: 'log',
+  referral_tier1_limit: 5,
+  referral_tier2_limit: 20,
+  referral_base_t1: 2,
+  referral_base_t2: 1,
+  referral_base_t3: 0.5,
+  referral_engage_t1: 8,
+  referral_engage_t2: 4,
+  referral_engage_t3: 0.5,
+  endorsement_tier1_limit: 10,
+  endorsement_tier2_limit: 50,
+  endorsement_tier3_limit: 200,
+  endorsement_tier1_pts: 2.0,
+  endorsement_tier2_pts: 1.0,
+  endorsement_tier3_pts: 0.5,
+  endorsement_tier4_pts: 0.1,
+  approval_threshold_routine: 0.50,
+  approval_threshold_policy: 0.60,
+  approval_threshold_constitutional: 0.80,
+  voting_window_primary_days: 7,
+  voting_window_extended_days: 3,
+  voting_weight_primary: 1.0,
+  voting_weight_extended: 0.5,
+  proposal_cooldown_hours: 8
 };
 
 function getSettings() {
@@ -70,6 +98,75 @@ function cleanupExpiredVisitors() {
 }
 
 setInterval(cleanupExpiredVisitors, 60000);
+
+// Check and close expired proposals every minute (merit-weighted, tiered thresholds)
+function closeExpiredProposals() {
+  try {
+    const settings = getSettings();
+    const expiredProposals = db.prepare(`
+      SELECT id, created_by_user_id, amendment_of, category, yes_votes, no_votes FROM proposals
+      WHERE status = 'active' AND is_closed = 0 AND datetime(ends_at) <= datetime('now')
+    `).all();
+
+    expiredProposals.forEach(proposal => {
+      const weightedCounts = db.prepare(`
+        SELECT choice, SUM(vote_weight) as weighted_yes, SUM(CASE WHEN choice = 'yes' THEN 1 ELSE 0 END) as raw_yes,
+               SUM(CASE WHEN choice = 'no' THEN 1 ELSE 0 END) as raw_no,
+               SUM(CASE WHEN choice = 'abstain' THEN 1 ELSE 0 END) as raw_abstain
+        FROM votes WHERE proposal_id = ?
+      `).get(proposal.id);
+
+      const weighted_yes = weightedCounts?.weighted_yes || 0;
+      const weighted_no = weightedCounts?.weighted_no || 0;
+      const raw_yes = weightedCounts?.raw_yes || 0;
+      const raw_no = weightedCounts?.raw_no || 0;
+      const raw_abstain = weightedCounts?.raw_abstain || 0;
+      const raw_total = raw_yes + raw_no + raw_abstain;
+
+      const threshold = calculateApprovalThreshold(proposal.category);
+      const total_weight = weighted_yes + weighted_no;
+      const passed = total_weight > 0 && (weighted_yes / total_weight) >= threshold;
+
+      db.prepare('UPDATE proposals SET is_closed = 1, passed = ?, yes_votes = ?, no_votes = ?, abstain_votes = ? WHERE id = ?')
+        .run(weighted_yes, weighted_no, raw_abstain, proposal.id);
+
+      if (passed && proposal.amendment_of) {
+        const original = db.prepare('SELECT id, created_by_user_id FROM proposals WHERE id = ?').get(proposal.amendment_of);
+        if (original && original.created_by_user_id) {
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'bridge_building', 400, ?, 'proposal', 'Bridge-building bonus: Fixed failing proposal', ?)
+          `).run(proposal.created_by_user_id, proposal.id, new Date().toISOString());
+        }
+      }
+
+      const voters = db.prepare('SELECT user_id FROM votes WHERE proposal_id = ? AND choice != ?').all(proposal.id, 'abstain');
+      voters.forEach(voter => {
+        if (voter.user_id) {
+          const points = passed ? (settings.merit_vote_pass || 2.5) : (settings.merit_vote_fail || 1.0);
+          const desc = passed ? 'Voted on passing proposal' : 'Voted on failing proposal';
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'voting', ?, ?, 'proposal', ?, ?)
+          `).run(voter.user_id, points, proposal.id, desc, new Date().toISOString());
+        }
+      });
+
+      if (proposal.created_by_user_id && passed) {
+        const authorPoints = settings.merit_proposal_author || 200;
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+          VALUES (?, 'proposal_author', ?, ?, 'proposal', 'Authored passing proposal', ?)
+        `).run(proposal.created_by_user_id, authorPoints, proposal.id, new Date().toISOString());
+      }
+
+      processProposalStakes(proposal.id, weighted_yes, weighted_no, total_weight);
+    });
+  } catch (e) {
+    console.error('Close expired proposals error:', e);
+  }
+}
+setInterval(closeExpiredProposals, 60000);
 
 // ==================== DATABASE SETUP ====================
 const dataDir = path.join(__dirname, 'data');
@@ -288,6 +385,214 @@ db.exec(`
   )
 `);
 
+// Peer endorsements with diminishing returns (whitepaper sec II.C.4)
+// Endorsements 1-10: 2.0 pts, 11-50: 1.0 pts, 51-200: 0.5 pts, 201+: 0.1 pts
+// Max 20 unique endorsements per 30-day period
+db.exec(`
+  CREATE TABLE IF NOT EXISTS peer_endorsements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    endorser_id INTEGER NOT NULL,
+    endorsed_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(endorser_id, endorsed_id),
+    FOREIGN KEY (endorser_id) REFERENCES signups(id),
+    FOREIGN KEY (endorsed_id) REFERENCES signups(id)
+  )
+`);
+
+// Migration: Add expiry column for 30-day limit
+try {
+  db.exec('ALTER TABLE peer_endorsements ADD COLUMN expires_at TEXT');
+} catch (e) {}
+
+// Donations table for tracking resource contributions with proper logarithmic merit
+// Whitepaper sec II.C.5: 35 * log5(Donation_Value_USD + 1)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS donations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount_usd REAL NOT NULL,
+    amount_mvr REAL,
+    merit_points_awarded REAL DEFAULT 0,
+    source TEXT,
+    verified INTEGER DEFAULT 0,
+    donated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+// Bounty System (whitepaper sec II.C.6)
+// Tier 1: 20 pts (Simple Task), Tier 2: 75 pts (Involved Task), Tier 3: 250 pts (Expert Task)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bounties (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    tier INTEGER NOT NULL CHECK(tier IN (1, 2, 3)),
+    reward_points INTEGER NOT NULL,
+    posted_by_user_id INTEGER,
+    assigned_to_user_id INTEGER,
+    status TEXT DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'completed', 'cancelled')),
+    created_at TEXT NOT NULL,
+    completed_at TEXT,
+    proof_description TEXT,
+    FOREIGN KEY (posted_by_user_id) REFERENCES signups(id),
+    FOREIGN KEY (assigned_to_user_id) REFERENCES signups(id)
+  )
+`);
+
+// Bounty claims for tracking who claimed what
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bounty_claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bounty_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    proof TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    reviewed_by_user_id INTEGER,
+    reviewed_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (bounty_id) REFERENCES bounties(id),
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+// Leadership Academy (whitepaper sec VI.A)
+// Tier 3 Bounty (250 pts) on graduation
+db.exec(`
+  CREATE TABLE IF NOT EXISTS academy_modules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    order_index INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS academy_enrollments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    module_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'enrolled' CHECK(status IN ('enrolled', 'in_progress', 'completed')),
+    enrolled_at TEXT NOT NULL,
+    completed_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES signups(id),
+    FOREIGN KEY (module_id) REFERENCES academy_modules(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS academy_graduation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    graduated_at TEXT NOT NULL,
+    merit_awarded REAL DEFAULT 0,
+    mentor_id INTEGER,
+    FOREIGN KEY (user_id) REFERENCES signups(id),
+    FOREIGN KEY (mentor_id) REFERENCES signups(id)
+  )
+`);
+
+// Initialize default academy modules if empty
+const existingModules = db.prepare('SELECT COUNT(*) as cnt FROM academy_modules').get();
+if (existingModules.cnt === 0) {
+  const now = new Date().toISOString();
+  const modules = [
+    { title: 'Public Finance & Budgeting', description: 'Learn the fundamentals of public finance management, budget planning, and fiscal responsibility in governance.' },
+    { title: 'Legislative Drafting and Analysis', description: 'Master the art of writing clear, effective legislation that withstands legal scrutiny.' },
+    { title: 'Media Training & Strategic Communication', description: 'Develop skills for effective public communication, press relations, and message framing.' },
+    { title: 'Parliamentary Procedure', description: 'Understand the rules and conventions of parliamentary decision-making.' },
+    { title: 'Policy Analysis & Research', description: 'Learn to research, evaluate, and formulate evidence-based policies.' },
+  ];
+  modules.forEach((m, i) => {
+    db.prepare('INSERT INTO academy_modules (title, description, order_index, created_at) VALUES (?, ?, ?, ?)').run(m.title, m.description, i, now);
+  });
+}
+
+// ==================== ROLE-BASED STIPENDS (Whitepaper sec II.C.8) ====================
+// Council: 150 pts/month, Committee: 75 pts/month, Advisory: 50 pts/report
+const ROLE_STIPENDS = { council: 150, committee: 75, advisory: 50 };
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS leadership_stipends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    position_id INTEGER NOT NULL,
+    period_year INTEGER NOT NULL,
+    period_month INTEGER NOT NULL,
+    amount_awarded REAL NOT NULL,
+    awarded_at TEXT NOT NULL,
+    UNIQUE(user_id, position_id, period_year, period_month),
+    FOREIGN KEY (user_id) REFERENCES signups(id),
+    FOREIGN KEY (position_id) REFERENCES leadership_positions(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS advisory_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    report_title TEXT NOT NULL,
+    report_content TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    reviewed_by_user_id INTEGER,
+    reviewed_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+function processMonthlyStipends() {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+
+    const activeTerms = db.prepare(`
+      SELECT lt.*, lp.position_type, lp.title as position_title, s.id as user_id
+      FROM leadership_terms lt
+      JOIN leadership_positions lp ON lt.position_id = lp.id
+      JOIN signups s ON lt.user_id = s.id
+      WHERE lt.ended_at IS NULL AND lp.is_active = 1
+    `).all();
+
+    activeTerms.forEach(term => {
+      if (!term.ended_at && ROLE_STIPENDS[term.position_type]) {
+        const existing = db.prepare(`
+          SELECT id FROM leadership_stipends
+          WHERE user_id = ? AND position_id = ? AND period_year = ? AND period_month = ?
+        `).get(term.user_id, term.position_id, year, month);
+
+        if (!existing) {
+          const stipendAmount = ROLE_STIPENDS[term.position_type];
+          const awardedAt = now.toISOString();
+
+          db.prepare(`
+            INSERT INTO leadership_stipends (user_id, position_id, period_year, period_month, amount_awarded, awarded_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(term.user_id, term.position_id, year, month, stipendAmount, awardedAt);
+
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'leadership_stipend', ?, ?, 'stipend', ?, ?)
+          `).run(term.user_id, stipendAmount, term.position_id, `${term.position_title} stipend (${month}/${year})`, awardedAt);
+
+          logActivity('stipend_awarded', term.user_id, term.position_id, { amount: stipendAmount, period: `${month}/${year}` }, {});
+        }
+      }
+    });
+
+    console.log(`Stipend processing complete for ${year}-${month}`);
+  } catch (e) {
+    console.error('Stipend processing error:', e);
+  }
+}
+
+setInterval(processMonthlyStipends, 60 * 60 * 1000);
+processMonthlyStipends();
+
 // Public wall posts table (no signup required)
 db.exec(`
   CREATE TABLE IF NOT EXISTS wall_posts (
@@ -330,17 +635,51 @@ db.exec(`
   )
 `);
 
-// Votes table (anyone can vote, tracked by IP for demo purposes)
+// ==================== MERIT SYSTEM ====================
+// Merit events table - tracks all point awards/deductions for dynamic score calculation
 db.exec(`
-  CREATE TABLE IF NOT EXISTS votes (
+  CREATE TABLE IF NOT EXISTS merit_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    proposal_id INTEGER NOT NULL,
-    choice TEXT NOT NULL CHECK(choice IN ('yes', 'no', 'abstain')),
-    voter_ip TEXT,
-    voted_at TEXT NOT NULL,
-    FOREIGN KEY (proposal_id) REFERENCES proposals(id)
+    user_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    points REAL NOT NULL,
+    reference_id INTEGER,
+    reference_type TEXT,
+    description TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
   )
 `);
+
+// Migration: Add user_id to votes table if not exists
+try {
+  db.exec('ALTER TABLE votes ADD COLUMN user_id INTEGER');
+} catch (e) {}
+
+// Migration: Add weighted_vote columns for merit-weighted voting
+try {
+  db.exec('ALTER TABLE votes ADD COLUMN vote_weight REAL DEFAULT 1.0');
+  db.exec('ALTER TABLE votes ADD COLUMN loyalty_coefficient REAL DEFAULT 1.0');
+  db.exec('ALTER TABLE votes ADD COLUMN days_since_created INTEGER DEFAULT 0');
+} catch (e) {}
+
+// Migration: Add category column to proposals
+try {
+  db.exec('ALTER TABLE proposals ADD COLUMN approval_threshold REAL');
+} catch (e) {}
+
+// Migration: Add is_closed and passed columns to proposals
+try {
+  db.exec('ALTER TABLE proposals ADD COLUMN is_closed INTEGER DEFAULT 0');
+  db.exec('ALTER TABLE proposals ADD COLUMN passed INTEGER DEFAULT 0');
+} catch (e) {}
+
+// Migration: Add amendment support to proposals
+try {
+  db.exec('ALTER TABLE proposals ADD COLUMN amendment_of INTEGER');
+  db.exec('ALTER TABLE proposals ADD COLUMN original_yes_votes INTEGER DEFAULT 0');
+  db.exec('ALTER TABLE proposals ADD COLUMN original_no_votes INTEGER DEFAULT 0');
+} catch (e) {}
 
 // Ranked choice proposals (multiple options to rank)
 db.exec(`
@@ -1009,24 +1348,35 @@ app.get('/api/wall/thread/:threadId', (req, res) => {
 // GET /api/proposals - Get all active proposals
 app.get('/api/proposals', (req, res) => {
   try {
+    const settings = getSettings();
     const proposals = db.prepare(`
-      SELECT p.*, 
-        (SELECT COUNT(*) FROM votes WHERE proposal_id = p.id) as vote_count
-      FROM proposals p 
-      WHERE p.status = 'active' 
+      SELECT p.*,
+        (SELECT COUNT(*) FROM votes WHERE proposal_id = p.id) as vote_count,
+        (SELECT COALESCE(SUM(vote_weight), 0) FROM votes WHERE proposal_id = p.id AND choice = 'yes') as weighted_yes,
+        (SELECT COALESCE(SUM(vote_weight), 0) FROM votes WHERE proposal_id = p.id AND choice = 'no') as weighted_no
+      FROM proposals p
+      WHERE p.status = 'active'
       ORDER BY p.created_at DESC
     `).all();
-    
-    // Get user votes by IP (for demo purposes)
+
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const userVotes = db.prepare('SELECT proposal_id, choice FROM votes WHERE voter_ip = ?').all(userIP);
     const userVotesMap = {};
     userVotes.forEach(v => userVotesMap[v.proposal_id] = v.choice);
-    
+
     proposals.forEach(p => {
       p.userVote = userVotesMap[p.id] || null;
+      p.approval_threshold = calculateApprovalThreshold(p.category);
+      p.passing_threshold_display = `${Math.round(p.approval_threshold * 100)}% ${p.category === 'constitutional' ? 'constitutional' : p.category === 'policy' ? 'policy shift' : 'routine'} majority required`;
+      p.is_weighted = true;
+      p.window_info = {
+        primary_days: settings.voting_window_primary_days || 7,
+        extended_days: settings.voting_window_extended_days || 3,
+        primary_weight: settings.voting_weight_primary || 1.0,
+        extended_weight: settings.voting_weight_extended || 0.5
+      };
     });
-    
+
     res.json({ proposals, success: true });
   } catch (error) {
     console.error('Proposals fetch error:', error);
@@ -1034,11 +1384,10 @@ app.get('/api/proposals', (req, res) => {
   }
 });
 
-// POST /api/proposals - Create a new proposal (demo - no signup required)
+// POST /api/proposals - Create a new proposal (8-hour cooldown enforced)
 app.post('/api/proposals', (req, res) => {
   const { title, description, category, nickname } = req.body;
-  
-  // Check if user is authenticated (for tracking who created it)
+
   let userId = null;
   const authHeader = req.headers.authorization;
   if (authHeader) {
@@ -1048,23 +1397,42 @@ app.post('/api/proposals', (req, res) => {
       if (user) userId = user.id;
     } catch (e) {}
   }
-  
+
+  if (userId) {
+    const settings = getSettings();
+    const cooldownHours = settings.proposal_cooldown_hours || 8;
+    const cooldownMs = cooldownHours * 60 * 60 * 1000;
+    const lastProposal = db.prepare(`
+      SELECT created_at FROM proposals WHERE created_by_user_id = ? ORDER BY created_at DESC LIMIT 1
+    `).get(userId);
+    if (lastProposal) {
+      const hoursSince = (Date.now() - new Date(lastProposal.created_at).getTime()) / (1000 * 60 * 60);
+      if (hoursSince < cooldownHours) {
+        return res.status(429).json({
+          error: `Proposal cooldown active. Wait ${(cooldownHours - hoursSince).toFixed(1)} more hours.`,
+          success: false,
+          next_proposal_at: new Date(lastProposal.created_at.getTime() + cooldownMs).toISOString()
+        });
+      }
+    }
+  }
+
   if (!title || title.trim().length < 5) {
     return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
   }
-  
+
   if (!description || description.trim().length < 20) {
     return res.status(400).json({ error: 'Description must be at least 20 characters', success: false });
   }
-  
+
   try {
     const settings = getSettings();
     const createdAt = new Date().toISOString();
     const endsAt = new Date(Date.now() + settings.proposal_voting_days * 24 * 60 * 60 * 1000).toISOString();
-    
+
     const stmt = db.prepare(`
-      INSERT INTO proposals (title, description, category, created_by_nickname, created_at, ends_at, created_by_user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO proposals (title, description, category, created_by_nickname, created_at, ends_at, created_by_user_id, approval_threshold)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length)),
@@ -1073,11 +1441,12 @@ app.post('/api/proposals', (req, res) => {
       sanitizeHTML(nickname ? nickname.trim().substring(0, settings.nickname_max_length) : 'Anonymous'),
       createdAt,
       endsAt,
-      userId
+      userId,
+      calculateApprovalThreshold(category || 'general')
     );
-    
+
     if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Proposal created! Members can now vote.',
       success: true,
       id: result.lastInsertRowid
@@ -1088,47 +1457,80 @@ app.post('/api/proposals', (req, res) => {
   }
 });
 
-// POST /api/vote - Vote on a proposal
+// POST /api/vote - Vote on a proposal (merit-weighted, whitepaper §II.D)
 app.post('/api/vote', (req, res) => {
   const { proposal_id, choice } = req.body;
-  
+
   if (!proposal_id) {
     return res.status(400).json({ error: 'Proposal ID required', success: false });
   }
-  
+
   if (!['yes', 'no', 'abstain'].includes(choice)) {
     return res.status(400).json({ error: 'Invalid choice', success: false });
   }
-  
+
   try {
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const votedAt = new Date().toISOString();
-    
-    // Check if already voted
-    const existingVote = db.prepare('SELECT id FROM votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
-    if (existingVote) {
-      // Update existing vote
-      db.prepare('UPDATE votes SET choice = ?, voted_at = ? WHERE id = ?').run(choice, votedAt, existingVote.id);
-    } else {
-      // Insert new vote
-      db.prepare('INSERT INTO votes (proposal_id, choice, voter_ip, voted_at) VALUES (?, ?, ?, ?)').run(proposal_id, choice, userIP, votedAt);
+
+    let userId = null;
+    let userJoinDate = null;
+    let userMeritScore = 0;
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const user = db.prepare('SELECT id, timestamp FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) {
+          userId = user.id;
+          userJoinDate = user.timestamp;
+          userMeritScore = calculateStaticScore(userId);
+        }
+      } catch (e) {}
     }
-    
-    // Update proposal counts
-    const counts = db.prepare(`
-      SELECT choice, COUNT(*) as cnt FROM votes WHERE proposal_id = ? GROUP BY choice
+
+    const proposal = db.prepare('SELECT id, created_at FROM proposals WHERE id = ?').get(proposal_id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found', success: false });
+    }
+
+    const voteWeight = userJoinDate ? calculateVoteWeight(userJoinDate, proposal.created_at) : 1.0;
+    const lc = userJoinDate ? getLoyaltyCoefficient(userJoinDate) : 1.0;
+    const daysSinceCreated = userJoinDate ? Math.floor((new Date() - new Date(proposal.created_at)) / (1000 * 60 * 60 * 24)) : 0;
+
+    const existingVote = db.prepare('SELECT id, user_id FROM votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
+    if (existingVote) {
+      db.prepare('UPDATE votes SET choice = ?, voted_at = ?, user_id = ?, vote_weight = ?, loyalty_coefficient = ?, days_since_created = ? WHERE id = ?')
+        .run(choice, votedAt, userId || existingVote.user_id, voteWeight, lc, daysSinceCreated, existingVote.id);
+    } else {
+      db.prepare('INSERT INTO votes (proposal_id, choice, voter_ip, voted_at, user_id, vote_weight, loyalty_coefficient, days_since_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(proposal_id, choice, userIP, votedAt, userId, voteWeight, lc, daysSinceCreated);
+    }
+
+    const weightedCounts = db.prepare(`
+      SELECT choice, SUM(vote_weight) as weighted_cnt, COUNT(*) as raw_cnt
+      FROM votes WHERE proposal_id = ? GROUP BY choice
     `).all(proposal_id);
-    
-    let yes = 0, no = 0, abstain = 0;
-    counts.forEach(c => {
-      if (c.choice === 'yes') yes = c.cnt;
-      if (c.choice === 'no') no = c.cnt;
-      if (c.choice === 'abstain') abstain = c.cnt;
+
+    let weighted_yes = 0, weighted_no = 0, weighted_abstain = 0, raw_total = 0;
+    weightedCounts.forEach(c => {
+      if (c.choice === 'yes') weighted_yes = c.weighted_cnt || 0;
+      if (c.choice === 'no') weighted_no = c.weighted_cnt || 0;
+      if (c.choice === 'abstain') weighted_abstain = c.weighted_cnt || 0;
+      raw_total += c.raw_cnt || 0;
     });
-    
-    db.prepare('UPDATE proposals SET yes_votes = ?, no_votes = ?, abstain_votes = ? WHERE id = ?').run(yes, no, abstain, proposal_id);
-    
-    res.json({ message: 'Vote recorded!', success: true });
+
+    db.prepare('UPDATE proposals SET yes_votes = ?, no_votes = ?, abstain_votes = ? WHERE id = ?')
+      .run(weighted_yes, weighted_no, weighted_abstain, proposal_id);
+
+    res.json({
+      message: 'Vote recorded!',
+      success: true,
+      vote_weight: voteWeight,
+      loyalty_coefficient: lc,
+      weighted_tally: { yes: weighted_yes, no: weighted_no, abstain: weighted_abstain },
+      raw_voters: raw_total
+    });
   } catch (error) {
     console.error('Vote error:', error);
     res.status(500).json({ error: 'Could not record vote', success: false });
@@ -2283,21 +2685,26 @@ app.post('/api/signup', (req, res) => {
   typesArray.forEach(type => {
     initialMerit += meritEstimates[type] || 0;
   });
-  initialMerit += Math.floor(Math.random() * 50);
+  initialMerit += Math.floor(Math.random() * settings.signup_random_bonus_max);
   
   // Validate donation amount
   let finalDonation = 0;
   if (typesArray.includes('donation') && donation_amount) {
     finalDonation = parseFloat(donation_amount);
     if (isNaN(finalDonation) || finalDonation <= 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Please enter a valid donation amount.',
-        success: false 
+        success: false
       });
     }
-    // Bonus merit for donations (diminishing returns)
-    const donationBonus = Math.floor(finalDonation / 100) * settings.donation_bonus_per_100;
-    initialMerit += donationBonus;
+    let donationMerit;
+    if (settings.donation_formula === 'flat') {
+      donationMerit = Math.floor(finalDonation / settings.donation_divisor_mvr) * settings.donation_bonus_per_100;
+    } else {
+      const amountUsd = finalDonation / settings.donation_usd_mvr_rate;
+      donationMerit = Math.round(settings.donation_log_multiplier * Math.log(amountUsd + 1) / Math.log(5));
+    }
+    initialMerit += donationMerit;
   }
   
    try {
@@ -2736,17 +3143,15 @@ function logActivity(actionType, userId, targetId, details, req) {
 
 // Calculate referral points based on total successful invites
 function getReferralPoints(inviteCount, isEngagementBonus = false) {
+  const s = getSettings();
   if (isEngagementBonus) {
-    // Engagement bonus
-    if (inviteCount <= 5) return 8;
-    if (inviteCount <= 20) return 4;
-    return 0.5;
-  } else {
-    // Base reward
-    if (inviteCount <= 5) return 2;
-    if (inviteCount <= 20) return 1;
-    return 0.5;
+    if (inviteCount <= s.referral_tier1_limit) return s.referral_engage_t1;
+    if (inviteCount <= s.referral_tier2_limit) return s.referral_engage_t2;
+    return s.referral_engage_t3;
   }
+  if (inviteCount <= s.referral_tier1_limit) return s.referral_base_t1;
+  if (inviteCount <= s.referral_tier2_limit) return s.referral_base_t2;
+  return s.referral_base_t3;
 }
 
 // POST /api/referral/introduce - Introduce a new member
@@ -2952,7 +3357,7 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
   typesArray.forEach(type => {
     initialMerit += meritEstimates[type] || 0;
   });
-  initialMerit += Math.floor(Math.random() * 50);
+  initialMerit += Math.floor(Math.random() * enrollSettings.signup_random_bonus_max);
 
   // Validate donation amount
   let finalDonation = 0;
@@ -2964,8 +3369,14 @@ app.post('/api/enroll-family-friend', userAuth, (req, res) => {
         success: false
       });
     }
-    const donationBonus = Math.floor(finalDonation / 100) * enrollSettings.donation_bonus_per_100;
-    initialMerit += donationBonus;
+    let donationMerit;
+    if (enrollSettings.donation_formula === 'flat') {
+      donationMerit = Math.floor(finalDonation / enrollSettings.donation_divisor_mvr) * enrollSettings.donation_bonus_per_100;
+    } else {
+      const amountUsd = finalDonation / enrollSettings.donation_usd_mvr_rate;
+      donationMerit = Math.round(enrollSettings.donation_log_multiplier * Math.log(amountUsd + 1) / Math.log(5));
+    }
+    initialMerit += donationMerit;
   }
 
   try {
@@ -3192,9 +3603,9 @@ function userAuth(req, res, next) {
   if (!authHeader) {
     return res.status(401).json({ error: 'Authentication required', success: false });
   }
-  
+
   const token = authHeader.replace(/^Bearer\s+/i, '');
-  
+
   try {
     const user = db.prepare('SELECT * FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
     if (!user) {
@@ -3206,6 +3617,1562 @@ function userAuth(req, res, next) {
     return res.status(401).json({ error: 'Authentication failed', success: false });
   }
 }
+
+function calculateEndorsementPoints(count) {
+  const s = getSettings();
+  if (count <= 0) return 0;
+  if (count <= s.endorsement_tier1_limit) return count * s.endorsement_tier1_pts;
+  if (count <= s.endorsement_tier2_limit) return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (count - s.endorsement_tier1_limit) * s.endorsement_tier2_pts;
+  if (count <= s.endorsement_tier3_limit) return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (s.endorsement_tier2_limit - s.endorsement_tier1_limit) * s.endorsement_tier2_pts + (count - s.endorsement_tier2_limit) * s.endorsement_tier3_pts;
+  return s.endorsement_tier1_limit * s.endorsement_tier1_pts + (s.endorsement_tier2_limit - s.endorsement_tier1_limit) * s.endorsement_tier2_pts + (s.endorsement_tier3_limit - s.endorsement_tier2_limit) * s.endorsement_tier3_pts + (count - s.endorsement_tier3_limit) * s.endorsement_tier4_pts;
+}
+
+app.post('/api/endorsements', userAuth, (req, res) => {
+  const { endorsed_id } = req.body;
+  const endorserId = req.user.id;
+
+  if (!endorsed_id) {
+    return res.status(400).json({ error: 'endorsed_id required', success: false });
+  }
+
+  if (parseInt(endorsed_id) === endorserId) {
+    return res.status(400).json({ error: 'Cannot endorse yourself', success: false });
+  }
+
+  try {
+    const target = db.prepare('SELECT id FROM signups WHERE id = ? AND is_verified = 1').get(endorsed_id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found', success: false });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const recentEndorsements = db.prepare(`
+      SELECT COUNT(*) as cnt FROM peer_endorsements
+      WHERE endorser_id = ? AND created_at > ?
+    `).get(endorserId, thirtyDaysAgo);
+
+    if (recentEndorsements.cnt >= 20) {
+      return res.status(429).json({ error: 'Max 20 endorsements per 30-day period', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM peer_endorsements WHERE endorser_id = ? AND endorsed_id = ?').get(endorserId, endorsed_id);
+    if (existing) {
+      return res.status(409).json({ error: 'Already endorsed this user', success: false });
+    }
+
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    db.prepare('INSERT INTO peer_endorsements (endorser_id, endorsed_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(endorserId, endorsed_id, now, expiresAt);
+
+    const endorsements = db.prepare('SELECT * FROM peer_endorsements WHERE endorsed_id = ?').all(endorsed_id);
+    const points = calculateEndorsementPoints(endorsements.length);
+
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'peer_endorsement', ?, ?, 'endorsement', ?, ?)
+    `).run(endorsed_id, points, endorsements.length, 'peer_endorsement', `Peer endorsement #${endorsements.length}`, now);
+
+    res.json({ success: true, message: 'Endorsement recorded' });
+  } catch (error) {
+    console.error('Endorsement error:', error);
+    res.status(500).json({ error: 'Could not record endorsement', success: false });
+  }
+});
+
+app.delete('/api/endorsements/:id', userAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const endorsement = db.prepare('SELECT * FROM peer_endorsements WHERE id = ? AND endorser_id = ?').get(id, userId);
+    if (!endorsement) {
+      return res.status(404).json({ error: 'Endorsement not found', success: false });
+    }
+
+    db.prepare('DELETE FROM peer_endorsements WHERE id = ?').run(id);
+
+    const remaining = db.prepare('SELECT COUNT(*) as cnt FROM peer_endorsements WHERE endorsed_id = ?').get(endorsement.endorsed_id);
+    const points = calculateEndorsementPoints(remaining.cnt);
+
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'peer_endorsement_removed', ?, ?, 'endorsement', ?, ?)
+    `).run(endorsement.endorsed_id, points, endorsement.endorsed_id, 'peer_endorsement', `Peer endorsements updated: ${remaining.cnt} remaining`, new Date().toISOString());
+
+    res.json({ success: true, message: 'Endorsement removed' });
+  } catch (error) {
+    console.error('Endorsement removal error:', error);
+    res.status(500).json({ error: 'Could not remove endorsement', success: false });
+  }
+});
+
+app.get('/api/endorsements/received', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const endorsements = db.prepare(`
+      SELECT pe.*, s.name as endorser_name, s.username as endorser_username
+      FROM peer_endorsements pe
+      JOIN signups s ON pe.endorser_id = s.id
+      WHERE pe.endorsed_id = ?
+      ORDER BY pe.created_at DESC
+    `).all(userId);
+
+    const totalPoints = calculateEndorsementPoints(endorsements.length);
+
+    res.json({ success: true, endorsements, total_endorsements: endorsements.length, total_points: totalPoints });
+  } catch (error) {
+    console.error('Get endorsements error:', error);
+    res.status(500).json({ error: 'Could not fetch endorsements', success: false });
+  }
+});
+
+app.get('/api/endorsements/given', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const endorsements = db.prepare(`
+      SELECT pe.*, s.name as endorsed_name, s.username as endorsed_username
+      FROM peer_endorsements pe
+      JOIN signups s ON pe.endorsed_id = s.id
+      WHERE pe.endorser_id = ?
+      ORDER BY pe.created_at DESC
+    `).all(userId);
+
+    res.json({ success: true, endorsements, total_given: endorsements.length });
+  } catch (error) {
+    console.error('Get endorsements error:', error);
+    res.status(500).json({ error: 'Could not fetch endorsements', success: false });
+  }
+});
+
+// ==================== BOUNTY SYSTEM (Whitepaper sec II.C.6) ====================
+const BOUNTY_TIER_REWARDS = { 1: 20, 2: 75, 3: 250 };
+
+app.post('/api/bounties', userAuth, (req, res) => {
+  const { title, description, tier } = req.body;
+
+  if (!title || title.trim().length < 5) {
+    return res.status(400).json({ error: 'Title must be at least 5 characters', success: false });
+  }
+  if (!description || description.trim().length < 20) {
+    return res.status(400).json({ error: 'Description must be at least 20 characters', success: false });
+  }
+  if (![1, 2, 3].includes(parseInt(tier))) {
+    return res.status(400).json({ error: 'Tier must be 1, 2, or 3', success: false });
+  }
+
+  try {
+    const tierNum = parseInt(tier);
+    const rewardPoints = BOUNTY_TIER_REWARDS[tierNum];
+    const now = new Date().toISOString();
+
+    const result = db.prepare(`
+      INSERT INTO bounties (title, description, tier, reward_points, posted_by_user_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(title.trim(), description.trim(), tierNum, rewardPoints, req.user.id, now);
+
+    logActivity('bounty_created', req.user.id, result.lastInsertRowid, { title: title.trim(), tier: tierNum }, req);
+    res.status(201).json({ success: true, message: 'Bounty posted', bounty_id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('Bounty create error:', error);
+    res.status(500).json({ error: 'Could not create bounty', success: false });
+  }
+});
+
+app.get('/api/bounties', (req, res) => {
+  const { status, tier } = req.query;
+
+  try {
+    let query = 'SELECT b.*, s.name as posted_by_name FROM bounties b JOIN signups s ON b.posted_by_user_id = s.id WHERE 1=1';
+    const params = [];
+
+    if (status) {
+      query += ' AND b.status = ?';
+      params.push(status);
+    }
+    if (tier) {
+      query += ' AND b.tier = ?';
+      params.push(parseInt(tier));
+    }
+
+    query += ' ORDER BY b.created_at DESC';
+
+    const bounties = db.prepare(query).all(...params);
+    res.json({ success: true, bounties });
+  } catch (error) {
+    console.error('Get bounties error:', error);
+    res.status(500).json({ error: 'Could not fetch bounties', success: false });
+  }
+});
+
+app.get('/api/bounties/:id', (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const bounty = db.prepare(`
+      SELECT b.*, s.name as posted_by_name, s.username as posted_by_username
+      FROM bounties b
+      JOIN signups s ON b.posted_by_user_id = s.id
+      WHERE b.id = ?
+    `).get(id);
+
+    if (!bounty) {
+      return res.status(404).json({ error: 'Bounty not found', success: false });
+    }
+
+    const claims = db.prepare(`
+      SELECT bc.*, s.name as claimant_name, s.username as claimant_username
+      FROM bounty_claims bc
+      JOIN signups s ON bc.user_id = s.id
+      WHERE bc.bounty_id = ?
+      ORDER BY bc.created_at DESC
+    `).all(id);
+
+    res.json({ success: true, bounty, claims });
+  } catch (error) {
+    console.error('Get bounty error:', error);
+    res.status(500).json({ error: 'Could not fetch bounty', success: false });
+  }
+});
+
+app.post('/api/bounties/:id/claim', userAuth, (req, res) => {
+  const { id } = req.params;
+  const { proof } = req.body;
+
+  if (!proof || proof.trim().length < 10) {
+    return res.status(400).json({ error: 'Proof description must be at least 10 characters', success: false });
+  }
+
+  try {
+    const bounty = db.prepare('SELECT * FROM bounties WHERE id = ?').get(id);
+    if (!bounty) {
+      return res.status(404).json({ error: 'Bounty not found', success: false });
+    }
+    if (bounty.status !== 'open') {
+      return res.status(400).json({ error: 'Bounty is not open for claims', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM bounty_claims WHERE bounty_id = ? AND user_id = ?').get(id, req.user.id);
+    if (existing) {
+      return res.status(409).json({ error: 'You have already claimed this bounty', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO bounty_claims (bounty_id, user_id, proof, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(id, req.user.id, proof.trim(), now);
+
+    db.prepare('UPDATE bounties SET status = ? WHERE id = ?').run('in_progress', id);
+
+    logActivity('bounty_claimed', req.user.id, id, { bounty_id: id }, req);
+    res.json({ success: true, message: 'Bounty claim submitted' });
+  } catch (error) {
+    console.error('Bounty claim error:', error);
+    res.status(500).json({ error: 'Could not claim bounty', success: false });
+  }
+});
+
+app.post('/api/bounties/:id/approve', userAuth, (req, res) => {
+  const { id } = req.params;
+  const { claim_id } = req.body;
+
+  try {
+    const bounty = db.prepare('SELECT * FROM bounties WHERE id = ?').get(id);
+    if (!bounty) {
+      return res.status(404).json({ error: 'Bounty not found', success: false });
+    }
+
+    const claim = db.prepare('SELECT * FROM bounty_claims WHERE id = ? AND bounty_id = ?').get(claim_id, id);
+    if (!claim) {
+      return res.status(404).json({ error: 'Claim not found', success: false });
+    }
+
+    db.prepare('UPDATE bounty_claims SET status = ?, reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?')
+      .run('approved', req.user.id, new Date().toISOString(), claim_id);
+
+    db.prepare('UPDATE bounties SET status = ?, assigned_to_user_id = ?, completed_at = ? WHERE id = ?')
+      .run('completed', claim.user_id, new Date().toISOString(), id);
+
+    const desc = `Completed bounty: ${bounty.title}`;
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'bounty', ?, ?, 'bounty', ?, ?)
+    `).run(claim.user_id, bounty.reward_points, id, 'bounty_complete', desc, new Date().toISOString());
+
+    logActivity('bounty_completed', claim.user_id, id, { bounty_id: id, points: bounty.reward_points }, req);
+    res.json({ success: true, message: 'Bounty approved and points awarded' });
+  } catch (error) {
+    console.error('Approve bounty error:', error);
+    res.status(500).json({ error: 'Could not approve bounty', success: false });
+  }
+});
+
+app.post('/api/bounties/:id/reject', userAuth, (req, res) => {
+  const { id } = req.params;
+  const { claim_id, reason } = req.body;
+
+  try {
+    db.prepare('UPDATE bounty_claims SET status = ?, reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?')
+      .run('rejected', req.user.id, new Date().toISOString(), claim_id);
+
+    const remainingClaims = db.prepare("SELECT COUNT(*) as cnt FROM bounty_claims WHERE bounty_id = ? AND status = 'pending'").get(id);
+    if (remainingClaims.cnt === 0) {
+      db.prepare("UPDATE bounties SET status = 'open' WHERE id = ?").run(id);
+    }
+
+    res.json({ success: true, message: 'Claim rejected' });
+  } catch (error) {
+    console.error('Reject bounty error:', error);
+    res.status(500).json({ error: 'Could not reject claim', success: false });
+  }
+});
+
+app.post('/api/bounties/:id/cancel', userAuth, (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const bounty = db.prepare('SELECT * FROM bounties WHERE id = ?').get(id);
+    if (!bounty) {
+      return res.status(404).json({ error: 'Bounty not found', success: false });
+    }
+    if (bounty.posted_by_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the poster can cancel', success: false });
+    }
+    if (bounty.status === 'completed') {
+      return res.status(400).json({ error: 'Cannot cancel completed bounty', success: false });
+    }
+
+    db.prepare("UPDATE bounties SET status = 'cancelled' WHERE id = ?").run(id);
+    res.json({ success: true, message: 'Bounty cancelled' });
+  } catch (error) {
+    console.error('Cancel bounty error:', error);
+    res.status(500).json({ error: 'Could not cancel bounty', success: false });
+  }
+});
+
+app.get('/api/user/bounties', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const posted = db.prepare(`
+      SELECT b.*, s.name as posted_by_name FROM bounties b
+      JOIN signups s ON b.posted_by_user_id = s.id
+      WHERE b.posted_by_user_id = ?
+      ORDER BY b.created_at DESC
+    `).all(userId);
+
+    const claimed = db.prepare(`
+      SELECT bc.*, b.title, b.tier, b.reward_points
+      FROM bounty_claims bc
+      JOIN bounties b ON bc.bounty_id = b.id
+      WHERE bc.user_id = ?
+      ORDER BY bc.created_at DESC
+    `).all(userId);
+
+    res.json({ success: true, posted, claimed });
+  } catch (error) {
+    console.error('Get user bounties error:', error);
+    res.status(500).json({ error: 'Could not fetch bounties', success: false });
+  }
+});
+
+// ==================== LEADERSHIP ACADEMY (Whitepaper sec VI.A) ====================
+app.get('/api/academy/modules', (req, res) => {
+  try {
+    const modules = db.prepare('SELECT * FROM academy_modules WHERE is_active = 1 ORDER BY order_index').all();
+    res.json({ success: true, modules });
+  } catch (error) {
+    console.error('Get modules error:', error);
+    res.status(500).json({ error: 'Could not fetch modules', success: false });
+  }
+});
+
+app.post('/api/academy/enroll', userAuth, (req, res) => {
+  const { module_id } = req.body;
+  const userId = req.user.id;
+
+  if (!module_id) {
+    return res.status(400).json({ error: 'module_id required', success: false });
+  }
+
+  try {
+    const module = db.prepare('SELECT * FROM academy_modules WHERE id = ? AND is_active = 1').get(module_id);
+    if (!module) {
+      return res.status(404).json({ error: 'Module not found', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM academy_enrollments WHERE user_id = ? AND module_id = ?').get(userId, module_id);
+    if (existing) {
+      return res.status(409).json({ error: 'Already enrolled in this module', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('INSERT INTO academy_enrollments (user_id, module_id, enrolled_at) VALUES (?, ?, ?)').run(userId, module_id, now);
+
+    logActivity('academy_enroll', userId, module_id, { module: module.title }, req);
+    res.json({ success: true, message: 'Enrolled in module' });
+  } catch (error) {
+    console.error('Academy enroll error:', error);
+    res.status(500).json({ error: 'Could not enroll', success: false });
+  }
+});
+
+app.post('/api/academy/complete', userAuth, (req, res) => {
+  const { module_id } = req.body;
+  const userId = req.user.id;
+
+  if (!module_id) {
+    return res.status(400).json({ error: 'module_id required', success: false });
+  }
+
+  try {
+    const enrollment = db.prepare('SELECT * FROM academy_enrollments WHERE user_id = ? AND module_id = ?').get(userId, module_id);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Not enrolled in this module', success: false });
+    }
+    if (enrollment.status === 'completed') {
+      return res.status(400).json({ error: 'Module already completed', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('UPDATE academy_enrollments SET status = ?, completed_at = ? WHERE id = ?').run('completed', now, enrollment.id);
+
+    const allModules = db.prepare('SELECT COUNT(*) as total FROM academy_modules WHERE is_active = 1').get();
+    const completedModules = db.prepare("SELECT COUNT(*) as completed FROM academy_enrollments WHERE user_id = ? AND status = 'completed'").get(userId);
+
+    if (completedModules.completed >= allModules.total) {
+      const gradExists = db.prepare('SELECT id FROM academy_graduation WHERE user_id = ?').get(userId);
+      if (!gradExists) {
+        const graduationMerit = 250;
+        const gradNow = new Date().toISOString();
+        db.prepare('INSERT INTO academy_graduation (user_id, graduated_at, merit_awarded) VALUES (?, ?, ?)').run(userId, gradNow, graduationMerit);
+
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_type, description, created_at)
+          VALUES (?, 'academy_graduation', ?, 'academy', ?, ?)
+        `).run(userId, graduationMerit, 'Leadership Academy graduation (Tier 3 Bounty)', gradNow);
+
+        logActivity('academy_graduation', userId, null, { merit: graduationMerit }, req);
+        return res.json({ success: true, message: 'Module completed! Congratulations on graduating from the Leadership Academy!', graduated: true });
+      }
+    }
+
+    res.json({ success: true, message: 'Module completed', graduated: false });
+  } catch (error) {
+    console.error('Academy complete error:', error);
+    res.status(500).json({ error: 'Could not complete module', success: false });
+  }
+});
+
+app.get('/api/academy/progress', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const modules = db.prepare('SELECT * FROM academy_modules WHERE is_active = 1 ORDER BY order_index').all();
+    const enrollments = db.prepare('SELECT * FROM academy_enrollments WHERE user_id = ?').all(userId);
+
+    const progress = modules.map(m => {
+      const enrollment = enrollments.find(e => e.module_id === m.id);
+      return {
+        ...m,
+        status: enrollment ? enrollment.status : 'not_enrolled',
+        enrolled_at: enrollment ? enrollment.enrolled_at : null,
+        completed_at: enrollment ? enrollment.completed_at : null
+      };
+    });
+
+    const completed = progress.filter(p => p.status === 'completed').length;
+    const graduation = db.prepare('SELECT * FROM academy_graduation WHERE user_id = ?').get(userId);
+
+    res.json({ success: true, progress, completed_count: completed, total_modules: modules.length, graduated: !!graduation, graduation_date: graduation ? graduation.graduated_at : null });
+  } catch (error) {
+    console.error('Academy progress error:', error);
+    res.status(500).json({ error: 'Could not fetch progress', success: false });
+  }
+});
+
+app.get('/api/stipends', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const stipends = db.prepare(`
+      SELECT ls.*, lp.title as position_title, lp.position_type
+      FROM leadership_stipends ls
+      JOIN leadership_positions lp ON ls.position_id = lp.id
+      WHERE ls.user_id = ?
+      ORDER BY ls.period_year DESC, ls.period_month DESC
+    `).all(userId);
+
+    res.json({ success: true, stipends });
+  } catch (error) {
+    console.error('Get stipends error:', error);
+    res.status(500).json({ error: 'Could not fetch stipends', success: false });
+  }
+});
+
+app.post('/api/advisory-reports', userAuth, (req, res) => {
+  const { report_title, report_content } = req.body;
+  const userId = req.user.id;
+
+  if (!report_title || report_title.trim().length < 5) {
+    return res.status(400).json({ error: 'Report title must be at least 5 characters', success: false });
+  }
+
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO advisory_reports (user_id, report_title, report_content, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(userId, report_title.trim(), report_content ? report_content.trim() : '', now);
+
+    logActivity('advisory_report_submitted', userId, null, { title: report_title.trim() }, req);
+    res.status(201).json({ success: true, message: 'Advisory report submitted' });
+  } catch (error) {
+    console.error('Submit report error:', error);
+    res.status(500).json({ error: 'Could not submit report', success: false });
+  }
+});
+
+app.get('/api/advisory-reports', userAuth, (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const reports = db.prepare(`
+      SELECT * FROM advisory_reports WHERE user_id = ? ORDER BY created_at DESC
+    `).all(userId);
+
+    res.json({ success: true, reports });
+  } catch (error) {
+    console.error('Get reports error:', error);
+    res.status(500).json({ error: 'Could not fetch reports', success: false });
+  }
+});
+
+app.post('/api/advisory-reports/:id/approve', userAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const report = db.prepare('SELECT * FROM advisory_reports WHERE id = ?').get(id);
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found', success: false });
+    }
+    if (report.status !== 'pending') {
+      return res.status(400).json({ error: 'Report already reviewed', success: false });
+    }
+
+    db.prepare('UPDATE advisory_reports SET status = ?, reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?')
+      .run('approved', userId, new Date().toISOString(), id);
+
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'advisory_report', ?, ?, 'advisory_report', ?, ?)
+    `).run(report.user_id, ROLE_STIPENDS.advisory, id, `Advisory report: ${report.report_title}`, new Date().toISOString());
+
+    logActivity('advisory_report_approved', report.user_id, id, { points: ROLE_STIPENDS.advisory }, req);
+    res.json({ success: true, message: 'Report approved and points awarded' });
+  } catch (error) {
+    console.error('Approve report error:', error);
+    res.status(500).json({ error: 'Could not approve report', success: false });
+  }
+});
+
+// ==================== PROPOSAL STAKES & REPUTATION (Whitepaper sec II.C.10) ====================
+// Stake: max(10, MS * 0.005), Refund if >=20% support, Forfeit if <10% support
+db.exec(`
+  CREATE TABLE IF NOT EXISTS proposal_stakes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposal_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    stake_amount REAL NOT NULL,
+    status TEXT DEFAULT 'locked' CHECK(status IN ('locked', 'refunded', 'forfeited')),
+    resolved_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (proposal_id) REFERENCES proposals(id),
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
+  try {
+    const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+    if (!proposal) return;
+
+    const supportPct = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
+    const stakes = db.prepare('SELECT * FROM proposal_stakes WHERE proposal_id = ?').all(proposalId);
+
+    if (supportPct >= 20) {
+      stakes.forEach(stake => {
+        if (stake.status === 'locked') {
+          db.prepare("UPDATE proposal_stakes SET status = 'refunded', resolved_at = ? WHERE id = ?")
+            .run(new Date().toISOString(), stake.id);
+
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'stake_refund', ?, ?, 'proposal', ?, ?)
+          `).run(stake.user_id, stake.stake_amount, proposalId, 'Proposal stake refunded', new Date().toISOString());
+        }
+      });
+    } else if (supportPct < 10 && supportPct > 0) {
+      stakes.forEach(stake => {
+        if (stake.status === 'locked') {
+          const authorStakes = db.prepare("SELECT COUNT(*) as cnt FROM proposal_stakes WHERE user_id = ? AND status = 'locked'").get(stake.user_id);
+          const successfulStakes = db.prepare(`
+            SELECT COUNT(DISTINCT ps.proposal_id) as cnt FROM proposal_stakes ps
+            JOIN proposals p ON ps.proposal_id = p.id
+            WHERE ps.user_id = ? AND p.passed = 1 AND ps.status = 'refunded'
+          `).get(stake.user_id);
+
+          const failedCount = authorStakes.cnt - successfulStakes.cnt;
+          const successfulCount = successfulStakes.cnt;
+          const qualityRatio = (1 + failedCount) / (1 + successfulCount);
+          const penalty = Math.round(stake.stake_amount * qualityRatio * 100) / 100;
+
+          db.prepare("UPDATE proposal_stakes SET status = 'forfeited', resolved_at = ? WHERE id = ?")
+            .run(new Date().toISOString(), stake.id);
+
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'stake_penalty', ?, ?, 'proposal', ?, ?)
+          `).run(stake.user_id, -penalty, proposalId, `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`, new Date().toISOString());
+        }
+      });
+    }
+
+    console.log(`Processed stakes for proposal ${proposalId}: ${supportPct.toFixed(1)}% support`);
+  } catch (e) {
+    console.error('Process stakes error:', e);
+  }
+}
+
+function calculateStakeAmount(userId) {
+  const events = db.prepare('SELECT SUM(points) as total FROM merit_events WHERE user_id = ?').get(userId);
+  const ms = events.total || 0;
+  return Math.max(10, Math.round(ms * 0.005 * 100) / 100);
+}
+
+app.post('/api/proposals/:id/stake', userAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found', success: false });
+    }
+    if (proposal.is_closed) {
+      return res.status(400).json({ error: 'Proposal already closed', success: false });
+    }
+    if (proposal.created_by_user_id !== userId) {
+      return res.status(403).json({ error: 'Only the author can stake a proposal', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM proposal_stakes WHERE proposal_id = ? AND user_id = ?').get(id, userId);
+    if (existing) {
+      return res.status(409).json({ error: 'Already staked this proposal', success: false });
+    }
+
+    const stakeAmount = calculateStakeAmount(userId);
+    const now = new Date().toISOString();
+
+    db.prepare('INSERT INTO proposal_stakes (proposal_id, user_id, stake_amount, created_at) VALUES (?, ?, ?, ?)')
+      .run(id, userId, stakeAmount, now);
+
+    db.prepare(`
+      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+      VALUES (?, 'stake_locked', ?, ?, 'proposal', ?, ?)
+    `).run(userId, -stakeAmount, id, `Proposal stake locked: ${stakeAmount} pts`, now);
+
+    res.json({ success: true, message: `Staked ${stakeAmount} points on this proposal` });
+  } catch (error) {
+    console.error('Stake proposal error:', error);
+    res.status(500).json({ error: 'Could not stake proposal', success: false });
+  }
+});
+
+app.get('/api/proposals/:id/stake', (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const stakes = db.prepare(`
+      SELECT ps.*, s.name, s.username
+      FROM proposal_stakes ps
+      JOIN signups s ON ps.user_id = s.id
+      WHERE ps.proposal_id = ?
+    `).all(id);
+
+    const totalStaked = stakes.reduce((sum, s) => sum + s.stake_amount, 0);
+
+    res.json({ success: true, stakes, total_staked: totalStaked });
+  } catch (error) {
+    console.error('Get stakes error:', error);
+    res.status(500).json({ error: 'Could not fetch stakes', success: false });
+  }
+});
+// ==================== MEDIA COLLECTIVE & CONTENT REWARDS (Whitepaper sec V.E) ====================
+// Knowledge Check Bounty: Points for passing quizzes on articles
+db.exec(`
+  CREATE TABLE IF NOT EXISTS article_quizzes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id TEXT NOT NULL,
+    article_title TEXT,
+    question TEXT NOT NULL,
+    options TEXT NOT NULL,
+    correct_answer INTEGER NOT NULL,
+    points_reward INTEGER DEFAULT 10,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    quiz_id INTEGER NOT NULL,
+    selected_answer INTEGER NOT NULL,
+    correct INTEGER NOT NULL,
+    attempted_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id),
+    FOREIGN KEY (quiz_id) REFERENCES article_quizzes(id)
+  )
+`);
+
+// Informed Comment Reward: Community-endorsed comments
+db.exec(`
+  CREATE TABLE IF NOT EXISTS article_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    article_id TEXT NOT NULL,
+    comment_text TEXT NOT NULL,
+    is_approved INTEGER DEFAULT 1,
+    endorsement_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS comment_endorsements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comment_id INTEGER NOT NULL,
+    endorser_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(comment_id, endorser_id),
+    FOREIGN KEY (comment_id) REFERENCES article_comments(id),
+    FOREIGN KEY (endorser_id) REFERENCES signups(id)
+  )
+`);
+
+// Amplification Bounty: Trackable links for sharing official content
+db.exec(`
+  CREATE TABLE IF NOT EXISTS amplification_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creator_user_id INTEGER NOT NULL,
+    content_type TEXT NOT NULL,
+    content_title TEXT,
+    track_code TEXT NOT NULL UNIQUE,
+    base_url TEXT NOT NULL,
+    click_count INTEGER DEFAULT 0,
+    reward_points INTEGER DEFAULT 10,
+    is_active INTEGER DEFAULT 1,
+    expires_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (creator_user_id) REFERENCES signups(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS amplification_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    link_id INTEGER NOT NULL,
+    clicker_ip TEXT,
+    clicked_at TEXT NOT NULL,
+    FOREIGN KEY (link_id) REFERENCES amplification_links(id)
+  )
+`);
+
+const LAMBDA_BASE = 0.001267;
+const HALF_LIFE_DAYS = 547.5;
+
+function getLoyaltyCoefficient(joinDate) {
+  const now = new Date();
+  const join = new Date(joinDate);
+  const daysSinceJoin = (now - join) / (1000 * 60 * 60 * 24);
+
+  if (daysSinceJoin < 180) return 1.0;
+  if (daysSinceJoin < 365) return 1.2;
+  return 1.5;
+}
+
+function calculateVoteWeight(joinDate, createdAt) {
+  const settings = getSettings();
+  const lc = getLoyaltyCoefficient(joinDate);
+  const created = new Date(createdAt);
+  const now = new Date();
+  const daysSinceCreated = (now - created) / (1000 * 60 * 60 * 24);
+
+  const primaryWindowDays = settings.voting_window_primary_days || 7;
+  const extendedWindowDays = settings.voting_window_extended_days || 3;
+  const primaryWeight = settings.voting_weight_primary || 1.0;
+  const extendedWeight = settings.voting_weight_extended || 0.5;
+
+  let windowWeight = primaryWeight;
+  if (daysSinceCreated > primaryWindowDays) {
+    windowWeight = extendedWeight;
+  }
+
+  const memberWeight = lc;
+
+  return memberWeight * windowWeight;
+}
+
+function calculateApprovalThreshold(category) {
+  const settings = getSettings();
+  if (category === 'constitutional') {
+    return settings.approval_threshold_constitutional || 0.80;
+  } else if (category === 'policy') {
+    return settings.approval_threshold_policy || 0.60;
+  }
+  return settings.approval_threshold_routine || 0.50;
+}
+
+function calculateDecayedScore(userId, joinDate) {
+  const lc = getLoyaltyCoefficient(joinDate);
+  const events = db.prepare('SELECT * FROM merit_events WHERE user_id = ?').all(userId);
+
+  let totalScore = 0;
+  const now = new Date();
+
+  events.forEach(event => {
+    const eventDate = new Date(event.created_at);
+    const daysSince = (now - eventDate) / (1000 * 60 * 60 * 24);
+    const decayFactor = Math.exp(-(LAMBDA_BASE / lc) * daysSince);
+    totalScore += event.points * decayFactor;
+  });
+
+  return Math.round(totalScore * 100) / 100;
+}
+
+function calculateStaticScore(userId) {
+  const result = db.prepare('SELECT SUM(points) as total FROM merit_events WHERE user_id = ?').get(userId);
+  return result.total || 0;
+}
+
+app.get('/api/merit/score', userAuth, (req, res) => {
+  const userId = req.user.id;
+  const user = db.prepare('SELECT timestamp FROM signups WHERE id = ?').get(userId);
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found', success: false });
+  }
+
+  const staticScore = calculateStaticScore(userId);
+  const dynamicScore = calculateDecayedScore(userId, user.timestamp);
+  const loyaltyCoeff = getLoyaltyCoefficient(user.timestamp);
+  const lcLabel = loyaltyCoeff >= 1.5 ? 'founding' : loyaltyCoeff >= 1.2 ? 'early_adopter' : 'standard';
+
+  res.json({
+    success: true,
+    user_id: userId,
+    static_score: staticScore,
+    dynamic_score: dynamicScore,
+    loyalty_coefficient: lc,
+    loyalty_tier: lcLabel,
+    effective_half_life_days: Math.round(HALF_LIFE_DAYS * lc)
+  });
+});
+
+app.get('/api/merit/events', userAuth, (req, res) => {
+  const userId = req.user.id;
+  const { limit = 50, offset = 0 } = req.query;
+
+  try {
+    const events = db.prepare(`
+      SELECT * FROM merit_events WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(userId, parseInt(limit), parseInt(offset));
+
+    const total = db.prepare('SELECT COUNT(*) as cnt FROM merit_events WHERE user_id = ?').get(userId);
+
+    res.json({ success: true, events, total: total.cnt });
+  } catch (error) {
+    console.error('Get merit events error:', error);
+    res.status(500).json({ error: 'Could not fetch merit events', success: false });
+  }
+});
+
+app.get('/api/merit/leaderboard', (req, res) => {
+  const { limit = 20 } = req.query;
+
+  try {
+    const users = db.prepare(`
+      SELECT s.id, s.name, s.username,
+             COALESCE(SUM(me.points), 0) as static_score
+      FROM signups s
+      LEFT JOIN merit_events me ON s.id = me.user_id
+      WHERE s.is_verified = 1 AND s.unregistered_at IS NULL
+      GROUP BY s.id
+      ORDER BY static_score DESC
+      LIMIT ?
+    `).all(parseInt(limit));
+
+    const leaderboard = users.map((u, i) => ({
+      rank: i + 1,
+      ...u,
+      dynamic_score: calculateDecayedScore(u.id, db.prepare('SELECT timestamp FROM signups WHERE id = ?').get(u.id).timestamp)
+    }));
+
+    res.json({ success: true, leaderboard });
+  } catch (error) {
+    console.error('Get leaderboard error:', error);
+    res.status(500).json({ error: 'Could not fetch leaderboard', success: false });
+  }
+});
+
+// ==================== KNOWLEDGE CHECK BOUNTY (Whitepaper sec V.E) ====================
+app.post('/api/quizzes', userAuth, (req, res) => {
+  const { article_id, article_title, question, options, correct_answer, points_reward = 10 } = req.body;
+
+  if (!article_id || !question || !options || correct_answer === undefined) {
+    return res.status(400).json({ error: 'article_id, question, options, and correct_answer required', success: false });
+  }
+
+  try {
+    const opts = Array.isArray(options) ? options : JSON.parse(options);
+    if (opts.length < 2) {
+      return res.status(400).json({ error: 'At least 2 options required', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO article_quizzes (article_id, article_title, question, options, correct_answer, points_reward, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(article_id, article_title || '', question, JSON.stringify(opts), correct_answer, points_reward, now);
+
+    res.status(201).json({ success: true, message: 'Quiz created' });
+  } catch (error) {
+    console.error('Create quiz error:', error);
+    res.status(500).json({ error: 'Could not create quiz', success: false });
+  }
+});
+
+app.get('/api/quizzes/:articleId', (req, res) => {
+  const { articleId } = req.params;
+
+  try {
+    const quizzes = db.prepare('SELECT * FROM article_quizzes WHERE article_id = ? AND is_active = 1').all(articleId);
+    quizzes.forEach(q => q.options = JSON.parse(q.options));
+    res.json({ success: true, quizzes });
+  } catch (error) {
+    console.error('Get quizzes error:', error);
+    res.status(500).json({ error: 'Could not fetch quizzes', success: false });
+  }
+});
+
+app.post('/api/quizzes/:id/answer', userAuth, (req, res) => {
+  const { id } = req.params;
+  const { answer } = req.body;
+  const userId = req.user.id;
+
+  if (answer === undefined) {
+    return res.status(400).json({ error: 'answer required', success: false });
+  }
+
+  try {
+    const quiz = db.prepare('SELECT * FROM article_quizzes WHERE id = ? AND is_active = 1').get(id);
+    if (!quiz) {
+      return res.status(404).json({ error: 'Quiz not found', success: false });
+    }
+
+    const alreadyAttempted = db.prepare('SELECT id FROM quiz_attempts WHERE user_id = ? AND quiz_id = ?').get(userId, id);
+    if (alreadyAttempted) {
+      return res.status(409).json({ error: 'Already attempted this quiz', success: false });
+    }
+
+    const correct = answer === quiz.correct_answer;
+    const now = new Date().toISOString();
+
+    db.prepare('INSERT INTO quiz_attempts (user_id, quiz_id, selected_answer, correct, attempted_at) VALUES (?, ?, ?, ?, ?)')
+      .run(userId, id, answer, correct ? 1 : 0, now);
+
+    if (correct) {
+      db.prepare(`
+        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+        VALUES (?, 'knowledge_check', ?, ?, 'quiz', ?, ?)
+      `).run(userId, quiz.points_reward, id, `Knowledge check passed: ${quiz.article_title || quiz.article_id}`, now);
+    }
+
+    res.json({ success: true, correct, points_earned: correct ? quiz.points_reward : 0 });
+  } catch (error) {
+    console.error('Answer quiz error:', error);
+    res.status(500).json({ error: 'Could not submit answer', success: false });
+  }
+});
+
+// ==================== INFORMED COMMENT REWARD (Whitepaper sec V.E) ====================
+app.post('/api/comments', userAuth, (req, res) => {
+  const { article_id, comment_text } = req.body;
+  const userId = req.user.id;
+
+  if (!article_id || !comment_text || comment_text.trim().length < 10) {
+    return res.status(400).json({ error: 'article_id and comment_text (min 10 chars) required', success: false });
+  }
+
+  try {
+    const now = new Date().toISOString();
+    db.prepare('INSERT INTO article_comments (user_id, article_id, comment_text, created_at) VALUES (?, ?, ?, ?)')
+      .run(userId, article_id, comment_text.trim(), now);
+
+    res.status(201).json({ success: true, message: 'Comment posted' });
+  } catch (error) {
+    console.error('Post comment error:', error);
+    res.status(500).json({ error: 'Could not post comment', success: false });
+  }
+});
+
+app.get('/api/comments/:articleId', (req, res) => {
+  const { articleId } = req.params;
+
+  try {
+    const comments = db.prepare(`
+      SELECT ac.*, s.name, s.username,
+             (SELECT COUNT(*) FROM comment_endorsements WHERE comment_id = ac.id) as endorsements
+      FROM article_comments ac
+      JOIN signups s ON ac.user_id = s.id
+      WHERE ac.article_id = ? AND ac.is_approved = 1
+      ORDER BY endorsements DESC, ac.created_at DESC
+    `).all(articleId);
+
+    res.json({ success: true, comments });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ error: 'Could not fetch comments', success: false });
+  }
+});
+
+app.post('/api/comments/:id/endorse', userAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const comment = db.prepare('SELECT * FROM article_comments WHERE id = ?').get(id);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found', success: false });
+    }
+    if (comment.user_id === userId) {
+      return res.status(400).json({ error: 'Cannot endorse your own comment', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM comment_endorsements WHERE comment_id = ? AND endorser_id = ?').get(id, userId);
+    if (existing) {
+      return res.status(409).json({ error: 'Already endorsed', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('INSERT INTO comment_endorsements (comment_id, endorser_id, created_at) VALUES (?, ?, ?)').run(id, userId, now);
+
+    const endorsementCount = db.prepare('SELECT COUNT(*) as cnt FROM comment_endorsements WHERE comment_id = ?').get(id).cnt;
+    db.prepare('UPDATE article_comments SET endorsement_count = ? WHERE id = ?').run(endorsementCount, id);
+
+    if (endorsementCount >= 5) {
+      const commentPoints = Math.min(endorsementCount * 2, 50);
+      db.prepare(`
+        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+        VALUES (?, 'comment_endorsement', ?, ?, 'comment', ?, ?)
+      `).run(comment.user_id, commentPoints, id, `Comment endorsed (${endorsementCount} endorsements)`, now);
+    }
+
+    res.json({ success: true, endorsements: endorsementCount });
+  } catch (error) {
+    console.error('Endorse comment error:', error);
+    res.status(500).json({ error: 'Could not endorse comment', success: false });
+  }
+});
+
+// ==================== VIOLATION PENALTIES (Whitepaper sec IX) ====================
+// Tier 1: Minor (spam, low-effort), Tier 2: Serious (disinfo, harassment), Tier 3: Severe (hate speech, threats)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS violations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reporter_user_id INTEGER,
+    accused_user_id INTEGER NOT NULL,
+    violation_type TEXT NOT NULL,
+    tier INTEGER NOT NULL CHECK(tier IN (1, 2, 3)),
+    description TEXT NOT NULL,
+    evidence TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'investigating', 'resolved', 'dismissed')),
+    resolution TEXT,
+    resolved_by_user_id INTEGER,
+    resolved_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (reporter_user_id) REFERENCES signups(id),
+    FOREIGN KEY (accused_user_id) REFERENCES signups(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_suspensions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    violation_id INTEGER,
+    suspension_type TEXT NOT NULL CHECK(suspension_type IN ('warning', 'temporary', 'permanent')),
+    reason TEXT NOT NULL,
+    starts_at TEXT NOT NULL,
+    ends_at TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES signups(id),
+    FOREIGN KEY (violation_id) REFERENCES violations(id)
+  )
+`);
+
+const VIOLATION_PENALTIES = {
+  1: { point_penalty: 50, action: 'warning' },
+  2: { point_penalty: 200, action: 'temporary' },
+  3: { point_penalty: 500, action: 'permanent' }
+};
+
+app.post('/api/violations/report', userAuth, (req, res) => {
+  const { accused_user_id, violation_type, tier, description, evidence } = req.body;
+  const reporterId = req.user.id;
+
+  if (!accused_user_id || !violation_type || !tier || !description) {
+    return res.status(400).json({ error: 'accused_user_id, violation_type, tier, and description required', success: false });
+  }
+
+  if (![1, 2, 3].includes(parseInt(tier))) {
+    return res.status(400).json({ error: 'Tier must be 1, 2, or 3', success: false });
+  }
+
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO violations (reporter_user_id, accused_user_id, violation_type, tier, description, evidence, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(reporterId, accused_user_id, violation_type, tier, description, evidence || '', now);
+
+    logActivity('violation_reported', reporterId, accused_user_id, { type: violation_type, tier }, req);
+    res.status(201).json({ success: true, message: 'Violation report submitted' });
+  } catch (error) {
+    console.error('Report violation error:', error);
+    res.status(500).json({ error: 'Could not submit report', success: false });
+  }
+});
+
+app.get('/api/violations', userAuth, (req, res) => {
+  const { status, tier } = req.query;
+
+  try {
+    const isAdmin = req.user.is_admin;
+    if (!isAdmin) {
+      const myViolations = db.prepare('SELECT * FROM violations WHERE accused_user_id = ? ORDER BY created_at DESC').all(req.user.id);
+      return res.json({ success: true, violations: myViolations });
+    }
+
+    let query = 'SELECT v.*, s.name as accused_name, rs.name as reporter_name FROM violations v JOIN signups s ON v.accused_user_id = s.id LEFT JOIN signups rs ON v.reporter_user_id = rs.id WHERE 1=1';
+    const params = [];
+
+    if (status) { query += ' AND v.status = ?'; params.push(status); }
+    if (tier) { query += ' AND v.tier = ?'; params.push(parseInt(tier)); }
+
+    query += ' ORDER BY v.created_at DESC';
+
+    const violations = db.prepare(query).all(...params);
+    res.json({ success: true, violations });
+  } catch (error) {
+    console.error('Get violations error:', error);
+    res.status(500).json({ error: 'Could not fetch violations', success: false });
+  }
+});
+
+app.post('/api/violations/:id/resolve', userAuth, (req, res) => {
+  const { id } = req.params;
+  const { status, resolution, penalty_tier } = req.body;
+  const resolverId = req.user.id;
+
+  if (!['resolved', 'dismissed'].includes(status)) {
+    return res.status(400).json({ error: 'status must be "resolved" or "dismissed"', success: false });
+  }
+
+  try {
+    const violation = db.prepare('SELECT * FROM violations WHERE id = ?').get(id);
+    if (!violation) {
+      return res.status(404).json({ error: 'Violation not found', success: false });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('UPDATE violations SET status = ?, resolution = ?, resolved_by_user_id = ?, resolved_at = ? WHERE id = ?')
+      .run(status, resolution || '', resolverId, now, id);
+
+    if (status === 'resolved' && penalty_tier) {
+      const penalty = VIOLATION_PENALTIES[penalty_tier];
+      if (penalty) {
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+          VALUES (?, 'violation_penalty', ?, ?, 'violation', ?, ?)
+        `).run(violation.accused_user_id, -penalty.point_penalty, id, `Violation penalty (Tier ${penalty_tier}): ${violation.violation_type}`, now);
+
+        if (penalty.action === 'temporary') {
+          db.prepare(`
+            INSERT INTO user_suspensions (user_id, violation_id, suspension_type, reason, starts_at, ends_at, created_at)
+            VALUES (?, ?, 'temporary', ?, ?, datetime(?, '+7 days'), ?)
+          `).run(violation.accused_user_id, id, violation.violation_type, now, now, now);
+        } else if (penalty.action === 'permanent') {
+          db.prepare(`
+            INSERT INTO user_suspensions (user_id, violation_id, suspension_type, reason, starts_at, is_active, created_at)
+            VALUES (?, ?, 'permanent', ?, ?, 1, ?)
+          `).run(violation.accused_user_id, id, violation.violation_type, now, now);
+        }
+      }
+    }
+
+    logActivity('violation_resolved', resolverId, id, { status, penalty_tier }, req);
+    res.json({ success: true, message: `Violation ${status}` });
+  } catch (error) {
+    console.error('Resolve violation error:', error);
+    res.status(500).json({ error: 'Could not resolve violation', success: false });
+  }
+});
+
+app.get('/api/suspensions/active', (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    const suspensions = db.prepare(`
+      SELECT us.*, s.name as user_name
+      FROM user_suspensions us
+      JOIN signups s ON us.user_id = s.id
+      WHERE us.is_active = 1 AND us.starts_at <= ? AND (us.ends_at IS NULL OR us.ends_at > ?)
+      ORDER BY us.created_at DESC
+    `).all(now, now);
+
+    res.json({ success: true, suspensions });
+  } catch (error) {
+    console.error('Get suspensions error:', error);
+    res.status(500).json({ error: 'Could not fetch suspensions', success: false });
+  }
+});
+
+// ==================== EMERITUS COUNCIL (Whitepaper sec VII.4) ====================
+// Advisory body for long-term members; top 1% merit for 3+ years OR full Governing Council term
+db.exec(`
+  CREATE TABLE IF NOT EXISTS emiritus_council (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    invited_at TEXT NOT NULL,
+    reason TEXT,
+    is_active INTEGER DEFAULT 1,
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+function checkEmeritusEligibility() {
+  try {
+    const threeYearsAgo = new Date();
+    threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+    const threeYearsAgoStr = threeYearsAgo.toISOString();
+
+    const eligibleByTime = db.prepare(`
+      SELECT s.id, s.timestamp FROM signups s
+      WHERE s.is_verified = 1 AND s.unregistered_at IS NULL
+      AND s.timestamp <= ?
+      AND (
+        SELECT SUM(me.points) FROM merit_events me WHERE me.user_id = s.id
+      ) >= (
+        SELECT PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY COALESCE((SELECT SUM(points) FROM merit_events WHERE user_id = s.id), 0))
+      )
+    `).all(threeYearsAgoStr);
+
+    const eligibleByCouncil = db.prepare(`
+      SELECT DISTINCT lt.user_id FROM leadership_terms lt
+      JOIN leadership_positions lp ON lt.position_id = lp.id
+      WHERE lp.position_type = 'council' AND lp.is_active = 1
+    `).all();
+
+    const existingEmeritus = db.prepare('SELECT user_id FROM emiritus_council WHERE is_active = 1').all();
+    const existingIds = new Set(existingEmeritus.map(e => e.user_id));
+
+    const allEligible = new Set([
+      ...eligibleByTime.map(e => e.id),
+      ...eligibleByCouncil.map(e => e.user_id)
+    ]);
+
+    allEligible.forEach(userId => {
+      if (!existingIds.has(userId)) {
+        db.prepare('INSERT INTO emiritus_council (user_id, invited_at, reason) VALUES (?, ?, ?)')
+          .run(userId, new Date().toISOString(), 'Met eligibility criteria for Emeritus Council');
+
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_type, description, created_at)
+          VALUES (?, 'emeritus_invite', 0, 'emeritus', 'Invited to Emeritus Council', ?)
+        `).run(userId, new Date().toISOString());
+      }
+    });
+
+    console.log(`Emeritus Council check complete: ${allEligible.size} members eligible`);
+  } catch (e) {
+    console.error('Emeritus check error:', e);
+  }
+}
+
+setInterval(checkEmeritusEligibility, 24 * 60 * 60 * 1000);
+checkEmeritusEligibility();
+
+app.get('/api/emeritus', (req, res) => {
+  try {
+    const members = db.prepare(`
+      SELECT ec.*, s.name, s.username, s.initial_merit_estimate as merit_score
+      FROM emiritus_council ec
+      JOIN signups s ON ec.user_id = s.id
+      WHERE ec.is_active = 1
+      ORDER BY ec.invited_at DESC
+    `).all();
+
+    res.json({ success: true, members });
+  } catch (error) {
+    console.error('Get emiritus error:', error);
+    res.status(500).json({ error: 'Could not fetch emeritus council', success: false });
+  }
+});
+
+// ==================== POLICY INCUBATION HUBS (Whitepaper sec III.E) ====================
+// Monthly stipend for active Hub members
+db.exec(`
+  CREATE TABLE IF NOT EXISTS policy_hubs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    charter TEXT NOT NULL,
+    goals TEXT,
+    status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed', 'dissolved')),
+    created_by_user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (created_by_user_id) REFERENCES signups(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hub_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT DEFAULT 'member' CHECK(role IN ('lead', 'member')),
+    joined_at TEXT NOT NULL,
+    stipend_earned REAL DEFAULT 0,
+    FOREIGN KEY (hub_id) REFERENCES policy_hubs(id),
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hub_stipends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hub_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    period_year INTEGER NOT NULL,
+    period_month INTEGER NOT NULL,
+    amount_awarded REAL NOT NULL,
+    awarded_at TEXT NOT NULL,
+    UNIQUE(hub_id, user_id, period_year, period_month),
+    FOREIGN KEY (hub_id) REFERENCES policy_hubs(id),
+    FOREIGN KEY (user_id) REFERENCES signups(id)
+  )
+`);
+
+app.post('/api/hubs', userAuth, (req, res) => {
+  const { name, charter, goals } = req.body;
+
+  if (!name || !charter) {
+    return res.status(400).json({ error: 'name and charter required', success: false });
+  }
+
+  try {
+    const now = new Date().toISOString();
+    db.prepare('INSERT INTO policy_hubs (name, charter, goals, created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(name.trim(), charter.trim(), goals || '', req.user.id, now);
+
+    const hubId = db.prepare('SELECT last_insert_rowid() as id').get().id;
+    db.prepare('INSERT INTO hub_members (hub_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)')
+      .run(hubId, req.user.id, 'lead', now);
+
+    res.status(201).json({ success: true, message: 'Hub created', hub_id: hubId });
+  } catch (error) {
+    console.error('Create hub error:', error);
+    res.status(500).json({ error: 'Could not create hub', success: false });
+  }
+});
+
+app.get('/api/hubs', (req, res) => {
+  try {
+    const hubs = db.prepare(`
+      SELECT ph.*, s.name as creator_name,
+             (SELECT COUNT(*) FROM hub_members WHERE hub_id = ph.id) as member_count
+      FROM policy_hubs ph
+      JOIN signups s ON ph.created_by_user_id = s.id
+      WHERE ph.status = 'active'
+      ORDER BY ph.created_at DESC
+    `).all();
+
+    res.json({ success: true, hubs });
+  } catch (error) {
+    console.error('Get hubs error:', error);
+    res.status(500).json({ error: 'Could not fetch hubs', success: false });
+  }
+});
+
+app.post('/api/hubs/:id/join', userAuth, (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const hub = db.prepare('SELECT * FROM policy_hubs WHERE id = ? AND status = ?').get(id, 'active');
+    if (!hub) {
+      return res.status(404).json({ error: 'Hub not found', success: false });
+    }
+
+    const existing = db.prepare('SELECT id FROM hub_members WHERE hub_id = ? AND user_id = ?').get(id, req.user.id);
+    if (existing) {
+      return res.status(409).json({ error: 'Already a member', success: false });
+    }
+
+    db.prepare('INSERT INTO hub_members (hub_id, user_id, joined_at) VALUES (?, ?, ?)')
+      .run(id, req.user.id, new Date().toISOString());
+
+    res.json({ success: true, message: 'Joined hub' });
+  } catch (error) {
+    console.error('Join hub error:', error);
+    res.status(500).json({ error: 'Could not join hub', success: false });
+  }
+});
+
+function processHubStipends() {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const HUB_STIPEND = 50;
+
+    const activeHubs = db.prepare("SELECT * FROM policy_hubs WHERE status = 'active'").all();
+
+    activeHubs.forEach(hub => {
+      const members = db.prepare('SELECT user_id FROM hub_members WHERE hub_id = ?').all(hub.id);
+
+      members.forEach(member => {
+        const existing = db.prepare(`
+          SELECT id FROM hub_stipends
+          WHERE hub_id = ? AND user_id = ? AND period_year = ? AND period_month = ?
+        `).get(hub.id, member.user_id, year, month);
+
+        if (!existing) {
+          const awardedAt = now.toISOString();
+          db.prepare(`
+            INSERT INTO hub_stipends (hub_id, user_id, period_year, period_month, amount_awarded, awarded_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(hub.id, member.user_id, year, month, HUB_STIPEND, awardedAt);
+
+          db.prepare(`
+            UPDATE hub_members SET stipend_earned = stipend_earned + ? WHERE hub_id = ? AND user_id = ?
+          `).run(HUB_STIPEND, hub.id, member.user_id);
+
+          db.prepare(`
+            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+            VALUES (?, 'hub_stipend', ?, ?, 'hub', ?, ?)
+          `).run(member.user_id, HUB_STIPEND, hub.id, `Policy Hub stipend: ${hub.name}`, awardedAt);
+        }
+      });
+    });
+
+    console.log(`Hub stipend processing complete for ${year}-${month}`);
+  } catch (e) {
+    console.error('Hub stipend error:', e);
+  }
+}
+
+setInterval(processHubStipends, 60 * 60 * 1000);
+processHubStipends();
+
+app.post('/api/amplify', userAuth, (req, res) => {
+  const { content_type, content_title, base_url, reward_points = 10, expires_in_days = 7 } = req.body;
+  const userId = req.user.id;
+
+  if (!content_type || !base_url) {
+    return res.status(400).json({ error: 'content_type and base_url required', success: false });
+  }
+
+  try {
+    const trackCode = crypto.randomBytes(8).toString('hex');
+    const expiresAt = new Date(Date.now() + expires_in_days * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO amplification_links (creator_user_id, content_type, content_title, track_code, base_url, reward_points, expires_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, content_type, content_title || '', trackCode, base_url, reward_points, expiresAt, now);
+
+    const trackingUrl = `${req.protocol}://${req.get('host')}/api/amplify/track/${trackCode}`;
+
+    res.status(201).json({ success: true, track_code: trackCode, tracking_url: trackingUrl });
+  } catch (error) {
+    console.error('Create amplification error:', error);
+    res.status(500).json({ error: 'Could not create tracking link', success: false });
+  }
+});
+
+app.get('/api/amplify/track/:code', (req, res) => {
+  const { code } = req.params;
+  const clickerIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+  try {
+    const link = db.prepare('SELECT * FROM amplification_links WHERE track_code = ? AND is_active = 1').get(code);
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found', success: false });
+    }
+
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Link expired', success: false });
+    }
+
+    const existingClick = db.prepare('SELECT id FROM amplification_clicks WHERE link_id = ? AND clicker_ip = ?').get(link.id, clickerIP);
+    if (!existingClick) {
+      db.prepare('INSERT INTO amplification_clicks (link_id, clicker_ip, clicked_at) VALUES (?, ?, ?)')
+        .run(link.id, clickerIP, new Date().toISOString());
+
+      db.prepare('UPDATE amplification_links SET click_count = click_count + 1 WHERE id = ?').run(link.id);
+
+      if (link.creator_user_id) {
+        db.prepare(`
+          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+          VALUES (?, 'amplification', ?, ?, 'amplify', ?, ?)
+        `).run(link.creator_user_id, link.reward_points, link.id, `Amplification click: ${link.content_title || link.content_type}`, new Date().toISOString());
+      }
+    }
+
+    res.redirect(link.base_url);
+  } catch (error) {
+    console.error('Track amplification error:', error);
+    res.status(500).json({ error: 'Could not track click', success: false });
+  }
+});
+
+app.get('/api/amplify/stats/:code', userAuth, (req, res) => {
+  const { code } = req.params;
+
+  try {
+    const link = db.prepare('SELECT * FROM amplification_links WHERE track_code = ?').get(code);
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found', success: false });
+    }
+    if (link.creator_user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not your link', success: false });
+    }
+
+    res.json({ success: true, link });
+  } catch (error) {
+    console.error('Amplify stats error:', error);
+    res.status(500).json({ error: 'Could not fetch stats', success: false });
+  }
+});
 
 // GET /api/user/profile - Get user profile
 app.get('/api/user/profile', userAuth, (req, res) => {

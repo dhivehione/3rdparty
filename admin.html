@@ -1692,7 +1692,39 @@ function renderSystemSettings() {
                         <label class="block text-sm font-medium mb-2">Donation Bonus Per 100 MVR</label>
                         <input type="number" id="ss_donation_bonus_per_100" value="${systemSettings.donation_bonus_per_100}" 
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                        <p class="text-xs text-gray-500 mt-1">Merit points per 100 MVR donated</p>
+                        <p class="text-xs text-gray-500 mt-1">Merit points per 100 MVR donated (flat formula only)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Random Bonus Max</label>
+                        <input type="number" id="ss_signup_random_bonus_max" value="${systemSettings.signup_random_bonus_max}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max random merit bonus at signup (0 to value-1)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Donation Formula</label>
+                        <select id="ss_donation_formula" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <option value="log" ${systemSettings.donation_formula === 'log' ? 'selected' : ''}>Logarithmic (whitepaper)</option>
+                            <option value="flat" ${systemSettings.donation_formula === 'flat' ? 'selected' : ''}>Flat (MVR/divisor * bonus)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">How donation merit is calculated</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Donation Divisor (MVR)</label>
+                        <input type="number" id="ss_donation_divisor_mvr" value="${systemSettings.donation_divisor_mvr}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">MVR per unit for flat formula (default: 100)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Donation Log Multiplier</label>
+                        <input type="number" id="ss_donation_log_multiplier" value="${systemSettings.donation_log_multiplier}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Multiplier for log formula (default: 35)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">USD/MVR Exchange Rate</label>
+                        <input type="number" id="ss_donation_usd_mvr_rate" value="${systemSettings.donation_usd_mvr_rate}" step="0.01"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Exchange rate for log formula (default: 15.4)</p>
                     </div>
                 </div>
             </div>
@@ -1725,6 +1757,110 @@ function renderSystemSettings() {
                         <input type="number" id="ss_target_treasury" value="${systemSettings.target_treasury}" 
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
                         <p class="text-xs text-gray-500 mt-1">Fundraising goal in MVR</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Referral Points -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-users mr-2"></i>Referral Points</h3>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 1 Limit (invites)</label>
+                        <input type="number" id="ss_referral_tier1_limit" value="${systemSettings.referral_tier1_limit}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max invites for tier 1 rewards</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 2 Limit (invites)</label>
+                        <input type="number" id="ss_referral_tier2_limit" value="${systemSettings.referral_tier2_limit}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max invites for tier 2 rewards</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Base Reward T1</label>
+                        <input type="number" id="ss_referral_base_t1" value="${systemSettings.referral_base_t1}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Base points per invite (tier 1)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Base Reward T2</label>
+                        <input type="number" id="ss_referral_base_t2" value="${systemSettings.referral_base_t2}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Base points per invite (tier 2)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Base Reward T3</label>
+                        <input type="number" id="ss_referral_base_t3" value="${systemSettings.referral_base_t3}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Base points per invite (tier 3+)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Engage Bonus T1</label>
+                        <input type="number" id="ss_referral_engage_t1" value="${systemSettings.referral_engage_t1}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 1)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Engage Bonus T2</label>
+                        <input type="number" id="ss_referral_engage_t2" value="${systemSettings.referral_engage_t2}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 2)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Engage Bonus T3</label>
+                        <input type="number" id="ss_referral_engage_t3" value="${systemSettings.referral_engage_t3}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 3+)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Endorsement Points -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-thumbs-up mr-2"></i>Endorsement Points</h3>
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 1 Limit (endorsements)</label>
+                        <input type="number" id="ss_endorsement_tier1_limit" value="${systemSettings.endorsement_tier1_limit}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max endorsements for tier 1 pts</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 2 Limit (endorsements)</label>
+                        <input type="number" id="ss_endorsement_tier2_limit" value="${systemSettings.endorsement_tier2_limit}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max endorsements for tier 2 pts</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 3 Limit (endorsements)</label>
+                        <input type="number" id="ss_endorsement_tier3_limit" value="${systemSettings.endorsement_tier3_limit}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Max endorsements for tier 3 pts</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 1 Points</label>
+                        <input type="number" id="ss_endorsement_tier1_pts" value="${systemSettings.endorsement_tier1_pts}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 1)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 2 Points</label>
+                        <input type="number" id="ss_endorsement_tier2_pts" value="${systemSettings.endorsement_tier2_pts}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 2)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 3 Points</label>
+                        <input type="number" id="ss_endorsement_tier3_pts" value="${systemSettings.endorsement_tier3_pts}" step="0.5"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 3)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tier 4 Points</label>
+                        <input type="number" id="ss_endorsement_tier4_pts" value="${systemSettings.endorsement_tier4_pts}" step="0.1"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 4+)</p>
                     </div>
                 </div>
             </div>
@@ -1764,7 +1900,27 @@ async function saveSystemSettings(e) {
         donation_bonus_per_100: parseInt(document.getElementById('ss_donation_bonus_per_100').value),
         max_upload_bytes: parseInt(document.getElementById('ss_max_upload_bytes').value),
         target_members: parseInt(document.getElementById('ss_target_members').value),
-        target_treasury: parseInt(document.getElementById('ss_target_treasury').value)
+        target_treasury: parseInt(document.getElementById('ss_target_treasury').value),
+        signup_random_bonus_max: parseInt(document.getElementById('ss_signup_random_bonus_max').value),
+        donation_divisor_mvr: parseInt(document.getElementById('ss_donation_divisor_mvr').value),
+        donation_log_multiplier: parseInt(document.getElementById('ss_donation_log_multiplier').value),
+        donation_usd_mvr_rate: parseFloat(document.getElementById('ss_donation_usd_mvr_rate').value),
+        donation_formula: document.getElementById('ss_donation_formula').value,
+        referral_tier1_limit: parseInt(document.getElementById('ss_referral_tier1_limit').value),
+        referral_tier2_limit: parseInt(document.getElementById('ss_referral_tier2_limit').value),
+        referral_base_t1: parseFloat(document.getElementById('ss_referral_base_t1').value),
+        referral_base_t2: parseFloat(document.getElementById('ss_referral_base_t2').value),
+        referral_base_t3: parseFloat(document.getElementById('ss_referral_base_t3').value),
+        referral_engage_t1: parseFloat(document.getElementById('ss_referral_engage_t1').value),
+        referral_engage_t2: parseFloat(document.getElementById('ss_referral_engage_t2').value),
+        referral_engage_t3: parseFloat(document.getElementById('ss_referral_engage_t3').value),
+        endorsement_tier1_limit: parseInt(document.getElementById('ss_endorsement_tier1_limit').value),
+        endorsement_tier2_limit: parseInt(document.getElementById('ss_endorsement_tier2_limit').value),
+        endorsement_tier3_limit: parseInt(document.getElementById('ss_endorsement_tier3_limit').value),
+        endorsement_tier1_pts: parseFloat(document.getElementById('ss_endorsement_tier1_pts').value),
+        endorsement_tier2_pts: parseFloat(document.getElementById('ss_endorsement_tier2_pts').value),
+        endorsement_tier3_pts: parseFloat(document.getElementById('ss_endorsement_tier3_pts').value),
+        endorsement_tier4_pts: parseFloat(document.getElementById('ss_endorsement_tier4_pts').value)
     };
     
     try {
@@ -1807,7 +1963,29 @@ async function resetSystemSettings() {
         merit_ideas: 150,
         merit_donation: 100,
         donation_bonus_per_100: 5,
-        max_upload_bytes: 5242880
+        max_upload_bytes: 5242880,
+        target_members: 13000,
+        target_treasury: 13000,
+        signup_random_bonus_max: 50,
+        donation_divisor_mvr: 100,
+        donation_log_multiplier: 35,
+        donation_usd_mvr_rate: 15.4,
+        donation_formula: 'log',
+        referral_tier1_limit: 5,
+        referral_tier2_limit: 20,
+        referral_base_t1: 2,
+        referral_base_t2: 1,
+        referral_base_t3: 0.5,
+        referral_engage_t1: 8,
+        referral_engage_t2: 4,
+        referral_engage_t3: 0.5,
+        endorsement_tier1_limit: 10,
+        endorsement_tier2_limit: 50,
+        endorsement_tier3_limit: 200,
+        endorsement_tier1_pts: 2.0,
+        endorsement_tier2_pts: 1.0,
+        endorsement_tier3_pts: 0.5,
+        endorsement_tier4_pts: 0.1
     };
     
     try {
