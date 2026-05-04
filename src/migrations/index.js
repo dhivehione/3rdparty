@@ -1,0 +1,34 @@
+function runMigrations(deps) {
+  const { db } = deps;
+
+  // Detect if this is an existing database that predates schema_version tracking
+  const hasSignups = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='signups'").get();
+
+  // Create schema_version tracking table
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT)`);
+  const applied = new Set(db.prepare('SELECT version FROM schema_version').all().map(r => r.version));
+
+  // Migration 1: initial schema
+  if (!applied.has(1)) {
+    if (!hasSignups) {
+      // Fresh DB — run the full initial schema
+      const { runMigrations: run001 } = require('./001_initial_schema');
+      run001(deps);
+    } else {
+      // Existing DB — tables already exist from old src/db/migrations.js
+      console.log('✓ Migration 1 skipped (existing database)');
+    }
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(1, new Date().toISOString());
+    console.log('✓ Migration 1 recorded');
+  }
+
+  // Migration 2: final column additions
+  if (!applied.has(2)) {
+    const m002 = require('./002_final_columns');
+    m002.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(2, new Date().toISOString());
+    console.log('✓ Migration 2 applied');
+  }
+}
+
+module.exports = { runMigrations };

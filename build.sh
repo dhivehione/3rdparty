@@ -22,9 +22,10 @@ fi
 LOCAL_COMMITS=$(git rev-list --count HEAD)
 if [ "$LOCAL_COMMITS" -gt 0 ]; then
     # Check if remote exists
-    if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    BRANCH=$(git branch --show-current)
+    if git rev-parse --verify origin/$BRANCH >/dev/null 2>&1; then
         # Check if ahead of remote
-        AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+        AHEAD=$(git rev-list --count origin/$BRANCH..HEAD 2>/dev/null || echo "0")
         if [ "$AHEAD" -gt 0 ]; then
             echo "Pushing $AHEAD commit(s) to GitHub..."
             git push 2>&1 || {
