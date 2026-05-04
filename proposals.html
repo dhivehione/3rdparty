@@ -237,7 +237,9 @@
         // Load binary proposals
         async function loadBinaryProposals() {
             try {
-                const response = await fetch('/api/proposals');
+                const response = await fetch('/api/proposals', {
+                    headers: getAuthToken() ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
+                });
                 const data = await response.json();
                 const container = document.getElementById('binaryList');
                 const noData = document.getElementById('noBinary');
@@ -478,7 +480,7 @@
             try {
                 const response = await fetch('/api/ranked-vote', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ proposal_id: proposalId, ranking })
                 });
                 const data = await response.json();
@@ -497,7 +499,7 @@
             try {
                 const response = await fetch('/api/vote', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ proposal_id: proposalId, choice })
                 });
                 const data = await response.json();
@@ -512,11 +514,11 @@
             const nickname = document.getElementById('binaryNickname').value.trim();
             const title = document.getElementById('binaryTitle').value.trim();
             const description = document.getElementById('binaryDesc').value.trim();
-            
+
             try {
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ nickname, title, description })
                 });
                 const data = await response.json();
@@ -552,7 +554,7 @@
             try {
                 const response = await fetch('/api/ranked-proposals', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ nickname, title, description, options })
                 });
                 const data = await response.json();
@@ -748,6 +750,20 @@
             const el = document.createElement('div');
             el.innerHTML = str;
             return el.textContent;
+        }
+
+        // ── Auth helpers (fixes missing merit due to "forgotten" login) ──
+        function getAuthToken() {
+            return localStorage.getItem('authToken')
+                || localStorage.getItem('token')
+                || localStorage.getItem('auth_token')
+                || null;
+        }
+        function getAuthHeaders() {
+            const token = getAuthToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
         }
 
         // Init

@@ -23,6 +23,7 @@ function getPageName() {
     if (path.includes('faq')) return 'faq';
     if (path.includes('policies')) return 'policies';
     if (path.includes('admin')) return 'admin';
+    if (path.includes('treasury')) return 'treasury';
     return '';
 }
 
@@ -53,6 +54,7 @@ function createNavigation() {
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
                 <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
+                <a href="/treasury" class="hover:text-party-accent transition ${currentPage === 'treasury' ? 'text-party-accent font-bold' : 'text-gray-300'}">Treasury</a>
                 <a href="/profile" id="profile-nav-link" class="hover:text-party-accent transition ${currentPage === 'profile' ? 'text-party-accent font-bold' : 'text-gray-300'}" style="display:none"><i class="fas fa-user mr-1"></i>Profile</a>
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
@@ -90,6 +92,7 @@ function createFooter() {
                     <a href="/faq" class="text-gray-400 hover:text-party-accent">FAQ</a>
                     <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
                     <a href="/donate" class="text-gray-400 hover:text-party-accent">Donate</a>
+                    <a href="/treasury" class="text-gray-400 hover:text-party-accent">Treasury</a>
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="https://github.com/3dparty" target="_blank" rel="noopener" class="text-gray-400 hover:text-party-accent">

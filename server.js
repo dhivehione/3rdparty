@@ -62,6 +62,7 @@ const DEFAULT_SETTINGS = {
   merit_vote_pass: 2.5,
   merit_vote_fail: 1.0,
   merit_proposal_author: 200,
+  merit_proposal_created: 10,
   sms_provider: '',
   sms_twilio_account_sid: '',
   sms_twilio_auth_token: '',
@@ -148,6 +149,8 @@ function closeExpiredProposals() {
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'bridge_building', 400, ?, 'proposal', 'Bridge-building bonus: Fixed failing proposal', ?)
           `).run(proposal.created_by_user_id, proposal.id, new Date().toISOString());
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + 400 WHERE id = ?')
+            .run(proposal.created_by_user_id);
         }
       }
 
@@ -160,6 +163,8 @@ function closeExpiredProposals() {
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'voting', ?, ?, 'proposal', ?, ?)
           `).run(voter.user_id, points, proposal.id, desc, new Date().toISOString());
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+            .run(points, voter.user_id);
           maybeEngageReferral(voter.user_id);
         }
       });
@@ -170,6 +175,8 @@ function closeExpiredProposals() {
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'proposal_author', ?, ?, 'proposal', 'Authored passing proposal', ?)
         `).run(proposal.created_by_user_id, authorPoints, proposal.id, new Date().toISOString());
+        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+          .run(authorPoints, proposal.created_by_user_id);
       }
 
       processProposalStakes(proposal.id, weighted_yes, weighted_no, total_weight);
@@ -768,6 +775,11 @@ db.exec(`
   )
 `);
 
+// Migration: Add user_id to ranked_votes for tracking authenticated voters
+try {
+  db.exec('ALTER TABLE ranked_votes ADD COLUMN user_id INTEGER');
+} catch (e) {}
+
 // Laws/Regulations (for the legislature page)
 db.exec(`
   CREATE TABLE IF NOT EXISTS laws (
@@ -908,6 +920,86 @@ try {
   }
 } catch (e) {
   console.log('⚠ Donations phone/nid nullable migration error:', e.message);
+}
+
+// ==================== LIVE TREASURY LEDGER ====================
+// Publicly verifiable ledger of all donations and expenditures (Blueprint §V.B)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS treasury_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL CHECK(type IN ('donation', 'expenditure')),
+    amount REAL NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT,
+    source_ref_type TEXT,
+    source_ref_id INTEGER,
+    donor_nickname TEXT,
+    verified_by TEXT,
+    status TEXT DEFAULT 'verified' CHECK(status IN ('pending', 'verified', 'rejected')),
+    created_at TEXT NOT NULL,
+    verified_at TEXT
+  )
+`);
+
+// Add category column if not exists (migration for existing databases)
+try {
+  const ledgerCols = db.prepare(`PRAGMA table_info(treasury_ledger)`).all();
+  if (!ledgerCols.find(c => c.name === 'category')) {
+    db.exec(`ALTER TABLE treasury_ledger ADD COLUMN category TEXT`);
+  }
+  if (!ledgerCols.find(c => c.name === 'donor_nickname')) {
+    db.exec(`ALTER TABLE treasury_ledger ADD COLUMN donor_nickname TEXT`);
+  }
+  if (!ledgerCols.find(c => c.name === 'verified_by')) {
+    db.exec(`ALTER TABLE treasury_ledger ADD COLUMN verified_by TEXT`);
+  }
+} catch (e) {
+  // Columns already exist or table not yet created
+}
+
+// Helper: Add entry to treasury ledger
+function addTreasuryEntry(data) {
+  const { type, amount, description, category, sourceRefType, sourceRefId, donorNickname, verifiedBy, status } = data;
+  const now = new Date().toISOString();
+  const entryStatus = status || 'verified';
+  const verifiedAt = entryStatus === 'verified' ? now : null;
+  return db.prepare(`
+    INSERT INTO treasury_ledger (type, amount, description, category, source_ref_type, source_ref_id, donor_nickname, verified_by, status, created_at, verified_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(type, amount, description, category || null, sourceRefType || null, sourceRefId || null, donorNickname || null, verifiedBy || null, entryStatus, now, verifiedAt);
+}
+
+// Helper: Get treasury balance (income - expenses, verified only)
+function getTreasuryBalance() {
+  const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
+  const expenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'expenditure' AND status = 'verified'`).get();
+  return income.total - expenses.total;
+}
+
+// Retroactive migration: populate treasury_ledger from existing data
+try {
+  const ledgerCount = db.prepare('SELECT COUNT(*) as c FROM treasury_ledger').get();
+  if (ledgerCount.c === 0) {
+    const now = new Date().toISOString();
+    // Migrate verified individual donations
+    const verifiedDonations = db.prepare(`SELECT * FROM donations WHERE status = 'verified'`).all();
+    for (const d of verifiedDonations) {
+      const donor = d.user_id ? db.prepare('SELECT name, username FROM signups WHERE id = ?').get(d.user_id) : null;
+      const nickname = donor ? (donor.username || donor.name || 'Donor #' + (d.user_id || 'anon')) : 'Anonymous';
+      db.prepare(`INSERT INTO treasury_ledger (type, amount, description, category, source_ref_type, source_ref_id, donor_nickname, verified_by, status, created_at, verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run('donation', d.amount, 'Verified donation', 'donation', 'donation', d.id, nickname, d.verified_by || 'admin', 'verified', d.created_at || now, d.verified_at || now);
+    }
+    // Migrate signup donations
+    const signupDonors = db.prepare(`SELECT id, name, username, donation_amount, timestamp FROM signups WHERE donation_amount > 0`).all();
+    for (const s of signupDonors) {
+      const nickname = s.username || s.name || 'Member #' + s.id;
+      db.prepare(`INSERT INTO treasury_ledger (type, amount, description, category, source_ref_type, source_ref_id, donor_nickname, verified_by, status, created_at, verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run('donation', s.donation_amount, 'Signup donation', 'donation', 'signup', s.id, nickname, 'system', 'verified', s.timestamp || now, s.timestamp || now);
+    }
+    console.log(`✓ Migrated ${verifiedDonations.length + signupDonors.length} transactions to treasury_ledger`);
+  }
+} catch (e) {
+  console.log('⚠ Treasury ledger migration note:', e.message);
 }
 
 // ==================== LEADERSHIP STRUCTURE TABLES ====================
@@ -1613,9 +1705,26 @@ app.get('/api/proposals', (req, res) => {
     `).all();
 
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-    const userVotes = db.prepare('SELECT proposal_id, choice FROM votes WHERE voter_ip = ?').all(userIP);
-    const userVotesMap = {};
-    userVotes.forEach(v => userVotesMap[v.proposal_id] = v.choice);
+    let userVotesMap = {};
+
+    // Try auth token first, fallback to IP
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) {
+          const userVotes = db.prepare('SELECT proposal_id, choice FROM votes WHERE user_id = ?').all(user.id);
+          userVotes.forEach(v => userVotesMap[v.proposal_id] = v.choice);
+        }
+      } catch (e) {}
+    }
+
+    // Fallback to IP if no auth-based votes found
+    if (Object.keys(userVotesMap).length === 0) {
+      const userVotes = db.prepare('SELECT proposal_id, choice FROM votes WHERE voter_ip = ?').all(userIP);
+      userVotes.forEach(v => userVotesMap[v.proposal_id] = v.choice);
+    }
 
     proposals.forEach(p => {
       p.userVote = userVotesMap[p.id] || null;
@@ -1718,8 +1827,20 @@ app.post('/api/proposals', (req, res) => {
       calculateApprovalThreshold(category || 'general')
     );
 
-    if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
-    else logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
+    if (userId) {
+      logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
+      // Award merit for creating a proposal
+      const createdMerit = settings.merit_proposal_created || 10;
+      db.prepare(`
+        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+        VALUES (?, 'proposal_created', ?, ?, 'proposal', 'Created a new proposal', ?)
+      `).run(userId, createdMerit, result.lastInsertRowid, createdAt);
+      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+        .run(createdMerit, userId);
+      maybeEngageReferral(userId);
+    } else {
+      logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
+    }
     res.status(201).json({
       message: 'Proposal created! Members can now vote.',
       success: true,
@@ -1883,23 +2004,38 @@ app.get('/api/proposal-stats', (req, res) => {
 app.get('/api/ranked-proposals', (req, res) => {
   try {
     const proposals = db.prepare(`
-      SELECT * FROM ranked_proposals 
-      WHERE status = 'active' 
+      SELECT * FROM ranked_proposals
+      WHERE status = 'active'
       ORDER BY created_at DESC
     `).all();
-    
+
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
-    
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) userId = user.id;
+      } catch (e) {}
+    }
+
     // Parse options and get user votes
     proposals.forEach(p => {
       p.options = JSON.parse(p.options);
-      const userVote = db.prepare('SELECT ranking FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(p.id, userIP);
+      let userVote = null;
+      if (userId) {
+        userVote = db.prepare('SELECT ranking FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(p.id, userId);
+      }
+      if (!userVote) {
+        userVote = db.prepare('SELECT ranking FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(p.id, userIP);
+      }
       p.userRanking = userVote ? JSON.parse(userVote.ranking) : null;
-      
+
       // Calculate instant runoff winner
       p.results = calculateRankedResults(p.id, p.options);
     });
-    
+
     res.json({ proposals, success: true });
   } catch (error) {
     console.error('Ranked proposals error:', error);
@@ -1988,8 +2124,18 @@ app.post('/api/ranked-proposals', (req, res) => {
       userId
     );
 
-    if (userId) logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
-    
+    if (userId) {
+      logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
+      const createdMerit = settings.merit_proposal_created || 10;
+      db.prepare(`
+        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+        VALUES (?, 'proposal_created', ?, ?, 'ranked_proposal', 'Created a ranked choice proposal', ?)
+      `).run(userId, createdMerit, result.lastInsertRowid, createdAt);
+      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+        .run(createdMerit, userId);
+      maybeEngageReferral(userId);
+    }
+
     res.status(201).json({ message: 'Ranked choice proposal created!', success: true, id: result.lastInsertRowid });
   } catch (error) {
     console.error('Ranked proposal error:', error);
@@ -2000,24 +2146,42 @@ app.post('/api/ranked-proposals', (req, res) => {
 // POST /api/ranked-vote - Vote on ranked choice proposal
 app.post('/api/ranked-vote', (req, res) => {
   const { proposal_id, ranking } = req.body;
-  
+
   if (!proposal_id) return res.status(400).json({ error: 'Proposal ID required', success: false });
   if (!ranking || !Array.isArray(ranking) || ranking.length < 2) {
     return res.status(400).json({ error: 'Must rank at least 2 options', success: false });
   }
-  
+
   try {
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const votedAt = new Date().toISOString();
-    
-    // Check if already voted
-    const existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
-    if (existing) {
-      db.prepare('UPDATE ranked_votes SET ranking = ?, voted_at = ? WHERE id = ?').run(JSON.stringify(ranking), votedAt, existing.id);
-    } else {
-      db.prepare('INSERT INTO ranked_votes (proposal_id, ranking, voter_ip, voted_at) VALUES (?, ?, ?, ?)').run(proposal_id, JSON.stringify(ranking), userIP, votedAt);
+
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) userId = user.id;
+      } catch (e) {}
     }
-    
+
+    // Check if already voted (by user_id or IP)
+    let existing;
+    if (userId) {
+      existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(proposal_id, userId);
+    }
+    if (!existing) {
+      existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
+    }
+    if (existing) {
+      db.prepare('UPDATE ranked_votes SET ranking = ?, voted_at = ?, user_id = COALESCE(user_id, ?) WHERE id = ?')
+        .run(JSON.stringify(ranking), votedAt, userId, existing.id);
+    } else {
+      db.prepare('INSERT INTO ranked_votes (proposal_id, ranking, voter_ip, voted_at, user_id) VALUES (?, ?, ?, ?, ?)')
+        .run(proposal_id, JSON.stringify(ranking), userIP, votedAt, userId);
+    }
+
     res.json({ message: 'Vote recorded!', success: true });
   } catch (error) {
     console.error('Ranked vote error:', error);
@@ -2949,13 +3113,160 @@ app.get('/api/wall-stats', (req, res) => {
   try {
     const members = safeQuery('SELECT COUNT(*) as total FROM signups');
     const wallPosts = safeQuery('SELECT COUNT(*) as total FROM wall_posts WHERE is_approved = 1 AND is_hidden = 0');
-    const signupTreasury = safeQuery('SELECT SUM(donation_amount) as total FROM signups WHERE donation_amount > 0');
-    const donationTreasury = safeQuery('SELECT SUM(amount) as total FROM donations WHERE status = "verified"');
-    const treasury = signupTreasury + donationTreasury;
+    const treasury = getTreasuryBalance();
 
     res.json({ members, wallPosts, treasury, success: true });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch stats', success: false });
+  }
+});
+
+// ==================== LIVE TREASURY PUBLIC API ====================
+
+// GET /api/treasury/summary — Public treasury overview (balance, income, expenses)
+app.get('/api/treasury/summary', (req, res) => {
+  try {
+    const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
+    const expenses = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM treasury_ledger WHERE type = 'expenditure' AND status = 'verified'`).get();
+    const txCount = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger WHERE status = 'verified'`).get();
+    const donationCount = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger WHERE type = 'donation' AND status = 'verified'`).get();
+    const settings = getSettings();
+
+    res.json({
+      success: true,
+      balance: Math.round((income.total - expenses.total) * 100) / 100,
+      total_income: Math.round(income.total * 100) / 100,
+      total_expenses: Math.round(expenses.total * 100) / 100,
+      transaction_count: txCount.total,
+      donation_count: donationCount.total,
+      target_treasury: settings.target_treasury
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch treasury summary', success: false });
+  }
+});
+
+// GET /api/treasury/ledger — Public paginated ledger of all verified transactions
+app.get('/api/treasury/ledger', (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 25));
+    const offset = (page - 1) * limit;
+    const filterType = req.query.type || null; // 'donation', 'expenditure', or null for all
+    const filterCategory = req.query.category || null;
+
+    let whereClause = "WHERE status = 'verified'";
+    const params = [];
+
+    if (filterType && ['donation', 'expenditure'].includes(filterType)) {
+      whereClause += ' AND type = ?';
+      params.push(filterType);
+    }
+    if (filterCategory) {
+      whereClause += ' AND category = ?';
+      params.push(filterCategory);
+    }
+
+    const countRow = db.prepare(`SELECT COUNT(*) as total FROM treasury_ledger ${whereClause}`).get(...params);
+    const rows = db.prepare(`SELECT * FROM treasury_ledger ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+    const balance = getTreasuryBalance();
+
+    res.json({
+      success: true,
+      balance,
+      transactions: rows,
+      page,
+      limit,
+      total: countRow.total,
+      totalPages: Math.ceil(countRow.total / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch treasury ledger', success: false });
+  }
+});
+
+// ==================== LIVE TREASURY ADMIN API ====================
+
+// GET /api/admin/treasury/expenditures — Admin list all expenditures
+app.get('/api/admin/treasury/expenditures', adminAuth, (req, res) => {
+  try {
+    const expenditures = db.prepare(`
+      SELECT * FROM treasury_ledger 
+      WHERE type = 'expenditure' 
+      ORDER BY created_at DESC
+    `).all();
+
+    const balance = getTreasuryBalance();
+
+    res.json({ success: true, expenditures, balance });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch expenditures', success: false });
+  }
+});
+
+// POST /api/admin/treasury/expenditure — Create a new expenditure entry
+app.post('/api/admin/treasury/expenditure', adminAuth, (req, res) => {
+  const { amount, description, category } = req.body;
+
+  if (!amount || !description) {
+    return res.status(400).json({ error: 'Amount and description are required', success: false });
+  }
+
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount', success: false });
+  }
+
+  try {
+    const result = addTreasuryEntry({
+      type: 'expenditure',
+      amount: parsedAmount,
+      description: description.trim(),
+      category: category || 'operational',
+      sourceRefType: 'manual',
+      verifiedBy: 'admin',
+      status: 'verified'
+    });
+
+    logActivity('treasury_expenditure', null, result.lastInsertRowid, {
+      amount: parsedAmount,
+      description: description.trim(),
+      category: category || 'operational'
+    }, req);
+
+    res.status(201).json({
+      success: true,
+      message: 'Expenditure recorded in Live Treasury',
+      id: result.lastInsertRowid,
+      balance: getTreasuryBalance()
+    });
+  } catch (error) {
+    console.error('Expenditure creation error:', error);
+    res.status(500).json({ error: 'Could not create expenditure', success: false });
+  }
+});
+
+// GET /api/admin/treasury/ledger — Admin view of all treasury transactions (including pending)
+app.get('/api/admin/treasury/ledger', adminAuth, (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
+    const offset = (page - 1) * limit;
+
+    const countRow = db.prepare('SELECT COUNT(*) as total FROM treasury_ledger').get();
+    const rows = db.prepare('SELECT * FROM treasury_ledger ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+
+    res.json({
+      success: true,
+      transactions: rows,
+      balance: getTreasuryBalance(),
+      page,
+      limit,
+      total: countRow.total,
+      totalPages: Math.ceil(countRow.total / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not fetch treasury ledger', success: false });
   }
 });
 
@@ -3269,6 +3580,23 @@ app.post('/api/verify-otp', (req, res) => {
 
     logActivity('user_verified', user.id, null, {}, req);
 
+    // Record signup donation in Live Treasury ledger if user donated at signup
+    const verifiedSignup = db.prepare('SELECT donation_amount, name, username FROM signups WHERE id = ?').get(user.id);
+    if (verifiedSignup && verifiedSignup.donation_amount > 0) {
+      const donorNick = verifiedSignup.username || verifiedSignup.name || ('Member #' + user.id);
+      addTreasuryEntry({
+        type: 'donation',
+        amount: verifiedSignup.donation_amount,
+        description: 'Signup donation',
+        category: 'donation',
+        sourceRefType: 'signup',
+        sourceRefId: user.id,
+        donorNickname: donorNick,
+        verifiedBy: 'system',
+        status: 'verified'
+      });
+    }
+
     res.json({
       success: true,
       message: 'Phone verified! Welcome to the 3d Party.',
@@ -3527,6 +3855,22 @@ app.post('/api/signup', async (req, res) => {
     
     // Only process referrals, activity log, and welcome post if user is verified
     if (authToken) {
+      // Record signup donation in Live Treasury ledger
+      if (finalDonation > 0) {
+        const displayNick = username ? username.trim() : (name || ('Member #' + result.lastInsertRowid));
+        addTreasuryEntry({
+          type: 'donation',
+          amount: finalDonation,
+          description: 'Signup donation',
+          category: 'donation',
+          sourceRefType: 'signup',
+          sourceRefId: result.lastInsertRowid,
+          donorNickname: displayNick,
+          verifiedBy: 'system',
+          status: 'verified'
+        });
+      }
+
       // Check for pending referrals
       const pendingReferral = db.prepare(`
         SELECT * FROM referrals 
@@ -3741,7 +4085,7 @@ app.get('/api/signups', adminAuth, (req, res) => {
     
     const signups = db.prepare('SELECT * FROM signups ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, offset);
     const count = db.prepare('SELECT COUNT(*) as total FROM signups').get();
-    const treasury = db.prepare('SELECT SUM(donation_amount) as total_donations FROM signups WHERE donation_amount > 0').get();
+    const treasury = getTreasuryBalance();
     const donorCount = db.prepare('SELECT COUNT(*) as total FROM signups WHERE donation_amount > 0').get();
     const today = new Date().toISOString().split('T')[0];
     const todayCount = db.prepare('SELECT COUNT(*) as total FROM signups WHERE timestamp >= ?').get(today);
@@ -3757,7 +4101,7 @@ app.get('/api/signups', adminAuth, (req, res) => {
     res.json({ 
       signups: parsedSignups,
       total: count.total,
-      total_treasury: treasury.total_donations || 0,
+      total_treasury: treasury,
       donor_count: donorCount.total,
       today_count: todayCount.total,
       page: page,
@@ -7011,6 +7355,11 @@ app.post('/api/admin/donations/:id/verify', adminAuth, (req, res) => {
       return res.status(404).json({ error: 'Donation not found', success: false });
     }
 
+    // Check if already verified
+    if (donation.status === 'verified') {
+      return res.status(400).json({ error: 'Donation already verified', success: false });
+    }
+
     // Update donation status
     db.prepare(`UPDATE donations SET status = 'verified', verified_at = ?, verified_by = ? WHERE id = ?`)
       .run(new Date().toISOString(), 'admin', donationId);
@@ -7049,6 +7398,24 @@ app.post('/api/admin/donations/:id/verify', adminAuth, (req, res) => {
           .run(donationMerit, verifiedUserId);
         maybeEngageReferral(verifiedUserId);
       }
+    }
+
+    // Record in Live Treasury public ledger (skip if already recorded)
+    const existingEntry = db.prepare('SELECT id FROM treasury_ledger WHERE source_ref_type = ? AND source_ref_id = ?').get('donation', donation.id);
+    if (!existingEntry) {
+      const donorUser = verifiedUserId ? db.prepare('SELECT name, username FROM signups WHERE id = ?').get(verifiedUserId) : null;
+      const donorNick = donorUser ? (donorUser.username || donorUser.name || ('Donor #' + verifiedUserId)) : 'Anonymous';
+      addTreasuryEntry({
+        type: 'donation',
+        amount: donation.amount,
+        description: 'Verified donation' + (donation.remarks ? ': ' + donation.remarks : ''),
+        category: 'donation',
+        sourceRefType: 'donation',
+        sourceRefId: donation.id,
+        donorNickname: donorNick,
+        verifiedBy: 'admin',
+        status: 'verified'
+      });
     }
 
     res.json({ success: true, message: 'Donation verified and added to treasury' });
@@ -7186,6 +7553,10 @@ app.get('/wall', (req, res) => {
 
 app.get('/donate', (req, res) => {
   res.sendFile(path.join(__dirname, 'donate.html'));
+});
+
+app.get('/treasury', (req, res) => {
+  res.sendFile(path.join(__dirname, 'treasury.html'));
 });
 
 app.get('/events', (req, res) => {

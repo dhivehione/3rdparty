@@ -469,10 +469,14 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Submitting...';
             status.classList.add('hidden');
 
+            const authToken = localStorage.getItem('authToken') || localStorage.getItem('token') || localStorage.getItem('auth_token') || null;
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+
             try {
                 const res = await fetch('/api/proposals', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify({
                         title: title.slice(0, 200),
                         description: description,

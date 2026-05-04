@@ -137,6 +137,94 @@
                     </div>
                 </div>
 
+                <!-- Treasury Management Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fas fa-coins text-yellow-400 mr-3"></i>
+                            Live Treasury
+                        </h2>
+                        <div class="flex gap-2">
+                            <button onclick="loadTreasuryLedger()" class="text-party-accent hover:underline text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                            <button onclick="showExpenditureForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400">
+                                <i class="fas fa-plus mr-1"></i>Log Expense
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Balance summary -->
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-green-400/10 border border-green-400/30 rounded-lg p-3 text-center">
+                            <div class="text-xs text-gray-400">Balance</div>
+                            <div class="text-lg font-bold text-green-400" id="adminBalance">—</div>
+                        </div>
+                        <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
+                            <div class="text-xs text-gray-400">Income</div>
+                            <div class="text-lg font-bold text-green-400" id="adminIncome">—</div>
+                        </div>
+                        <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
+                            <div class="text-xs text-gray-400">Expenses</div>
+                            <div class="text-lg font-bold text-red-400" id="adminExpenses">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Expenditure creation form -->
+                    <div id="expenditureForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
+                        <h3 class="text-lg font-bold mb-4">Log New Expenditure</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Amount (MVR) *</label>
+                                <input type="number" id="expAmount" min="1" step="0.01" placeholder="e.g. 5000" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Description *</label>
+                                <input type="text" id="expDescription" placeholder="e.g. Office rent for May" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Category</label>
+                                <select id="expCategory" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                    <option value="operational">Operational</option>
+                                    <option value="media">Media Collective</option>
+                                    <option value="events">Events</option>
+                                    <option value="circulos">Círculos Budget</option>
+                                    <option value="bounties">Bounties</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="createExpenditure()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400">
+                                    <i class="fas fa-save mr-1"></i>Record Expense
+                                </button>
+                                <button onclick="hideExpenditureForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction list -->
+                    <div class="bg-party-card border border-gray-700 rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase">
+                                        <th class="text-left p-3">Date</th>
+                                        <th class="text-left p-3">Type</th>
+                                        <th class="text-left p-3">Description</th>
+                                        <th class="text-right p-3">Amount</th>
+                                        <th class="text-left p-3">Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminLedgerBody">
+                                    <tr><td colspan="5" class="p-6 text-center text-gray-500">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Wall Moderation Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
@@ -573,6 +661,7 @@
             refreshData();
             loadProposalsAdmin();
             loadPendingDonations();
+            loadTreasuryLedger();
             loadAdminEvents();
         }
 
@@ -1483,6 +1572,93 @@
             }
         }
 
+        // ==================== TREASURY MANAGEMENT ====================
+        async function loadTreasuryLedger() {
+            const tbody = document.getElementById('adminLedgerBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+            try {
+                const [ledgerRes, summaryRes] = await Promise.all([
+                    fetch('/api/admin/treasury/ledger', { headers: { 'Authorization': 'Bearer ' + authToken } }),
+                    fetch('/api/treasury/summary')
+                ]);
+                const ledgerData = await ledgerRes.json();
+                const summaryData = await summaryRes.json();
+
+                if (summaryData.success) {
+                    document.getElementById('adminBalance').textContent = 'MVR ' + summaryData.balance.toLocaleString();
+                    document.getElementById('adminIncome').textContent = 'MVR ' + summaryData.total_income.toLocaleString();
+                    document.getElementById('adminExpenses').textContent = 'MVR ' + summaryData.total_expenses.toLocaleString();
+                }
+
+                if (ledgerData.success && ledgerData.transactions && ledgerData.transactions.length > 0) {
+                    tbody.innerHTML = ledgerData.transactions.map(tx => {
+                        const date = new Date(tx.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                        const isDonation = tx.type === 'donation';
+                        const typeBadge = isDonation
+                            ? '<span class="px-2 py-0.5 bg-green-400/10 text-green-400 rounded text-xs">Donation</span>'
+                            : '<span class="px-2 py-0.5 bg-red-400/10 text-red-400 rounded text-xs">Expense</span>';
+                        const amountClass = isDonation ? 'text-green-400' : 'text-red-400';
+                        const amountPrefix = isDonation ? '+' : '-';
+                        const source = tx.donor_nickname ? escapeHtml(tx.donor_nickname) : (tx.verified_by || tx.source_ref_type || '—');
+
+                        return '<tr class="border-b border-gray-800 hover:bg-white/5 transition">' +
+                            '<td class="p-3 text-gray-400 whitespace-nowrap">' + date + '</td>' +
+                            '<td class="p-3">' + typeBadge + '</td>' +
+                            '<td class="p-3">' + escapeHtml(tx.description) + '</td>' +
+                            '<td class="p-3 text-right font-mono ' + amountClass + '">' + amountPrefix + tx.amount.toLocaleString() + '</td>' +
+                            '<td class="p-3 text-gray-500 text-xs">' + source + '</td>' +
+                            '</tr>';
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500">No transactions yet.</td></tr>';
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-400">Error loading ledger.</td></tr>';
+            }
+        }
+
+        function showExpenditureForm() {
+            document.getElementById('expenditureForm').classList.remove('hidden');
+            document.getElementById('expAmount').value = '';
+            document.getElementById('expDescription').value = '';
+            document.getElementById('expCategory').value = 'operational';
+        }
+
+        function hideExpenditureForm() {
+            document.getElementById('expenditureForm').classList.add('hidden');
+        }
+
+        async function createExpenditure() {
+            const amount = parseFloat(document.getElementById('expAmount').value);
+            const description = document.getElementById('expDescription').value.trim();
+            const category = document.getElementById('expCategory').value;
+
+            if (!amount || amount <= 0) return alert('Please enter a valid amount.');
+            if (!description) return alert('Please enter a description.');
+
+            try {
+                const res = await fetch('/api/admin/treasury/expenditure', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ amount, description, category })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Expenditure recorded! Balance: MVR ' + data.balance.toLocaleString());
+                    hideExpenditureForm();
+                    loadTreasuryLedger();
+                    refreshData();
+                } else {
+                    alert(data.error || 'Failed to record expenditure.');
+                }
+            } catch (e) {
+                alert('Network error');
+            }
+        }
+
         // ==================== EVENTS MANAGEMENT ====================
         async function loadAdminEvents() {
             const container = document.getElementById('eventsAdminList');
@@ -2267,6 +2443,7 @@ async function deleteWallPost(id) {
         setTimeout(() => {
             loadProposalsAdmin();
             loadPendingDonations();
+            loadTreasuryLedger();
             loadFlaggedPosts();
             loadAdminEvents();
         }, 1000);
