@@ -19,10 +19,10 @@ function calculateVoteWeight(joinDate, createdAt) {
   const now = new Date();
   const daysSinceCreated = (now - created) / (1000 * 60 * 60 * 24);
 
-  const primaryWindowDays = settings.voting_window_primary_days || 7;
-  const extendedWindowDays = settings.voting_window_extended_days || 3;
-  const primaryWeight = settings.voting_weight_primary || 1.0;
-  const extendedWeight = settings.voting_window_extended || 0.5;
+  const primaryWindowDays = settings.voting_window_primary_days ?? 7;
+  const extendedWindowDays = settings.voting_window_extended_days ?? 3;
+  const primaryWeight = settings.voting_weight_primary ?? 1.0;
+  const extendedWeight = settings.voting_window_extended ?? 0.5;
 
   let windowWeight = primaryWeight;
   if (daysSinceCreated > primaryWindowDays) {
@@ -37,11 +37,11 @@ function calculateVoteWeight(joinDate, createdAt) {
 function calculateApprovalThreshold(category) {
   const settings = this.getSettings();
   if (category === 'constitutional') {
-    return settings.approval_threshold_constitutional || 0.80;
+    return settings.approval_threshold_constitutional ?? 0.80;
   } else if (category === 'policy') {
-    return settings.approval_threshold_policy || 0.60;
+    return settings.approval_threshold_policy ?? 0.60;
   }
-  return settings.approval_threshold_routine || 0.50;
+  return settings.approval_threshold_routine ?? 0.50;
 }
 
 function calculateDecayedScore(userId, joinDate) {

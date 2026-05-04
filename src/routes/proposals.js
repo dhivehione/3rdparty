@@ -61,10 +61,10 @@ router.get('/api/proposals', (req, res) => {
       p.passing_threshold_display = `${Math.round(p.approval_threshold * 100)}% ${p.category === 'constitutional' ? 'constitutional' : p.category === 'policy' ? 'policy shift' : 'routine'} majority required`;
       p.is_weighted = true;
       p.window_info = {
-        primary_days: settings.voting_window_primary_days || 7,
-        extended_days: settings.voting_window_extended_days || 3,
-        primary_weight: settings.voting_weight_primary || 1.0,
-        extended_weight: settings.voting_weight_extended || 0.5
+        primary_days: settings.voting_window_primary_days ?? 7,
+        extended_days: settings.voting_window_extended_days ?? 3,
+        primary_weight: settings.voting_weight_primary ?? 1.0,
+        extended_weight: settings.voting_weight_extended ?? 0.5
       };
     });
 
@@ -91,7 +91,7 @@ router.post('/api/proposals', (req, res) => {
 
   if (userId) {
     const settings = getSettings();
-    const cooldownHours = settings.proposal_cooldown_hours || 8;
+    const cooldownHours = settings.proposal_cooldown_hours ?? 8;
     const cooldownMs = cooldownHours * 60 * 60 * 1000;
     const lastProposal = db.prepare(`
       SELECT created_at FROM proposals WHERE created_by_user_id = ? ORDER BY created_at DESC LIMIT 1
@@ -108,7 +108,7 @@ router.post('/api/proposals', (req, res) => {
     }
   } else {
     const settings = getSettings();
-    const cooldownHours = settings.proposal_cooldown_hours || 8;
+    const cooldownHours = settings.proposal_cooldown_hours ?? 8;
     const cooldownMs = cooldownHours * 60 * 60 * 1000;
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const lastAnonProposal = db.prepare(`
@@ -159,7 +159,7 @@ router.post('/api/proposals', (req, res) => {
     if (userId) {
       logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
       // Award merit for creating a proposal
-      const createdMerit = settings.merit_proposal_created || 10;
+      const createdMerit = settings.merit_proposal_created ?? 10;
       db.prepare(`
         INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
         VALUES (?, 'proposal_created', ?, ?, 'proposal', 'Created a new proposal', ?)

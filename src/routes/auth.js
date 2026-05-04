@@ -47,7 +47,7 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, adminSessio
       const verifiedUser = db.prepare('SELECT name, username FROM signups WHERE id = ?').get(user.id);
       const displayName = sanitizeHTML(verifiedUser.name || verifiedUser.username || 'A new member');
       const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
-      const targetMembers = getSettings().target_members || 13000;
+      const targetMembers = getSettings().target_members ?? 13000;
       const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
       try {
         db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
@@ -366,7 +366,7 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, adminSessio
         
         // Get current member count
         const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
-        const targetMembers = getSettings().target_members || 13000;
+        const targetMembers = getSettings().target_members ?? 13000;
         const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
         
         // Auto-post to welcome thread

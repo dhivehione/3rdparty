@@ -34,7 +34,7 @@ module.exports = function({ queries, getSettings, merit, maybeEngageReferral }) 
         const voters = queries.proposals.getVoters(proposal.id);
         voters.forEach(voter => {
           if (voter.user_id) {
-            const points = passed ? (settings.merit_vote_pass || 2.5) : (settings.merit_vote_fail || 1.0);
+            const points = passed ? (settings.merit_vote_pass ?? 2.5) : (settings.merit_vote_fail ?? 1.0);
             const desc = passed ? 'Voted on passing proposal' : 'Voted on failing proposal';
             queries.merit.insertEvent({
               user_id: voter.user_id, event_type: 'voting', points,
@@ -47,7 +47,7 @@ module.exports = function({ queries, getSettings, merit, maybeEngageReferral }) 
         });
 
         if (proposal.created_by_user_id && passed) {
-          const authorPoints = settings.merit_proposal_author || 200;
+          const authorPoints = settings.merit_proposal_author ?? 200;
           queries.merit.insertEvent({
             user_id: proposal.created_by_user_id, event_type: 'proposal_author', points: authorPoints,
             reference_id: proposal.id, reference_type: 'proposal',
