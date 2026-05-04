@@ -1,7 +1,7 @@
 # 3d Party — Project Blueprint
 
 > **Last updated:** 2026-05-04  
-> **Source spec:** `whitepaper.txt` (1018 lines, Dhivehi Youth Movement v14)  
+> **Source spec:** `whitepaper.txt` (1018 lines, 3rd Party v14)  
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
 
 ---
@@ -11,7 +11,7 @@
 **Stack:** Node.js (Express) + better-sqlite3 + vanilla JS frontend (Tailwind CSS)  
 **Entry point:** `server.js` (4368 lines)  
 **Database:** SQLite (`data/3rdparty.db`), external `laws.db` from mvlaws project  
-**Specification:** Dhivehi Youth Movement v14 whitepaper — a platform merging direct democracy with merit-based incentives, dynamic governance, and anti-schism safeguards.
+**Specification:** 3rd Party v14 whitepaper — a platform merging direct democracy with merit-based incentives, dynamic governance, and anti-schism safeguards.
 
 ### 1.1 Core Principles (from whitepaper §II)
 
@@ -25,7 +25,7 @@
 
 | Term | Meaning |
 |---|---|
-| DYM | Dhivehi Youth Movement |
+| DYM | 3rd Party |
 | 3d Party | The third-option political brand |
 | Merit Score (MS) | Dynamic, decay-weighted sum of all contribution points |
 | Governing Council | Elected Shadow Ministers who lead the movement |
@@ -371,7 +371,7 @@ All component values are admin-configurable at runtime via `POST /api/system-set
 | Live Treasury | ❌ | No donation verification or public ledger |
 | SMS OTP verification | ❌ | Spec §III.A |
 | Community Hubs (Círculos Protocol) | ❌ | Spec §V.D |
-| DYM Media Collective | ❌ | Spec §V.E |
+| 3rd Party Media Collective | ❌ | Spec §V.E |
 | Candidate Selection (Primary by Merit) | ❌ | Spec §VI.A |
 | The People's Manifesto | ❌ | Spec §VI.B |
 | Victories Tracker | ❌ | Spec §V.C |

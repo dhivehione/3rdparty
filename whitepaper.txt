@@ -1,9 +1,9 @@
-Dhivehi Youth Movement: A Blueprint for Next-Generation Digital
+3rd Party: A Blueprint for Next-Generation Digital
 Democracy (V14 Final)
 
 Executive Summary
 
-The Dhivehi Youth Movement redefines governance for the digital age by merging direct
+The 3rd Party redefines governance for the digital age by merging direct
 democracy with advanced incentive design, dynamic governance, and robust safeguards
 against division. This updated whitepaper integrates innovative mechanisms—such as
 bridge-building incentives, schism penalties, and a multi-faceted Merit Score—to create a
@@ -24,7 +24,7 @@ Imagine a political system where:
 ●​   Division is disincentivized, and compromise is rewarded.
 ●​   Governance adapts in real-time to societal needs, backed by a "Living Constitution."
 
-This is the Dhivehi Youth Movement 2.0: a hybrid of technology, civic innovation, and
+This is the 3rd Party 2.0: a hybrid of technology, civic innovation, and
 community-driven power.
 
 
@@ -40,7 +40,7 @@ A. Empowered Participation
 
 B. Policy Proposals and Public Referendum: The Engine of Governance
 
-The Dhivehi Youth Movement 2.0 empowers every verified citizen to be an active architect of
+The 3rd Party 2.0 empowers every verified citizen to be an active architect of
 their nation's future through a direct policy proposal and public referendum system. This
 mechanism is the primary engine for driving legislative change and shaping the direction of
 governance.
@@ -571,7 +571,7 @@ Círculos. This protocol ensures the movement has a deep and resilient grassroot
                help with the digital verification process, ensuring inclusivity for less tech-savvy
                citizens.
 
-      E. The DYM Media Collective: Controlling the Narrative
+      E. The 3rd Party Media Collective: Controlling the Narrative
 
       To combat disinformation and ensure the movement's message is communicated to
       members and the public without distortion, an independent, member-funded media
@@ -579,7 +579,7 @@ Círculos. This protocol ensures the movement has a deep and resilient grassroot
 information hub, not a separate website, to create a unified ecosystem and serve as
 the movement's single source of truth.
 
-   1.​ Structure and Funding: The DYM Media Collective will operate as a formal
+   1.​ Structure and Funding: The 3rd Party Media Collective will operate as a formal
        wing of the movement, appearing as a dedicated "Media" tab within the
        platform. Its budget will be allocated transparently from the Live Treasury via
        a standard public vote, and it will be staffed by members with relevant
@@ -613,7 +613,7 @@ movement inoculates itself against external media attacks and builds a direct,
 trusted, and deeply informed relationship with its members and the public.
 VI. The Bridge: From Digital Mandate to Electoral Victory
 
-The ultimate purpose of the Dhivehi Youth Movement is to translate the democratically
+The ultimate purpose of the 3rd Party is to translate the democratically
 expressed will of its members into binding national policy. This is achieved by contesting and
 winning public elections. The platform is not merely an advocacy group; it is an end-to-end
 engine for identifying, funding, electing, and directing political leaders who serve as delegates of
@@ -662,7 +662,7 @@ A. Stage 2: Candidate Selection (The "Primary by Merit")
 Our candidates will not be chosen in backroom deals. They will be forged through the same
 meritocratic, transparent process that governs the entire movement.
 
-   1.​ Merit-Based Eligibility: To declare candidacy for a public office under the DYM banner,
+   1.​ Merit-Based Eligibility: To declare candidacy for a public office under the 3rd Party banner,
        a member must first achieve a significant, pre-defined Merit Score (e.g., top 1% of all
        members). This ensures all potential candidates have a deep, proven history of
        constructive engagement, community trust, and dedication to the movement's principles.
@@ -673,7 +673,7 @@ meritocratic, transparent process that governs the entire movement.
    3.​ The Primary Vote: All vetted candidates participate in a primary election held directly on
        the platform. To ensure the winner has the broadest possible support, the vote will be
        conducted using Ranked-Choice Voting. The winner of this primary becomes the
-       official DYM candidate for that office.
+       official 3rd Party candidate for that office.
 
 B. Stage 3: Crafting "The People's Manifesto"
 
@@ -690,7 +690,7 @@ They will run on a manifesto created, debated, and ratified by the entire moveme
 
 C. Stage : The Campaign Engine (Grassroots Power Unleashed)
 
-Campaigns are powered by two things: funding and volunteers. The DYM platform is designed
+Campaigns are powered by two things: funding and volunteers. The 3rd Party platform is designed
 to revolutionize both.
 
    1.​ Democratic Funding: The Live Treasury will feature dedicated, publicly auditable
@@ -715,7 +715,7 @@ Winning an election is not the end goal; it is the beginning of accountable gove
 elected officials are delegates, not rulers, and the platform will ensure they remain tethered to
 the public will.
 
-   1.​ Mandatory Policy Review: Before an elected DYM official introduces any major piece
+   1.​ Mandatory Policy Review: Before an elected 3rd Party official introduces any major piece
        of legislation in parliament, they are required to first submit that policy to the movement's
        platform for a standard referendum vote. The result of this vote (pass or fail) serves as
        their direct mandate from the people who elected them.
@@ -739,7 +739,7 @@ E. Stage 6: The Coalition Governance Protocol
               and outline the non-negotiable policy red lines from "The People's
               Manifesto." Only if this proposal passes with a supermajority vote can talks
               begin.
-          2.​ Transparent Negotiation: During negotiations, the DYM team is required to
+          2.​ Transparent Negotiation: During negotiations, the 3rd Party team is required to
               post regular, substantive (non-identifying) updates to a dedicated, publicly
               viewable channel on the platform, ensuring members are aware of the
               direction of the talks.
@@ -761,7 +761,7 @@ VII. Safeguarding Unity: Why We Endure
        work—irreproducible by splinter groups.
    2.​ Non-Transferable Trust: Leaving the movement resets an individual's Merit Score to
        zero, incentivizing internal resolution of conflicts.
-   3.​ Unifying Brand: The Dhivehi Youth Movement symbolizes a shared future for the
+   3.​ Unifying Brand: The 3rd Party symbolizes a shared future for the
        Maldives.
 
 4. The Emeritus Council: Preserving Institutional Memory
@@ -858,7 +858,7 @@ IX. Upholding Integrity: Code of Conduct and Disciplinary Framework
 
 A. Philosophy of Enforcement
 
-The Dhivehi Youth Movement is founded on trust, constructive dialogue, and a shared
+The 3rd Party is founded on trust, constructive dialogue, and a shared
 commitment to democratic principles. To protect the integrity and purpose of the movement, a
 transparent and just disciplinary framework is essential. Our enforcement philosophy is guided
 by four key principles:
@@ -1015,4 +1015,4 @@ with cutting-edge incentives, we create a system where:
 ●​ Power flows from contribution, not wealth or privilege.
 ●​ The Maldives becomes a global model for 21st-century democracy.
 
-The future is direct, dynamic, and digital. The future is the Dhivehi Youth Movement 2.0.
+The future is direct, dynamic, and digital. The future is the 3rd Party 2.0.
