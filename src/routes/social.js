@@ -219,6 +219,8 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, userAuth, m
         INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
         VALUES (?, 'peer_endorsement', ?, ?, 'endorsement', ?, ?)
       `).run(endorsed_id, points, endorsements.length, 'peer_endorsement', `Peer endorsement #${endorsements.length}`, now);
+      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+        .run(points, endorsed_id);
 
       res.json({ success: true, message: 'Endorsement recorded' });
     } catch (error) {
@@ -438,6 +440,8 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, userAuth, m
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'knowledge_check', ?, ?, 'quiz', ?, ?)
         `).run(userId, quiz.points_reward, id, `Knowledge check passed: ${quiz.article_title || quiz.article_id}`, now);
+        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+          .run(quiz.points_reward, userId);
       }
 
       res.json({ success: true, correct, points_earned: correct ? quiz.points_reward : 0 });
@@ -518,6 +522,8 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, userAuth, m
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'comment_endorsement', ?, ?, 'comment', ?, ?)
         `).run(comment.user_id, commentPoints, id, `Comment endorsed (${endorsementCount} endorsements)`, now);
+        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+          .run(commentPoints, comment.user_id);
       }
 
       res.json({ success: true, endorsements: endorsementCount });
@@ -607,6 +613,8 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, userAuth, m
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'violation_penalty', ?, ?, 'violation', ?, ?)
           `).run(violation.accused_user_id, -penalty.point_penalty, id, `Violation penalty (Tier ${penalty_tier}): ${violation.violation_type}`, now);
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+            .run(-penalty.point_penalty, violation.accused_user_id);
 
           if (penalty.action === 'temporary') {
             db.prepare(`
@@ -702,6 +710,8 @@ module.exports = function({ db, getSettings, logActivity, adminAuth, userAuth, m
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'amplification', ?, ?, 'amplify', ?, ?)
           `).run(link.creator_user_id, link.reward_points, link.id, `Amplification click: ${link.content_title || link.content_type}`, new Date().toISOString());
+          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+            .run(link.reward_points, link.creator_user_id);
         }
       }
 

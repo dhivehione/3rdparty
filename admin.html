@@ -551,36 +551,63 @@
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-party-card rounded-xl border border-gray-700 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-party-dark">
-                            <tr class="text-left text-sm text-gray-400">
-                                <th class="px-6 py-4">ID</th>
-                                <th class="px-6 py-4">Phone</th>
-                                <th class="px-6 py-4">NID</th>
-                                <th class="px-6 py-4">Name</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4">Contribution</th>
-                                <th class="px-6 py-4">Donation</th>
-                                <th class="px-6 py-4">Merit</th>
-                                <th class="px-6 py-4">Time</th>
-                                <th class="px-6 py-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="signupsTableBody" class="divide-y divide-gray-700">
-                        </tbody>
-                    </table>
+            <!-- Overview Tab -->
+            <div id="tab-overview" class="tab-content">
+                <div class="flex flex-wrap items-center gap-4 mb-4">
+                    <div>
+                        <select id="filterType" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-party-accent">
+                            <option value="all">All Contributions</option>
+                            <option value="skills">Skills</option>
+                            <option value="action">Action</option>
+                            <option value="ideas">Ideas</option>
+                            <option value="donation">Donation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="filterStatus" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-party-accent">
+                            <option value="all">All Status</option>
+                            <option value="verified">Verified</option>
+                            <option value="unregistered">Unregistered</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <input type="text" id="searchInput" placeholder="Search name, phone or NID..."
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-party-accent">
+                    </div>
+                    <button onclick="exportToCSV()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg text-sm font-bold hover:scale-105 transform transition">
+                        <i class="fas fa-download mr-1"></i>Export CSV
+                    </button>
                 </div>
-                <div id="noData" class="text-center py-12 text-gray-500 hidden">
-                    <div class="text-4xl mb-4">📭</div>
-                    <p>No signups yet. The party is empty!</p>
-                </div>
-                <!-- Pagination -->
-                <div id="paginationControls" class="flex items-center justify-between px-6 py-4 border-t border-gray-700">
-                    <div id="pageInfo" class="text-sm text-gray-400"></div>
-                    <div id="pageButtons" class="flex items-center space-x-2"></div>
+                <div class="bg-party-card rounded-xl border border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-party-dark">
+                                <tr class="text-left text-sm text-gray-400">
+                                    <th class="px-6 py-4">ID</th>
+                                    <th class="px-6 py-4">Phone</th>
+                                    <th class="px-6 py-4">NID</th>
+                                    <th class="px-6 py-4">Name</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4">Contribution</th>
+                                    <th class="px-6 py-4">Donation</th>
+                                    <th class="px-6 py-4">Merit</th>
+                                    <th class="px-6 py-4">Time</th>
+                                    <th class="px-6 py-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signupsTableBody" class="divide-y divide-gray-700">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noData" class="text-center py-12 text-gray-500 hidden">
+                        <div class="text-4xl mb-4">📭</div>
+                        <p>No signups yet. The party is empty!</p>
+                    </div>
+                    <!-- Pagination -->
+                    <div id="paginationControls" class="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+                        <div id="pageInfo" class="text-sm text-gray-400"></div>
+                        <div id="pageButtons" class="flex items-center space-x-2"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -705,6 +732,9 @@
             document.getElementById('dashboard').classList.remove('hidden');
             loadedTabs.add('overview');
             refreshData();
+            document.getElementById('filterType').addEventListener('change', applyFilter);
+            document.getElementById('filterStatus').addEventListener('change', applyFilter);
+            document.getElementById('searchInput').addEventListener('input', applyFilter);
         }
 
         function logout() {
@@ -1831,14 +1861,21 @@ async function loadSystemSettings() {
         const res = await fetch('/api/system-settings', {
             headers: { 'Authorization': 'Bearer ' + authToken }
         });
+        if (!res.ok) {
+            document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Failed to load settings. Please try refreshing.</div>';
+            return;
+        }
         const data = await res.json();
         if (data.success) {
             systemSettings = data.settings;
             renderSystemSettings();
             renderSmsSettings();
+        } else {
+            document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Failed to load settings.</div>';
         }
     } catch (err) {
         console.error('Error loading system settings:', err);
+        document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Network error loading settings.</div>';
     }
 }
 
@@ -2379,6 +2416,18 @@ async function resetSystemSettings() {
         endorsement_tier2_pts: 1.0,
         endorsement_tier3_pts: 0.5,
         endorsement_tier4_pts: 0.1,
+        approval_threshold_routine: 0.50,
+        approval_threshold_policy: 0.60,
+        approval_threshold_constitutional: 0.80,
+        voting_window_primary_days: 7,
+        voting_window_extended_days: 3,
+        voting_weight_primary: 1.0,
+        voting_weight_extended: 0.5,
+        proposal_cooldown_hours: 8,
+        merit_vote_pass: 2.5,
+        merit_vote_fail: 1.0,
+        merit_proposal_author: 200,
+        merit_proposal_created: 10,
         sms_provider: '',
         sms_otp_required: 0,
         sms_otp_length: 6,
