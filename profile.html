@@ -467,6 +467,19 @@
                 </div>
             </div>
 
+            <!-- Merit Events Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-star mr-2"></i>Merit History
+                </h2>
+                <div id="meritEventsContainer" class="space-y-2">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+                <div id="noMeritEvents" class="hidden text-center py-6 text-gray-500">
+                    <p>No merit events yet.</p>
+                </div>
+            </div>
+
             <!-- Activity Log Section -->
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">
@@ -698,6 +711,9 @@
                 // Load activity log
                 loadActivityLog();
 
+                // Load merit events
+                loadMeritEvents();
+
             } catch (e) {
                 console.error(e);
                 logout();
@@ -833,6 +849,68 @@
             }
         }
 
+        // ==================== MERIT EVENTS ====================
+
+        async function loadMeritEvents() {
+            if (!authToken) return;
+            try {
+                const res = await fetch('/api/merit/events?limit=50', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                const container = document.getElementById('meritEventsContainer');
+                const noData = document.getElementById('noMeritEvents');
+
+                if (!data.success || !data.events || data.events.length === 0) {
+                    container.innerHTML = '';
+                    noData.classList.remove('hidden');
+                    return;
+                }
+
+                noData.classList.add('hidden');
+                const eventLabels = {
+                    'donation_verified': 'Donation verified',
+                    'peer_endorsement': 'Peer endorsement',
+                    'peer_endorsement_removed': 'Endorsement removed',
+                    'knowledge_check': 'Knowledge check passed',
+                    'comment_endorsement': 'Comment endorsed',
+                    'violation_penalty': 'Violation penalty',
+                    'amplification': 'Amplification click',
+                    'wall_post': 'Wall post',
+                    'wall_upvoted': 'Post upvoted',
+                    'wall_vote': 'Wall vote',
+                    'proposal_created': 'Proposal created',
+                    'stake_locked': 'Proposal stake locked',
+                    'stake_refund': 'Stake refunded',
+                    'stake_penalty': 'Stake penalty',
+                    'leadership_stipend': 'Leadership stipend',
+                    'referral_enrolled': 'Referral enrolled',
+                    'referral_engaged': 'Referral engaged'
+                };
+
+                container.innerHTML = data.events.map(event => {
+                    const label = eventLabels[event.event_type] || event.event_type.replace(/_/g, ' ');
+                    const pointsClass = event.points >= 0 ? 'text-green-400' : 'text-red-400';
+                    const pointsText = event.points >= 0 ? `+${event.points}` : `${event.points}`;
+                    return `
+                        <div class="flex justify-between items-center bg-gray-800/50 rounded-lg px-4 py-2">
+                            <div>
+                                <span class="text-sm text-gray-300 capitalize">${label}</span>
+                                ${event.description ? `<span class="text-gray-500 text-xs ml-2">${escapeHtml(event.description)}</span>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm font-bold ${pointsClass}">${pointsText}</span>
+                                <span class="text-gray-500 text-xs ml-2">${new Date(event.created_at).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading merit events:', e);
+                document.getElementById('meritEventsContainer').innerHTML = '<p class="text-gray-500 text-sm">Error loading merit events.</p>';
+            }
+        }
+
         // ==================== ACTIVITY LOG ====================
 
         async function loadActivityLog() {
@@ -857,7 +935,16 @@
                     'user_logout': 'Logged out',
                     'password_change': 'Changed password',
                     'profile_update': 'Updated profile',
-                    'proposal_created': 'Created proposal'
+                    'proposal_created': 'Created proposal',
+                    'donation_verified': 'Donation verified',
+                    'wall_post': 'Wall post',
+                    'wall_vote': 'Wall vote',
+                    'peer_endorsement': 'Peer endorsement',
+                    'knowledge_check': 'Knowledge check passed',
+                    'comment_endorsement': 'Comment endorsed',
+                    'amplification': 'Amplification click',
+                    'referral_enrolled': 'Referral enrolled',
+                    'referral_engaged': 'Referral engaged'
                 };
 
                 container.innerHTML = data.logs.map(log => {

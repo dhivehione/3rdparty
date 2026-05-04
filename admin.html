@@ -496,6 +496,57 @@
                     </div>
                     <div id="systemSettingsPanel" class="space-y-6">
                         <div class="text-center py-8 text-gray-500">Loading settings...</div>
+
+                        <!-- SMS OTP Settings -->
+                        <div class="bg-party-dark/50 rounded-lg p-4 mb-4 border border-gray-700">
+                            <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-sms mr-2"></i>SMS OTP Verification</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
+                                    <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                        <option value="0">No (optional)</option>
+                                        <option value="1">Yes (required)</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">SMS Provider</label>
+                                    <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                        <option value="">None (dev mode)</option>
+                                        <option value="twilio">Twilio</option>
+                                        <option value="webhook">HTTP Webhook</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">OTP Code Length</label>
+                                    <input type="number" id="ss_sms_otp_length" value="6" min="4" max="8"
+                                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
+                                    <input type="number" id="ss_sms_otp_expiry_minutes" value="10" min="1" max="60"
+                                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                                    <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
+                                    <input type="text" id="ss_sms_twilio_phone_number" value=""
+                                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                                           placeholder="+9601234567">
+                                    <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Webhook URL</label>
+                                    <input type="text" id="ss_sms_webhook_url" value=""
+                                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                                           placeholder="https://your-gateway.com/sms">
+                                    <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-yellow-500 mt-3"><i class="fas fa-info-circle mr-1"></i> For Twilio: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment variables (or use admin settings above — insecure for secrets).</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1869,7 +1920,6 @@ async function loadSystemSettings() {
         if (data.success) {
             systemSettings = data.settings;
             renderSystemSettings();
-            renderSmsSettings();
         } else {
             document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Failed to load settings.</div>';
         }
@@ -1877,15 +1927,6 @@ async function loadSystemSettings() {
         console.error('Error loading system settings:', err);
         document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Network error loading settings.</div>';
     }
-}
-
-function renderSmsSettings() {
-    document.getElementById('ss_sms_otp_required').value = systemSettings.sms_otp_required ? '1' : '0';
-    document.getElementById('ss_sms_provider').value = systemSettings.sms_provider || '';
-    document.getElementById('ss_sms_otp_length').value = systemSettings.sms_otp_length || 6;
-    document.getElementById('ss_sms_otp_expiry_minutes').value = systemSettings.sms_otp_expiry_minutes || 10;
-    document.getElementById('ss_sms_twilio_phone_number').value = systemSettings.sms_twilio_phone_number || '';
-    document.getElementById('ss_sms_webhook_url').value = systemSettings.sms_webhook_url || '';
 }
 
 function renderSystemSettings() {
@@ -2277,6 +2318,57 @@ function renderSystemSettings() {
                 </div>
             </div>
 
+            <!-- SMS OTP Settings -->
+            <div class="bg-party-dark/50 rounded-lg p-4 border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-sms mr-2"></i>SMS OTP Verification</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
+                        <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <option value="0">No (optional)</option>
+                            <option value="1">Yes (required)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">SMS Provider</label>
+                        <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                            <option value="">None (dev mode)</option>
+                            <option value="twilio">Twilio</option>
+                            <option value="webhook">HTTP Webhook</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">OTP Code Length</label>
+                        <input type="number" id="ss_sms_otp_length" value="${systemSettings.sms_otp_length || 6}" min="4" max="8"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
+                        <input type="number" id="ss_sms_otp_expiry_minutes" value="${systemSettings.sms_otp_expiry_minutes || 10}" min="1" max="60"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
+                        <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
+                        <input type="text" id="ss_sms_twilio_phone_number" value="${systemSettings.sms_twilio_phone_number || ''}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                               placeholder="+9601234567">
+                        <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Webhook URL</label>
+                        <input type="text" id="ss_sms_webhook_url" value="${systemSettings.sms_webhook_url || ''}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
+                               placeholder="https://your-gateway.com/sms">
+                        <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
+                    </div>
+                </div>
+                <p class="text-xs text-yellow-500 mt-3"><i class="fas fa-info-circle mr-1"></i> For Twilio: set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment variables (or use admin settings above — insecure for secrets).</p>
+            </div>
+
             <div class="flex gap-4">
                 <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
                     <i class="fas fa-save mr-2"></i>Save All Settings
@@ -2363,7 +2455,6 @@ async function saveSystemSettings(e) {
             alert('Settings saved successfully!');
             systemSettings = result.settings;
             renderSystemSettings();
-            renderSmsSettings();
         } else {
             alert('Error: ' + result.error);
         }
@@ -2447,7 +2538,6 @@ async function resetSystemSettings() {
             alert('Settings reset to defaults!');
             systemSettings = result.settings;
             renderSystemSettings();
-            renderSmsSettings();
         }
     } catch (err) {
         alert('Failed to reset settings');

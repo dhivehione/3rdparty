@@ -114,7 +114,11 @@ module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngage
           verifiedUserId = user.id;
           db.prepare(`UPDATE signups SET donation_amount = donation_amount + ? WHERE id = ?`)
             .run(donation.amount, user.id);
+        } else {
+          console.log(`[donation verify] No user match for phone="${donation.phone}" nid="${donation.nid}"`);
         }
+      } else {
+        console.log(`[donation verify] Donation ${donationId} has no user_id, phone, or nid`);
       }
 
       if (verifiedUserId) {
@@ -126,6 +130,7 @@ module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngage
           const amountUsd = donation.amount / s.donation_usd_mvr_rate;
           donationMerit = Math.round(s.donation_log_multiplier * Math.log(amountUsd + 1) / Math.log(5));
         }
+        console.log(`[donation verify] userId=${verifiedUserId}, amount=${donation.amount}, formula=${s.donation_formula}, merit=${donationMerit}`);
         if (donationMerit > 0) {
           const now = new Date().toISOString();
           db.prepare(`
@@ -134,6 +139,7 @@ module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngage
           `).run(verifiedUserId, donationMerit, donationId, 'Donation verified: ' + donation.amount + ' MVR', now);
           db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
             .run(donationMerit, verifiedUserId);
+          logActivity('donation_verified', verifiedUserId, donationId, { amount: donation.amount, merit: donationMerit }, req);
           maybeEngageReferral(verifiedUserId);
         }
       }
