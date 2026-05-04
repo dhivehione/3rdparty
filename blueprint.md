@@ -1,7 +1,7 @@
 # 3d Party — Project Blueprint
 
 > **Last updated:** 2026-05-04  
-> **Source spec:** `whitepaper.txt` (855 lines, Dhivehi Youth Movement v13)  
+> **Source spec:** `whitepaper.txt` (1018 lines, Dhivehi Youth Movement v14)  
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
 
 ---
@@ -11,7 +11,7 @@
 **Stack:** Node.js (Express) + better-sqlite3 + vanilla JS frontend (Tailwind CSS)  
 **Entry point:** `server.js` (4368 lines)  
 **Database:** SQLite (`data/3rdparty.db`), external `laws.db` from mvlaws project  
-**Specification:** Dhivehi Youth Movement v13 whitepaper — a platform merging direct democracy with merit-based incentives, dynamic governance, and anti-schism safeguards.
+**Specification:** Dhivehi Youth Movement v14 whitepaper — a platform merging direct democracy with merit-based incentives, dynamic governance, and anti-schism safeguards.
 
 ### 1.1 Core Principles (from whitepaper §II)
 
