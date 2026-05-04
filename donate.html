@@ -239,8 +239,14 @@
             btn.textContent = 'Submitting...';
 
             try {
+                const headers = {};
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
                 const res = await fetch('/api/donate', {
                     method: 'POST',
+                    headers,
                     body: formData
                 });
                 const data = await res.json();

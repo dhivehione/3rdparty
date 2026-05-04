@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
-module.exports = function({ db, dataDir, getSettings, logActivity }) {
+module.exports = function({ db, dataDir, getSettings, logActivity, userAuth }) {
 
   // GET /api/donation-info - Get bank details (public)
   router.get('/api/donation-info', (req, res) => {
@@ -57,6 +57,16 @@ module.exports = function({ db, dataDir, getSettings, logActivity }) {
     try {
       const createdAt = new Date().toISOString();
 
+      let userId = null;
+      const authHeader = req.headers.authorization;
+      if (authHeader) {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) {
+          userId = user.id;
+        }
+      }
+
       const donationCols = db.prepare(`PRAGMA table_info(donations)`).all();
       const colNames = donationCols.map(c => c.name);
       
@@ -66,13 +76,13 @@ module.exports = function({ db, dataDir, getSettings, logActivity }) {
       if (colNames.includes('phone')) { insertCols.push('phone'); insertVals.push(phone); }
       if (colNames.includes('nid')) { insertCols.push('nid'); insertVals.push(nid); }
       if (colNames.includes('remarks')) { insertCols.push('remarks'); insertVals.push(remarks); }
-      if (colNames.includes('user_id')) { insertCols.push('user_id'); insertVals.push(null); }
+      if (colNames.includes('user_id')) { insertCols.push('user_id'); insertVals.push(userId); }
 
       const placeholders = insertVals.map(() => '?').join(', ');
       const stmt = db.prepare(`INSERT INTO donations (${insertCols.join(', ')}) VALUES (${placeholders})`);
       const result = stmt.run(...insertVals);
       
-      logActivity('donation_pending', null, null, {
+      logActivity('donation_pending', userId, result.insertId, {
         phone: phone ? phone.substring(0, 3) + 'xxxx' : null,
         nid: nid ? nid.substring(0, 2) + 'xxxxx' : null,
         amount: donationAmount,

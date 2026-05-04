@@ -42,6 +42,7 @@ jobs.start();
 // ==================== MIDDLEWARE ====================
 app.use(express.json());
 app.use(express.static(__dirname));
+app.use('/uploads', express.static(path.join(dataDir, 'uploads')));
 
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
@@ -70,7 +71,7 @@ app.use(require('./src/routes/admin-proposals-donations')({ db, queries, adminAu
 app.use(require('./src/routes/admin-wall')({ db, queries, adminAuth, logActivity }));
 app.use(require('./src/routes/leadership')({ db, adminAuth, userAuth, getSettings, updateSettings }));
 app.use(require('./src/routes/profile')({ db, lawsDb, getSettings, logActivity, userAuth, merit }));
-app.use(require('./src/routes/donations-public')({ db, dataDir, getSettings, logActivity }));
+app.use(require('./src/routes/donations-public')({ db, dataDir, getSettings, logActivity, userAuth }));
 app.use(require('./src/routes/static-pages'));
 
 // ==================== GLOBAL ERROR HANDLER ====================
