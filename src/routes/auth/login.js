@@ -123,12 +123,20 @@ module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
 
   // POST /api/user/logout - User logout
   router.post('/api/user/logout', (req, res) => {
-    const { phone } = req.body;
-    if (phone) {
+    const { phone, token } = req.body;
+    
+    // Clear by token if provided (most reliable)
+    if (token) {
+      const user = db.prepare('SELECT id FROM signups WHERE auth_token = ?').get(token);
+      if (user) logActivity('user_logout', user.id, null, null, req);
+      db.prepare('UPDATE signups SET auth_token = NULL WHERE auth_token = ?').run(token);
+    } else if (phone) {
+      // Fallback: clear by phone
       const user = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
       if (user) logActivity('user_logout', user.id, null, null, req);
       db.prepare('UPDATE signups SET auth_token = NULL WHERE phone = ?').run(phone);
     }
+    
     res.json({ success: true, message: 'Logged out' });
   });
 

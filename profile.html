@@ -18,6 +18,10 @@
             }
         }
     </script>
+    <script src="nav.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
     <script>
         // Pre-define functions to ensure they're available immediately
         async function checkRegistration() {
@@ -59,7 +63,7 @@
         }
 
         function logout() {
-            Auth.clearToken();
+            Auth.logout('/api/user/logout');
             window.location.reload();
         }
     </script>
@@ -72,9 +76,7 @@
 
       gtag('config', 'G-0PED1M435Y');
     </script>
-    <script src="nav.js"></script>
     <script src="/js/utils.js"></script>
-    <script src="/js/auth.js"></script>
     <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">

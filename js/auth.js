@@ -92,12 +92,13 @@
     },
 
     logout: function(serverLogoutUrl) {
+      var token = Auth.getToken();
       var phone = Auth.getPhone();
-      if (phone && serverLogoutUrl) {
+      if (serverLogoutUrl) {
         fetch(serverLogoutUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phone })
+          body: JSON.stringify({ phone: phone, token: token })
         }).catch(function () {});
       }
       Auth.clearToken();
