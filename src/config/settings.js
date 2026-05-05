@@ -49,6 +49,7 @@ const DEFAULT_SETTINGS = {
   proposal_cooldown_hours: 8,
   merit_vote_pass: 2.5,
   merit_vote_fail: 1.0,
+  merit_vote_participation: 0.5,
   merit_proposal_author: 200,
   merit_proposal_created: 10,
   stipend_council: 150,

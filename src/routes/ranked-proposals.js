@@ -190,17 +190,28 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
       // Check if already voted (by user_id or IP)
       let existing;
       if (userId) {
-        existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(proposal_id, userId);
+        existing = db.prepare('SELECT id, user_id FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(proposal_id, userId);
       }
       if (!existing) {
-        existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
+        existing = db.prepare('SELECT id, user_id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
       }
       if (existing) {
         db.prepare('UPDATE ranked_votes SET ranking = ?, voted_at = ?, user_id = COALESCE(user_id, ?) WHERE id = ?')
           .run(JSON.stringify(ranking), votedAt, userId, existing.id);
+
+        // Award participation merit if an anonymous vote is now being linked to a logged-in user
+        if (userId && !existing.user_id) {
+          const participation = getSettings().merit_vote_participation || 0.5;
+          merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'ranked_proposal', 'Participation: voted on ranked choice proposal');
+        }
       } else {
         db.prepare('INSERT INTO ranked_votes (proposal_id, ranking, voter_ip, voted_at, user_id) VALUES (?, ?, ?, ?, ?)')
           .run(proposal_id, JSON.stringify(ranking), userIP, votedAt, userId);
+
+        if (userId) {
+          const participation = getSettings().merit_vote_participation || 0.5;
+          merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'ranked_proposal', 'Participation: voted on ranked choice proposal');
+        }
       }
 
       res.json({ message: 'Vote recorded!', success: true });

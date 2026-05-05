@@ -246,9 +246,20 @@ router.post('/api/vote', (req, res) => {
     if (existingVote) {
       db.prepare('UPDATE votes SET choice = ?, voted_at = ?, user_id = ?, vote_weight = ?, loyalty_coefficient = ?, days_since_created = ? WHERE id = ?')
         .run(choice, votedAt, userId || existingVote.user_id, voteWeight, lc, daysSinceCreated, existingVote.id);
+
+      // Award participation merit if an anonymous vote is now being linked to a logged-in user
+      if (userId && !existingVote.user_id) {
+        const participation = getSettings().merit_vote_participation || 0.5;
+        merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'proposal', 'Participation: voted on proposal');
+      }
     } else {
       db.prepare('INSERT INTO votes (proposal_id, choice, voter_ip, voted_at, user_id, vote_weight, loyalty_coefficient, days_since_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(proposal_id, choice, userIP, votedAt, userId, voteWeight, lc, daysSinceCreated);
+
+      if (userId) {
+        const participation = getSettings().merit_vote_participation || 0.5;
+        merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'proposal', 'Participation: voted on proposal');
+      }
     }
 
     const weightedCounts = db.prepare(`
