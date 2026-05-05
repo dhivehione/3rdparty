@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, logActivity, adminAuth, userAuth }) {
+module.exports = function({ db, logActivity, adminAuth, userAuth, getSettings }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -101,7 +101,9 @@ module.exports = function({ db, logActivity, adminAuth, userAuth }) {
 
   // ==================== KNOWLEDGE CHECK BOUNTY ====================
   router.post('/api/quizzes', userAuth, (req, res) => {
-    const { article_id, article_title, question, options, correct_answer, points_reward = 10 } = req.body;
+    const { article_id, article_title, question, options, correct_answer, points_reward } = req.body;
+    const settings = getSettings();
+    const finalPoints = points_reward !== undefined ? points_reward : settings.quiz_default_reward;
 
     if (!article_id || !question || !options || correct_answer === undefined) {
       return res.status(400).json({ error: 'article_id, question, options, and correct_answer required', success: false });
@@ -117,7 +119,7 @@ module.exports = function({ db, logActivity, adminAuth, userAuth }) {
       db.prepare(`
         INSERT INTO article_quizzes (article_id, article_title, question, options, correct_answer, points_reward, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(article_id, article_title || '', question, JSON.stringify(opts), correct_answer, points_reward, now);
+      `).run(article_id, article_title || '', question, JSON.stringify(opts), correct_answer, finalPoints, now);
 
       res.status(201).json({ success: true, message: 'Quiz created' });
     } catch (error) {
@@ -245,7 +247,8 @@ module.exports = function({ db, logActivity, adminAuth, userAuth }) {
       db.prepare('UPDATE article_comments SET endorsement_count = ? WHERE id = ?').run(endorsementCount, id);
 
       if (endorsementCount >= 5) {
-        const commentPoints = Math.min(endorsementCount * 2, 50);
+        const settings = getSettings();
+        const commentPoints = Math.min(endorsementCount * 2, settings.comment_endorsement_cap);
         db.prepare(`
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'comment_endorsement', ?, ?, 'comment', ?, ?)

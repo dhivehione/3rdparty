@@ -231,7 +231,7 @@ let userId = null;
         db.prepare(`
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'law_vote', ?, ?, 'article', 'Voted on a law article', ?)
-        `).run(userId, s.merit_vote_pass || 2.5, article_id, votedAt);
+        `).run(userId, s.merit_vote_pass, article_id, votedAt);
         maybeEngageReferral(userId);
       }
     }
@@ -297,7 +297,7 @@ router.post('/api/mvlaws/vote-law', (req, res) => {
           db.prepare(`
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
             VALUES (?, 'law_vote', ?, ?, 'law', 'Voted on a law', ?)
-          `).run(signupUser.id, s.merit_vote_pass || 2.5, law_id, votedAt);
+          `).run(signupUser.id, s.merit_vote_pass, law_id, votedAt);
           maybeEngageReferral(signupUser.id);
         }
       }

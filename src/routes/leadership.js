@@ -16,12 +16,19 @@ module.exports = function({ db, adminAuth, userAuth, getSettings, updateSettings
     const { member_threshold, min_merit_for_leadership, max_term_years, appraisal_frequency_days } = req.body;
 
     try {
+      const current = db.prepare('SELECT member_threshold, min_merit_for_leadership, max_term_years, appraisal_frequency_days FROM leadership_settings WHERE id = 1').get();
       const now = new Date().toISOString();
       db.prepare(`
         UPDATE leadership_settings 
         SET member_threshold = ?, min_merit_for_leadership = ?, max_term_years = ?, appraisal_frequency_days = ?, updated_at = ?
         WHERE id = 1
-      `).run(member_threshold || 1000, min_merit_for_leadership || 500, max_term_years || 2, appraisal_frequency_days || 365, now);
+      `).run(
+        member_threshold !== undefined ? member_threshold : current.member_threshold,
+        min_merit_for_leadership !== undefined ? min_merit_for_leadership : current.min_merit_for_leadership,
+        max_term_years !== undefined ? max_term_years : current.max_term_years,
+        appraisal_frequency_days !== undefined ? appraisal_frequency_days : current.appraisal_frequency_days,
+        now
+      );
 
       res.json({ success: true, message: 'Settings updated' });
     } catch (error) {
@@ -88,7 +95,7 @@ module.exports = function({ db, adminAuth, userAuth, getSettings, updateSettings
       const result = db.prepare(`
         INSERT INTO leadership_positions (title, description, position_type, min_merit_required, is_active, created_at)
         VALUES (?, ?, ?, ?, 1, ?)
-      `).run(title, description || '', position_type, min_merit_required || 0, now);
+      `).run(title, description || '', position_type, min_merit_required, now);
 
       res.json({ success: true, message: 'Position created', id: result.lastInsertRowid });
     } catch (error) {

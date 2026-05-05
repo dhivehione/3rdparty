@@ -1,10 +1,10 @@
-module.exports = function({ queries }) {
+module.exports = function({ queries, getSettings }) {
   return function processHubStipends() {
     try {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
-      const HUB_STIPEND = 50;
+      const HUB_STIPEND = getSettings().hub_stipend;
       const activeHubs = queries.hubs.getActiveHubsForStipends();
       activeHubs.forEach(hub => {
         const members = queries.hubs.getHubMembersForStipends(hub.id);

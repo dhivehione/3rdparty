@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, logActivity, userAuth }) {
+module.exports = function({ db, logActivity, userAuth, getSettings }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -39,11 +39,15 @@ module.exports = function({ db, logActivity, userAuth }) {
     )
   `);
 
-  const VIOLATION_PENALTIES = {
-    1: { point_penalty: 50, action: 'warning' },
-    2: { point_penalty: 200, action: 'temporary' },
-    3: { point_penalty: 500, action: 'permanent' }
-  };
+  function getViolationPenalty(tier) {
+    const settings = getSettings();
+    const penalties = {
+      1: { point_penalty: settings.violation_penalty_tier1, action: 'warning' },
+      2: { point_penalty: settings.violation_penalty_tier2, action: 'temporary' },
+      3: { point_penalty: settings.violation_penalty_tier3, action: 'permanent' }
+    };
+    return penalties[tier];
+  }
 
   // ==================== VIOLATIONS & SUSPENSIONS ====================
   router.post('/api/violations/report', userAuth, (req, res) => {
@@ -119,7 +123,7 @@ module.exports = function({ db, logActivity, userAuth }) {
         .run(status, resolution || '', resolverId, now, id);
 
       if (status === 'resolved' && penalty_tier) {
-        const penalty = VIOLATION_PENALTIES[penalty_tier];
+        const penalty = getViolationPenalty(penalty_tier);
         if (penalty) {
           db.prepare(`
             INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
@@ -127,10 +131,12 @@ module.exports = function({ db, logActivity, userAuth }) {
           `).run(violation.accused_user_id, -penalty.point_penalty, id, `Violation penalty (Tier ${penalty_tier}): ${violation.violation_type}`, now);
 
           if (penalty.action === 'temporary') {
+            const suspensionDays = getSettings().suspension_duration_days;
+            const endsAt = new Date(Date.now() + suspensionDays * 24 * 60 * 60 * 1000).toISOString();
             db.prepare(`
               INSERT INTO user_suspensions (user_id, violation_id, suspension_type, reason, starts_at, ends_at, created_at)
-              VALUES (?, ?, 'temporary', ?, ?, datetime(?, '+7 days'), ?)
-            `).run(violation.accused_user_id, id, violation.violation_type, now, now, now);
+              VALUES (?, ?, 'temporary', ?, ?, ?, ?)
+            `).run(violation.accused_user_id, id, violation.violation_type, now, endsAt, now);
           } else if (penalty.action === 'permanent') {
             db.prepare(`
               INSERT INTO user_suspensions (user_id, violation_id, suspension_type, reason, starts_at, is_active, created_at)

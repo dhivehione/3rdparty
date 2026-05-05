@@ -67,11 +67,11 @@ app.use(require('./src/routes/auth/login')({ db, logActivity, adminSessions, ADM
 app.use(require('./src/routes/auth/admin')({ db, adminAuth, getTreasuryBalance }));
 app.use(require('./src/routes/auth/stats')({ db }));
 app.use(require('./src/routes/referrals')({ db, queries, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry }));
-app.use(require('./src/routes/bounty-academy')({ db, queries, userAuth, logActivity, ROLE_STIPENDS: merit.ROLE_STIPENDS, merit }));
+app.use(require('./src/routes/bounty-academy')({ db, queries, getSettings, userAuth, logActivity, merit }));
 app.use(require('./src/routes/social/merit')({ db, userAuth, merit }));
-app.use(require('./src/routes/social/interactions')({ db, logActivity, adminAuth, userAuth }));
-app.use(require('./src/routes/social/violations')({ db, logActivity, userAuth }));
-app.use(require('./src/routes/social/amplification')({ db, userAuth }));
+app.use(require('./src/routes/social/interactions')({ db, logActivity, adminAuth, userAuth, getSettings }));
+app.use(require('./src/routes/social/violations')({ db, logActivity, userAuth, getSettings }));
+app.use(require('./src/routes/social/amplification')({ db, userAuth, getSettings }));
 app.use(require('./src/routes/hubs-emeritus')({ db, queries, userAuth }));
 app.use(require('./src/routes/events')({ db, queries, adminAuth, logActivity }));
 app.use(require('./src/routes/admin-proposals-donations')({ db, queries, adminAuth, logActivity, getSettings, maybeEngageReferral, addTreasuryEntry }));

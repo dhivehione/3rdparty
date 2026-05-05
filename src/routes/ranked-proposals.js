@@ -128,7 +128,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
 
       if (userId) {
         logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
-        const createdMerit = settings.merit_proposal_created || 10;
+        const createdMerit = settings.merit_proposal_created;
         db.prepare(`
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'proposal_created', ?, ?, 'ranked_proposal', 'Created a ranked choice proposal', ?)

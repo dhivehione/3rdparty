@@ -22,14 +22,16 @@ module.exports = function({ db, userAuth, merit }) {
         return res.status(404).json({ error: 'User not found', success: false });
       }
 
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const settings = merit.getSettings();
+      const periodMs = settings.endorsement_period_days * 24 * 60 * 60 * 1000;
+      const periodAgo = new Date(Date.now() - periodMs).toISOString();
       const recentEndorsements = db.prepare(`
         SELECT COUNT(*) as cnt FROM peer_endorsements
         WHERE endorser_id = ? AND created_at > ?
-      `).get(endorserId, thirtyDaysAgo);
+      `).get(endorserId, periodAgo);
 
-      if (recentEndorsements.cnt >= 20) {
-        return res.status(429).json({ error: 'Max 20 endorsements per 30-day period', success: false });
+      if (recentEndorsements.cnt >= settings.endorsement_max_per_period) {
+        return res.status(429).json({ error: `Max ${settings.endorsement_max_per_period} endorsements per ${settings.endorsement_period_days}-day period`, success: false });
       }
 
       const existing = db.prepare('SELECT id FROM peer_endorsements WHERE endorser_id = ? AND endorsed_id = ?').get(endorserId, endorsed_id);
@@ -144,7 +146,7 @@ module.exports = function({ db, userAuth, merit }) {
       dynamic_score: dynamicScore,
       loyalty_coefficient: loyaltyCoeff,
       loyalty_tier: lcLabel,
-      effective_half_life_days: Math.round(merit.HALF_LIFE_DAYS * loyaltyCoeff)
+      effective_half_life_days: Math.round(merit.getSettings().merit_half_life_days * loyaltyCoeff)
     });
   });
 

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const BOUNTY_TIER_REWARDS = { 1: 20, 2: 75, 3: 250 };
+function getBountyReward(settings, tier) {
+  const map = {
+    1: settings.bounty_tier1_reward,
+    2: settings.bounty_tier2_reward,
+    3: settings.bounty_tier3_reward
+  };
+  return map[tier] || 0;
+}
 
-module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
+module.exports = function({ db, userAuth, logActivity, getSettings, merit }) {
   // ==================== BOUNTY SYSTEM ====================
   router.post('/api/bounties', userAuth, (req, res) => {
     const { title, description, tier } = req.body;
@@ -19,7 +26,7 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
 
     try {
       const tierNum = parseInt(tier);
-      const rewardPoints = BOUNTY_TIER_REWARDS[tierNum];
+      const rewardPoints = getBountyReward(getSettings(), tierNum);
       const now = new Date().toISOString();
 
       const result = db.prepare(`
@@ -300,7 +307,7 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
       if (completedModules.completed >= allModules.total) {
         const gradExists = db.prepare('SELECT id FROM academy_graduation WHERE user_id = ?').get(userId);
         if (!gradExists) {
-          const graduationMerit = 250;
+          const graduationMerit = getSettings().academy_graduation_merit;
           const gradNow = new Date().toISOString();
           db.prepare('INSERT INTO academy_graduation (user_id, graduated_at, merit_awarded) VALUES (?, ?, ?)').run(userId, gradNow, graduationMerit);
 
@@ -426,9 +433,9 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
       db.prepare(`
         INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
         VALUES (?, 'advisory_report', ?, ?, 'advisory_report', ?, ?)
-      `).run(report.user_id, ROLE_STIPENDS.advisory, id, `Advisory report: ${report.report_title}`, new Date().toISOString());
+      `).run(report.user_id, getSettings().stipend_advisory, id, `Advisory report: ${report.report_title}`, new Date().toISOString());
 
-      logActivity('advisory_report_approved', report.user_id, id, { points: ROLE_STIPENDS.advisory }, req);
+      logActivity('advisory_report_approved', report.user_id, id, { points: getSettings().stipend_advisory }, req);
       res.json({ success: true, message: 'Report approved and points awarded' });
     } catch (error) {
       console.error('Approve report error:', error);

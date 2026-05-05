@@ -68,7 +68,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
           if (post.user_id) {
             const newUpvotes = db.prepare('SELECT upvotes FROM wall_posts WHERE id = ?').get(postId).upvotes;
             if (newUpvotes > 0 && newUpvotes % 5 === 0) {
-              const voteMerit = Math.min(newUpvotes, 25);
+              const voteMerit = Math.min(newUpvotes, getSettings().wall_upvote_milestone_cap);
               db.prepare(`
                 INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
                 VALUES (?, 'wall_upvoted', ?, ?, 'wall', ?, ?)
@@ -78,11 +78,12 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
             }
           }
           if (voterId) {
+            const upvoteMerit = getSettings().wall_upvote_merit;
             db.prepare(`
               INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-              VALUES (?, 'wall_vote', 1, ?, 'wall', 'Upvoted a wall post', ?)
-            `).run(voterId, postId, now);
-            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + 1 WHERE id = ?').run(voterId);
+              VALUES (?, 'wall_vote', ?, ?, 'wall', 'Upvoted a wall post', ?)
+            `).run(voterId, upvoteMerit, postId, now);
+            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?').run(upvoteMerit, voterId);
             maybeEngageReferral(voterId);
           }
         } else {

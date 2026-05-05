@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 
-module.exports = function({ db, userAuth }) {
+module.exports = function({ db, userAuth, getSettings }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -34,7 +34,10 @@ module.exports = function({ db, userAuth }) {
 
   // ==================== AMPLIFICATION BOUNTY ====================
   router.post('/api/amplify', userAuth, (req, res) => {
-    const { content_type, content_title, base_url, reward_points = 10, expires_in_days = 7 } = req.body;
+    const { content_type, content_title, base_url, reward_points, expires_in_days } = req.body;
+    const settings = getSettings();
+    const finalReward = reward_points !== undefined ? reward_points : settings.amplification_default_reward;
+    const finalExpiry = expires_in_days !== undefined ? expires_in_days : settings.amplification_default_expiry_days;
     const userId = req.user.id;
 
     if (!content_type || !base_url) {
@@ -43,13 +46,13 @@ module.exports = function({ db, userAuth }) {
 
     try {
       const trackCode = crypto.randomBytes(8).toString('hex');
-      const expiresAt = new Date(Date.now() + expires_in_days * 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = new Date(Date.now() + finalExpiry * 24 * 60 * 60 * 1000).toISOString();
       const now = new Date().toISOString();
 
       db.prepare(`
         INSERT INTO amplification_links (creator_user_id, content_type, content_title, track_code, base_url, reward_points, expires_at, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(userId, content_type, content_title || '', trackCode, base_url, reward_points, expiresAt, now);
+      `).run(userId, content_type, content_title || '', trackCode, base_url, finalReward, expiresAt, now);
 
       const trackingUrl = `${req.protocol}://${req.get('host')}/api/amplify/track/${trackCode}`;
 
