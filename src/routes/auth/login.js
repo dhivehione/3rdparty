@@ -53,35 +53,50 @@ module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
   router.post('/api/user/login', (req, res) => {
     const { phone, nid, username, password } = req.body;
     
-    // Determine login method
     let user;
     let loginMethod = '';
 
     if (username && password) {
-      // Username + password login
-      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      // Step 1: Find user by username or NID
       user = db.prepare(`
         SELECT * FROM signups 
-        WHERE (username = ? OR nid = ?) 
-        AND password_hash = ? AND is_verified = 1
-      `).get(username.trim(), username.trim(), passwordHash);
-      loginMethod = 'password_hash';
-
-      // Fallback: if no password_hash set, try phone-as-password (legacy)
-      if (!user) {
-        const cleanedPassword = password.replace(/\D/g, '');
-        user = db.prepare(`
-          SELECT * FROM signups 
-          WHERE (username = ? OR nid = ?) 
-          AND phone = ? AND is_verified = 1
-        `).get(username.trim(), username.trim(), cleanedPassword);
-        loginMethod = 'legacy_phone';
+        WHERE username = ? OR nid = ?
+      `).get(username.trim(), username.trim());
+      
+      if (user) {
+        // Step 2: Verify password
+        if (user.password_hash) {
+          // Check against stored password hash
+          const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+          if (user.password_hash !== passwordHash) {
+            return res.status(401).json({ error: 'Invalid credentials', success: false });
+          }
+          loginMethod = 'password_hash';
+        } else {
+          // Legacy: phone number as password
+          const cleanedPassword = password.replace(/\D/g, '');
+          const storedPhone = (user.phone || '').replace(/\D/g, '');
+          if (cleanedPassword !== storedPhone) {
+            return res.status(401).json({ error: 'Invalid credentials', success: false });
+          }
+          loginMethod = 'legacy_phone';
+        }
+        
+        // Step 3: Check verification status
+        if (!user.is_verified) {
+          return res.status(401).json({ error: 'Account not verified. Please complete verification.', success: false });
+        }
       }
     } else if (phone && nid) {
-       // Phone + NID login (original method)
-       const cleanedPhone = phone.replace(/\D/g, '');
-       user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ? AND is_verified = 1').get(cleanedPhone, nid);
-     }
+      // Phone + NID login
+      const cleanedPhone = phone.replace(/\D/g, '');
+      user = db.prepare('SELECT * FROM signups WHERE phone = ? AND nid = ?').get(cleanedPhone, nid.trim());
+      
+      if (user && !user.is_verified) {
+        return res.status(401).json({ error: 'Account not verified. Please complete verification.', success: false });
+      }
+      loginMethod = 'phone_nid';
+    }
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials or not registered', success: false });
