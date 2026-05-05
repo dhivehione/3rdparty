@@ -199,15 +199,15 @@
         let currentPage = 1;
         let replyParentId = null;
         let flagPostId = null;
-        let isLoggedIn = false;
+        let userIsLoggedIn = false;
         let loggedInName = '';
         let authToken = null;
 
         // ── Auth detection ──
         function detectAuth() {
             authToken = Auth.getToken();
-            isLoggedIn = !!authToken;
-            if (isLoggedIn) {
+            userIsLoggedIn = !!authToken;
+            if (userIsLoggedIn) {
                 var user = Auth.getUser();
                 loggedInName = (user && (user.name || user.username)) || '';
                 document.getElementById('nicknameField').classList.add('hidden');
@@ -339,7 +339,7 @@
             const displayName = post.display_name || post.nickname || 'Anonymous';
             const hasMerit = post.user_merit > 0;
             const replyCount = post.reply_count || 0;
-            const isOwnPost = isLoggedIn && post.user_id && post.user_id === getMyUserId();
+            const isOwnPost = userIsLoggedIn && post.user_id && post.user_id === getMyUserId();
 
             card.innerHTML = `
                 <div class="flex gap-3">
@@ -434,7 +434,7 @@
 
             try {
                 const body = { message: text, parent_id: parentId };
-                if (!isLoggedIn) body.nickname = document.getElementById('nickname').value.trim() || 'Anon';
+                if (!userIsLoggedIn) body.nickname = document.getElementById('nickname').value.trim() || 'Anon';
 
                 const response = await fetch('/api/wall', {
                     method: 'POST',
@@ -577,7 +577,7 @@
                 if (replyParentId) {
                     body.parent_id = replyParentId;
                 }
-                if (!isLoggedIn) {
+                if (!userIsLoggedIn) {
                     const nickname = document.getElementById('nickname').value.trim();
                     if (!nickname || nickname.length < 2) {
                         errorEl.textContent = 'Please enter a nickname (at least 2 characters)';
@@ -599,7 +599,7 @@
                     successEl.classList.remove('hidden');
                     document.getElementById('message').value = '';
                     document.getElementById('charCount').textContent = '0';
-                    if (!isLoggedIn) document.getElementById('nickname').value = '';
+                    if (!userIsLoggedIn) document.getElementById('nickname').value = '';
                     cancelReply();
                     loadPosts();
                     loadStats();
@@ -618,7 +618,7 @@
             replyParentId = null;
             document.getElementById('replyContext').classList.add('hidden');
             document.getElementById('submitBtnText').textContent = 'Post to the Wall';
-            document.getElementById('message').placeholder = isLoggedIn ? 'Share an idea. Discuss the movement. Or just say hello.' : 'Say something. Support the movement. Share an idea. Or just say hi.';
+            document.getElementById('message').placeholder = userIsLoggedIn ? 'Share an idea. Discuss the movement. Or just say hello.' : 'Say something. Support the movement. Share an idea. Or just say hi.';
             document.getElementById('messageLabel').textContent = 'Your Message';
             document.getElementById('maxChars').textContent = '500';
             document.getElementById('message').maxLength = 500;
