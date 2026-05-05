@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join the 3d Party</title>
-    <meta name="description" content="Join the 3d Party — a citizen-powered political movement in the Maldives. 45 seconds. Phone + NID only.">
+    <meta name="description" content="Join the 3d Party — a citizen-powered political movement in the Maldives. Phone + NID only. No donation required.">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -42,9 +42,9 @@
 <body class="bg-party-dark text-white min-h-screen">
     
     <div class="max-w-2xl mx-auto px-4 py-16">
-        <h1 class="text-4xl font-bold mb-2">Join the 3d Party</h1>
-        <p class="text-gray-400 mb-2">45 seconds. That's all it takes. (We timed it.)</p>
-        <p class="text-gray-500 text-sm mb-8">Already <span id="memberCount" class="text-party-accent font-bold">—</span> citizens have joined.</p>
+        <h1 class="text-4xl font-bold mb-2">Join the Movement</h1>
+        <p class="text-gray-400 mb-2">This is where it starts. You're not signing up for updates — you're becoming a co-owner of something real.</p>
+        <p class="text-gray-500 text-sm mb-8">Already <span id="memberCount" class="text-party-accent font-bold">—</span> fellow citizens have stepped forward.</p>
         
         <!-- Contribution Selection (shown if no type in URL) -->
         <div id="contributionSelection" class="mb-8">
@@ -81,22 +81,25 @@
             <!-- Filled by JavaScript -->
         </div>
         
-        <!-- Live Treasury Counter -->
-        <div id="treasuryCounter" class="bg-party-card border border-party-accent/20 rounded-xl p-4 mb-8 hidden">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="text-2xl">💰</div>
-                    <div>
-                        <div class="text-xs text-gray-400 uppercase">Live Treasury</div>
-                        <div class="text-xl font-bold text-party-accent" id="treasuryAmount">Loading...</div>
-                    </div>
-                </div>
-                <a href="/donate" class="text-xs text-party-accent hover:underline">View details →</a>
-            </div>
+        <!-- Transparent but subtle treasury link -->
+        <div id="treasuryCounter" class="hidden mb-8 text-center">
+            <a href="/treasury" class="text-xs text-gray-500 hover:text-party-accent transition">
+                <i class="fas fa-eye mr-1"></i>View our public treasury →
+            </a>
         </div>
 
         <div id="signupFormContainer" class="hidden transition-all duration-300">
         <form id="signupForm" class="space-y-6">
+            <!-- Name -->
+            <div>
+                <label class="block text-sm font-medium mb-2">
+                    Your Name <span class="text-red-400">*</span>
+                </label>
+                <input type="text" id="name" required
+                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                       placeholder="Your full name">
+            </div>
+
             <!-- Phone -->
             <div>
                 <label class="block text-sm font-medium mb-2">
@@ -106,52 +109,44 @@
                     <span class="bg-gray-800 px-4 py-3 rounded-l-lg border border-gray-600 border-r-0 text-gray-400">
                         +960
                     </span>
-                    <input type="tel" id="phone" required 
+                    <input type="tel" id="phone" required
                            class="flex-1 bg-gray-800 border border-gray-600 rounded-r-lg px-4 py-3 focus:outline-none focus:border-party-accent"
                            placeholder="7-digit number" maxlength="7">
                 </div>
             </div>
 
-            <!-- NID -->
-            <div>
-                <label class="block text-sm font-medium mb-2">
-                    National ID (NID) <span class="text-red-400">*</span>
-                </label>
-                <input type="text" id="nid" required 
-                       class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
-                       placeholder="A123456" maxlength="10">
-            </div>
-
             <!-- Optional Fields -->
             <div class="border-t border-gray-700 pt-6">
                 <p class="text-sm text-gray-500 mb-4">Optional — Only if you want to</p>
-                
+
                 <div class="grid md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Email</label>
-                        <input type="email" id="email" 
+                        <input type="email" id="email"
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
                                placeholder="your@email.com (optional)">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Name</label>
-                        <input type="text" id="name" 
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
-                               placeholder="Your name">
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium mb-2">Username</label>
-                        <input type="text" id="username" 
+                        <input type="text" id="username"
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
                                placeholder="For login (optional)">
                     </div>
                 </div>
-                
+
                 <div class="mt-4">
                     <label class="block text-sm font-medium mb-2">Island / Atoll</label>
-                    <input type="text" id="island" 
+                    <input type="text" id="island"
                            class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
                            placeholder="Male', Kaafu">
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium mb-2">National ID (NID)</label>
+                    <input type="text" id="nid"
+                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent"
+                           placeholder="A123456 (optional)">
+                    <p class="text-xs text-gray-500 mt-1">Optional. Helps us verify you as a Maldivian citizen.</p>
                 </div>
             </div>
 
@@ -387,21 +382,7 @@
             } catch (e) {}
         }
         
-        // Fetch Live Treasury balance
-        async function fetchTreasury() {
-            try {
-                const response = await fetch('/api/wall-stats');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        document.getElementById('treasuryAmount').textContent = 'MVR ' + (data.treasury || 0).toLocaleString();
-                    }
-                }
-            } catch (e) {
-                document.getElementById('treasuryAmount').textContent = 'MVR 0';
-            }
-        }
-        fetchTreasury();
+        // Treasury link is displayed subtly — transparency without begging
         
         function selectDonation(amount, e) {
             selectedDonationAmount = amount;
@@ -439,22 +420,23 @@
             e.preventDefault();
             
             const phone = document.getElementById('phone').value.replace(/\D/g, '');
+            const name = document.getElementById('name').value.trim();
             const nid = document.getElementById('nid').value.trim();
-            
+
+            if (!name) {
+                alert('Please enter your name.');
+                return;
+            }
+
             if (phone.length !== 7) {
                 alert('Please enter a valid 7-digit phone number.');
                 return;
             }
-            
-            if (!nid) {
-                alert('NID is required.');
-                return;
-            }
-            
+
             const data = {
                 phone: phone,
-                nid: nid.toUpperCase(),
-                name: document.getElementById('name').value.trim() || undefined,
+                name: name,
+                nid: nid ? nid.toUpperCase() : undefined,
                 username: document.getElementById('username').value.trim() || undefined,
                 email: document.getElementById('email').value.trim() || undefined,
                 island: document.getElementById('island').value.trim() || undefined,

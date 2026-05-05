@@ -862,16 +862,21 @@
                             <div class="flex justify-between items-start mb-3">
                                 <div>
                                     <div class="font-bold text-lg">MVR ${d.amount}</div>
-                                    <div class="text-sm text-gray-400">${d.phone || '—'} | ${d.nid || '—'}</div>
+                                    <div class="text-sm text-gray-400">${d.name || 'Anonymous'} | ${d.phone || '—'} | NID: ${d.nid || '—'}</div>
                                     <div class="text-xs text-gray-500">${new Date(d.created_at).toLocaleString()}</div>
+                                    ${d.remarks ? `<div class="text-xs text-gray-400 mt-1"><span class="font-semibold">Remarks:</span> ${d.remarks}</div>` : ''}
                                 </div>
                                 <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">Pending</span>
                             </div>
                             ${d.slip_filename ? `
                                 <div class="mb-3">
-                                    <img src="/uploads/${d.slip_filename}" class="max-h-32 rounded border border-gray-700" alt="Deposit Slip">
+                                    <div class="text-sm text-gray-400 mb-2">Deposit Slip:</div>
+                                    <a href="/uploads/${d.slip_filename}" target="_blank" class="block">
+                                        <img src="/uploads/${d.slip_filename}" class="max-h-64 rounded border border-gray-700 hover:opacity-90 cursor-pointer" alt="Deposit Slip">
+                                    </a>
+                                    <div class="text-xs text-gray-500 mt-1">Click image to view full size</div>
                                 </div>
-                            ` : ''}
+                            ` : '<div class="mb-3 text-sm text-red-400"><i class="fas fa-exclamation-triangle mr-1"></i>No deposit slip uploaded</div>'}
                             <div class="flex gap-2">
                                 <button onclick="verifyDonation(${d.id})" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
                                     <i class="fas fa-check mr-1"></i>Verify & Approve

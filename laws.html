@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laws — 3d Party</title>
+    <meta name="description" content="Browse, vote on, and craft laws that govern 3d Party. Turn your ideas into legislative proposals the community can vote on.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280', green: '#10B981', red: '#EF4444' }
                     }
                 }
             }
@@ -23,7 +25,6 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-0PED1M435Y');
     </script>
     <script src="/js/utils.js"></script>
@@ -34,16 +35,16 @@
 <body class="bg-party-dark text-white min-h-screen">
 
     <div class="max-w-4xl mx-auto px-4 py-8">
-        
+
         <!-- Context for cold visitors -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
             <p class="text-gray-400 mb-3">
-                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives — not an insurance company. 
+                <span class="text-party-accent font-bold">3d Party</span> is a new political movement in the Maldives — not an insurance company.
                 We let citizens directly vote on laws. No parliament middlemen.
             </p>
             <a href="/join" class="text-party-accent hover:underline text-sm">Join in 45 seconds →</a>
         </div>
-        
+
         <!-- Intro -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
             <h1 class="text-2xl font-bold text-party-accent mb-2">Laws & Voting</h1>
@@ -74,12 +75,167 @@
             </div>
         </div>
 
+        <!-- ==================== CRAFT A LAW SECTION ==================== -->
+        <div class="bg-party-card rounded-xl p-6 mb-8 border border-party-accent/30">
+            <h2 class="text-xl font-bold text-party-accent mb-3">
+                <i class="fas fa-lightbulb mr-2"></i>Craft a Law
+            </h2>
+            <p class="text-gray-400 text-sm mb-6">Describe a problem you see in society. We'll search existing Maldivian legislation for context and help you craft a legislative solution the community can vote on.</p>
+
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-2" for="seedIdea">Describe your idea <span class="text-party-accent">*</span></label>
+                <textarea id="seedIdea" rows="5" required
+                          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none resize-y"
+                          placeholder="Example: A law requiring all public beaches in the Maldives to have designated waste collection points with daily pickup, funded through a tourism levy..."></textarea>
+                <p class="text-gray-500 text-xs mt-1">Be specific. Include context: what problem does it solve? Who is affected?</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-2" for="additionalContext">Additional context (optional)</label>
+                <textarea id="additionalContext" rows="2"
+                          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none resize-y"
+                          placeholder="Any specific requirements, references to existing laws, or details..."></textarea>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="generateDraft()" id="generateBtn"
+                        class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400 transition flex items-center gap-2">
+                    <i class="fas fa-wand-magic-sparkles"></i>Generate Draft
+                </button>
+                <button onclick="clearCraftForm()" class="text-gray-400 hover:text-white text-sm transition">
+                    <i class="fas fa-undo mr-1"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Craft Loading State -->
+        <div id="craftLoadingState" class="hidden bg-party-card rounded-xl p-8 mb-8 border border-gray-700 text-center">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-party-accent mb-4"></div>
+            <p class="text-gray-400" id="craftLoadingText">Searching relevant laws and generating draft...</p>
+            <div id="craftLoadingSteps" class="mt-4 space-y-2 text-sm text-gray-500 max-w-md mx-auto"></div>
+        </div>
+
+        <!-- Craft Error State -->
+        <div id="craftErrorState" class="hidden bg-red-900/20 border border-red-500/50 rounded-xl p-6 mb-8">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-400 text-xl mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-red-400 mb-1">Generation Failed</h3>
+                    <p id="craftErrorMessage" class="text-gray-300 text-sm"></p>
+                </div>
+                <button onclick="document.getElementById('craftErrorState').classList.add('hidden')" class="text-gray-400 hover:text-white ml-auto">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Craft Result -->
+        <div id="craftResultContainer" class="hidden mb-8">
+
+            <div class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h2 class="text-xl font-bold text-party-accent">
+                        <i class="fas fa-file-contract mr-2"></i>Generated Draft
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="copyDraft()" id="copyBtn"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-copy mr-1"></i>Copy
+                        </button>
+                        <button onclick="downloadDraft()"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-download mr-1"></i>Download
+                        </button>
+                        <button onclick="downloadPdfDraft()"
+                                class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded border border-gray-600 hover:border-party-accent transition">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div id="draftMeta" class="flex flex-wrap gap-4 mb-6 text-xs text-gray-500">
+                </div>
+
+                <div id="executiveSummary" class="hidden bg-gradient-to-r from-party-accent/10 to-transparent border border-party-accent/30 rounded-lg p-5 mb-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fas fa-star text-party-accent"></i>
+                        <h3 class="font-bold text-party-accent text-sm uppercase tracking-wide">Executive Summary</h3>
+                    </div>
+                    <div class="summary-content text-gray-200 text-sm leading-relaxed"></div>
+                </div>
+
+                <button onclick="toggleFullDraft()" id="readMoreToggle" class="hidden w-full flex items-center justify-center gap-2 py-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-party-accent/50 transition text-gray-400 hover:text-white text-sm">
+                    <i id="readMoreIcon" class="fas fa-chevron-down"></i>
+                    <span id="readMoreLabel">Read Full Draft</span>
+                </button>
+
+                <div id="fullDraftSection" class="hidden">
+                    <div id="draftContent"
+                         class="bg-gray-900 rounded-lg p-6 border border-gray-700 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-200 max-h-[600px] overflow-y-auto mt-4">
+                    </div>
+                </div>
+            </div>
+
+            <div id="relevantClauses" class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700 hidden">
+                <div class="flex justify-between items-center mb-4 cursor-pointer" onclick="toggleClausesSection()">
+                    <h2 class="text-lg font-bold text-party-secondary">
+                        <i class="fas fa-scale-balanced mr-2"></i>Relevant Existing Clauses
+                        <span id="clauseCount" class="text-sm text-gray-400 ml-2">(0)</span>
+                    </h2>
+                    <button id="clausesToggle" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div id="clausesContent" class="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                </div>
+                <p class="text-gray-500 text-xs mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>These clauses from Maldivian laws were found by keyword search and used as context for the AI draft.
+                </p>
+            </div>
+
+            <div class="bg-party-card rounded-xl p-6 mb-4 border border-green-500/30">
+                <h2 class="text-lg font-bold text-party-green mb-2">
+                    <i class="fas fa-paper-plane mr-2"></i>Submit as Proposal
+                </h2>
+                <p class="text-gray-400 text-sm mb-4">Like this draft? Submit it as a public proposal so the community can vote on it.</p>
+                <div class="mb-3">
+                    <label class="block text-sm text-gray-400 mb-1">Your nickname (optional)</label>
+                    <input type="text" id="proposalNickname"
+                           class="w-full max-w-md bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none text-sm"
+                           placeholder="How should we credit you?">
+                </div>
+                <button onclick="submitAsProposal()" id="submitProposalBtn"
+                        class="bg-party-green text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-green-400 transition flex items-center gap-2">
+                    <i class="fas fa-vote-yea"></i>Add as Community Proposal
+                </button>
+                <p id="proposalStatus" class="hidden text-sm mt-2"></p>
+            </div>
+
+            <div class="bg-party-card rounded-xl p-6 mb-4 border border-gray-700">
+                <h3 class="font-bold text-party-accent mb-3">
+                    <i class="fas fa-screwdriver-wrench mr-2"></i>Refine the Draft
+                </h3>
+                <p class="text-gray-400 text-sm mb-3">Not happy with the result? Tell us what to change.</p>
+                <div class="flex flex-col md:flex-row gap-3">
+                    <textarea id="refineInput" rows="2"
+                              class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none"
+                              placeholder="e.g., Make the penalties stricter, add more specific definitions, shorten it..."></textarea>
+                    <button onclick="refineDraft()" id="refineBtn"
+                            class="bg-party-secondary text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-500 transition whitespace-nowrap h-fit self-end">
+                        <i class="fas fa-rotate mr-1"></i>Refine
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== BROWSE & VOTE LAWS SECTION ==================== -->
+
         <!-- Search Bar -->
         <div class="bg-party-card rounded-xl p-4 mb-6 border border-gray-700">
             <div class="flex flex-col md:flex-row gap-3">
                 <div class="flex-1 relative">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
-                    <input type="text" id="searchInput" 
+                    <input type="text" id="searchInput"
                            placeholder="Search laws, articles, clauses... (e.g., 'election' or 'freedom, speech')"
                            class="w-full bg-gray-800 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:border-party-accent focus:outline-none"
                            onkeypress="if(event.key==='Enter') performSearch()">
@@ -91,8 +247,7 @@
                     <i class="fas fa-sliders-h mr-1"></i>Advanced
                 </button>
             </div>
-            
-            <!-- Advanced Search Options -->
+
             <div id="advancedSearchPanel" class="hidden mt-4 pt-4 border-t border-gray-700">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -119,7 +274,6 @@
             </div>
         </div>
 
-        <!-- Search Results Info -->
         <div id="searchInfo" class="hidden mb-4 flex items-center justify-between">
             <div>
                 <span class="text-gray-400 text-sm">Search results for: </span>
@@ -130,7 +284,6 @@
             </button>
         </div>
 
-        <!-- Category Filter -->
         <div class="mb-6" id="categoryFilterContainer">
             <label class="text-gray-400 text-sm mr-2">Category:</label>
             <select id="categoryFilter" onchange="loadLaws()" class="bg-party-card border border-gray-600 rounded-lg px-4 py-2 text-white">
@@ -138,13 +291,12 @@
             </select>
         </div>
 
-        <!-- Laws List -->
         <div id="lawsContainer" class="space-y-4">
             <div id="loadingLaws" class="text-center py-8 text-gray-500">
                 <i class="fas fa-spinner fa-spin mr-2"></i> Loading laws...
             </div>
         </div>
-        
+
         <div id="noLaws" class="text-center py-12 text-gray-500 hidden">
             <p>No laws found.</p>
         </div>
@@ -162,7 +314,7 @@
                     </div>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
                 </div>
-                
+
                 <div id="subArticlesContainer" class="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
                 </div>
             </div>
@@ -170,9 +322,619 @@
     </div>
 
     <script>
+        // ==================== CRAFT A LAW FUNCTIONS ====================
+        let currentDraft = '';
+        let currentExecutiveSummary = '';
+        let lastSeedIdea = '';
+        let lastAdditionalContext = '';
+        let detectedType = 'law';
+        let clausesExpanded = true;
+        let fullDraftExpanded = false;
+
+        function clearCraftForm() {
+            document.getElementById('seedIdea').value = '';
+            document.getElementById('additionalContext').value = '';
+            document.getElementById('craftResultContainer').classList.add('hidden');
+            document.getElementById('craftErrorState').classList.add('hidden');
+            document.getElementById('proposalStatus').classList.add('hidden');
+            currentDraft = '';
+            currentExecutiveSummary = '';
+            lastSeedIdea = '';
+            lastAdditionalContext = '';
+        }
+
+        function updateCraftLoadingSteps(step) {
+            const el = document.getElementById('craftLoadingSteps');
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-2 text-gray-400';
+            item.innerHTML = '<i class="fas fa-circle text-[4px] text-party-accent"></i><span>' + step + '</span>';
+            el.appendChild(item);
+        }
+
+        function toggleClausesSection() {
+            clausesExpanded = !clausesExpanded;
+            const content = document.getElementById('clausesContent');
+            const toggle = document.getElementById('clausesToggle');
+            if (clausesExpanded) {
+                content.classList.remove('hidden');
+                toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+            } else {
+                content.classList.add('hidden');
+                toggle.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            }
+        }
+
+        function toggleFullDraft() {
+            fullDraftExpanded = !fullDraftExpanded;
+            const fullDraftSection = document.getElementById('fullDraftSection');
+            const readMoreIcon = document.getElementById('readMoreIcon');
+            const readMoreLabel = document.getElementById('readMoreLabel');
+            if (fullDraftExpanded) {
+                fullDraftSection.classList.remove('hidden');
+                readMoreIcon.className = 'fas fa-chevron-up';
+                readMoreLabel.textContent = 'Hide Full Draft';
+            } else {
+                fullDraftSection.classList.add('hidden');
+                readMoreIcon.className = 'fas fa-chevron-down';
+                readMoreLabel.textContent = 'Read Full Draft';
+            }
+        }
+
+        function renderClauses(clauses) {
+            if (!clauses || clauses.length === 0) {
+                document.getElementById('relevantClauses').classList.add('hidden');
+                return;
+            }
+
+            const section = document.getElementById('relevantClauses');
+            const content = document.getElementById('clausesContent');
+            const count = document.getElementById('clauseCount');
+
+            section.classList.remove('hidden');
+            clausesExpanded = true;
+            document.getElementById('clausesToggle').innerHTML = '<i class="fas fa-chevron-down"></i>';
+            count.textContent = '(' + clauses.length + ')';
+
+            let html = '';
+            const grouped = {};
+            for (const c of clauses) {
+                const key = c.law_name;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(c);
+            }
+
+            for (const [law, items] of Object.entries(grouped)) {
+                html += `<div class="border border-gray-700 rounded-lg p-4 bg-gray-900/50">
+                    <div class="flex items-start gap-2 mb-3">
+                        <i class="fas fa-gavel text-party-accent mt-1"></i>
+                        <div>
+                            <div class="font-bold text-white">${Utils.escapeHtml(law)}</div>
+                            <div class="text-xs text-gray-500">${Utils.escapeHtml(items[0].category_name || '')}</div>
+                        </div>
+                    </div>`;
+                for (const item of items) {
+                    html += `<div class="ml-6 mb-2 p-3 bg-gray-800 rounded border border-gray-700/50">
+                        <div class="text-xs text-party-secondary font-bold mb-1">Article ${Utils.escapeHtml(item.article_number)} · ${Utils.escapeHtml(item.clause_label || item.sub_article_label)}</div>
+                        <div class="text-xs text-gray-400 italic mb-1">${Utils.escapeHtml(item.article_title)}</div>
+                        <div class="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">${Utils.escapeHtml(item.text_content)}</div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+
+            content.innerHTML = html;
+        }
+
+        async function generateDraft() {
+            const seedIdea = document.getElementById('seedIdea').value.trim();
+            const additionalContext = document.getElementById('additionalContext').value.trim();
+
+            if (seedIdea.length < 10) {
+                alert('Please enter a seed idea with at least 10 characters.');
+                return;
+            }
+
+            lastSeedIdea = seedIdea;
+            lastAdditionalContext = additionalContext;
+
+            const fullIdea = additionalContext
+                ? `${seedIdea}\n\nAdditional context: ${additionalContext}`
+                : seedIdea;
+
+            const loadingState = document.getElementById('craftLoadingState');
+            const resultContainer = document.getElementById('craftResultContainer');
+            const errorState = document.getElementById('craftErrorState');
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingSteps = document.getElementById('craftLoadingSteps');
+            const proposalStatus = document.getElementById('proposalStatus');
+
+            loadingSteps.innerHTML = '';
+            loadingState.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            errorState.classList.add('hidden');
+            proposalStatus.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+
+            updateCraftLoadingSteps('Extracting keywords from your idea...');
+
+            try {
+                const res = await fetch('/api/generate-law-draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seed_idea: fullIdea })
+                });
+
+                const rawText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. Please try again.');
+                }
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Generation failed');
+                }
+
+                currentDraft = data.draft;
+                currentExecutiveSummary = data.executive_summary || '';
+
+                document.getElementById('craftLoadingText').textContent = 'Draft generated successfully!';
+                updateCraftLoadingSteps('Found ' + (data.relevant_clauses ? data.relevant_clauses.length : 0) + ' relevant existing clauses');
+                updateCraftLoadingSteps('AI draft complete');
+
+                setTimeout(() => {
+                    loadingState.classList.add('hidden');
+                    displayResult(data);
+                }, 600);
+            } catch (e) {
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                document.getElementById('craftErrorMessage').textContent = e.message;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>Generate Draft';
+            }
+        }
+
+        function displayResult(data) {
+            const container = document.getElementById('craftResultContainer');
+            const content = document.getElementById('draftContent');
+            const meta = document.getElementById('draftMeta');
+            const execSummaryEl = document.getElementById('executiveSummary');
+            const fullDraftSection = document.getElementById('fullDraftSection');
+            const readMoreToggle = document.getElementById('readMoreToggle');
+            const readMoreIcon = document.getElementById('readMoreIcon');
+            const readMoreLabel = document.getElementById('readMoreLabel');
+
+            container.classList.remove('hidden');
+
+            detectedType = data.detected_type || 'law';
+            const typeBadge = detectedType === 'law' ? 'bg-purple-900/40 text-purple-300 border-purple-500/30' :
+                              detectedType === 'regulation' ? 'bg-blue-900/40 text-blue-300 border-blue-500/30' :
+                              'bg-gray-700 text-gray-300 border-gray-500/30';
+
+            meta.innerHTML = `
+                <span class="px-2 py-0.5 rounded text-xs border ${typeBadge} font-bold uppercase">${detectedType}</span>
+                <span><i class="fas fa-tags mr-1"></i>Keywords: ${(data.keywords_used || []).join(', ') || 'none'}</span>
+                <span><i class="fas fa-scale-balanced mr-1"></i>Clauses referenced: ${data.relevant_clauses ? data.relevant_clauses.length : 0}</span>
+                ${data.fallback_used ? `<span class="text-yellow-400"><i class="fas fa-triangle-exclamation mr-1"></i>Generated with fallback model</span>` : ''}
+                <span><i class="fas fa-clock mr-1"></i>${new Date(data.timestamp).toLocaleString()}</span>
+            `;
+
+            if (currentExecutiveSummary) {
+                execSummaryEl.classList.remove('hidden');
+                execSummaryEl.querySelector('.summary-content').innerHTML = currentExecutiveSummary
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
+                    .replace(/\n/g, '<br>');
+            } else {
+                execSummaryEl.classList.add('hidden');
+            }
+
+            content.textContent = currentDraft;
+            fullDraftExpanded = false;
+            fullDraftSection.classList.add('hidden');
+            readMoreToggle.classList.remove('hidden');
+            readMoreIcon.className = 'fas fa-chevron-down';
+            readMoreLabel.textContent = 'Read Full Draft';
+
+            renderClauses(data.relevant_clauses || []);
+
+            document.getElementById('proposalStatus').classList.add('hidden');
+            document.getElementById('submitProposalBtn').disabled = false;
+            document.getElementById('submitProposalBtn').innerHTML = '<i class="fas fa-vote-yea"></i>Add as Community Proposal';
+
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function submitAsProposal() {
+            if (!currentDraft) {
+                alert('No draft to submit. Generate one first.');
+                return;
+            }
+
+            let title = lastSeedIdea.split('\n')[0].replace(/^\[Draft Type.*?\]\s*/, '').trim();
+            const titleMatch = currentDraft.match(/^##\s*Title\s*\n+(.+)/m);
+            if (titleMatch) {
+                title = titleMatch[1].trim();
+            }
+
+            let description = '';
+            if (currentExecutiveSummary) {
+                description = '[AI_LAW_DRAFT]\n## Executive Summary\n' + currentExecutiveSummary + '\n\n---\n\n## Full Draft\n' + currentDraft;
+            } else {
+                description = '[AI_LAW_DRAFT]\n\n' + currentDraft;
+            }
+
+            const nickname = document.getElementById('proposalNickname').value.trim();
+            const btn = document.getElementById('submitProposalBtn');
+            const status = document.getElementById('proposalStatus');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Submitting...';
+            status.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: Auth.getApiHeaders(),
+                    body: JSON.stringify({
+                        title: title.slice(0, 200),
+                        description: description,
+                        category: 'policy',
+                        nickname: nickname || 'AI Draft Contributor'
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    status.className = 'text-party-green text-sm mt-2';
+                    status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Proposal submitted! <a href="/proposals" class="underline">View it on the proposals page →</a>';
+                    status.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Submitted';
+                    btn.className = 'bg-gray-700 text-gray-400 px-6 py-2 rounded-lg font-bold cursor-not-allowed';
+                } else {
+                    throw new Error(data.error || 'Submission failed');
+                }
+            } catch (e) {
+                status.className = 'text-party-red text-sm mt-2';
+                status.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>' + Utils.escapeHtml(e.message);
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-vote-yea"></i>Add as Community Proposal';
+            }
+        }
+
+        async function refineDraft() {
+            const refineInput = document.getElementById('refineInput').value.trim();
+            if (!refineInput) {
+                alert('Please describe what you want to change.');
+                return;
+            }
+
+            if (!currentDraft || !lastSeedIdea) {
+                alert('No draft to refine. Generate one first.');
+                return;
+            }
+
+            const loadingState = document.getElementById('craftLoadingState');
+            const loadingSteps = document.getElementById('craftLoadingSteps');
+            const refineBtn = document.getElementById('refineBtn');
+
+            loadingSteps.innerHTML = '';
+            loadingState.classList.remove('hidden');
+            refineBtn.disabled = true;
+            refineBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Refining...';
+            document.getElementById('proposalStatus').classList.add('hidden');
+
+            updateCraftLoadingSteps('Refining draft with your feedback...');
+
+            const refinePrompt = `The previously detected draft type was: ${detectedType}. Original idea: ${lastSeedIdea}\n\nHere is the current draft:\n\n${currentDraft}\n\nRefine the draft based on this feedback: ${refineInput}\n\n${lastAdditionalContext ? 'Additional context: ' + lastAdditionalContext : ''}`;
+
+            try {
+                const res = await fetch('/api/generate-law-draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seed_idea: refinePrompt })
+                });
+
+                const rawText = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. Please try again.');
+                }
+
+                if (!data.success) throw new Error(data.error || 'Refinement failed');
+
+                currentDraft = data.draft;
+                currentExecutiveSummary = data.executive_summary || '';
+                document.getElementById('draftContent').textContent = currentDraft;
+                document.getElementById('refineInput').value = '';
+
+                const execSummaryEl = document.getElementById('executiveSummary');
+                if (currentExecutiveSummary) {
+                    execSummaryEl.classList.remove('hidden');
+                    execSummaryEl.querySelector('.summary-content').innerHTML = currentExecutiveSummary
+                        .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/^[-•*]\s*/gm, '<span class="text-party-accent">•</span> ')
+                        .replace(/\n/g, '<br>');
+                }
+
+                const meta = document.getElementById('draftMeta');
+                meta.innerHTML = meta.innerHTML + ` <span class="text-party-accent"><i class="fas fa-sync mr-1"></i>Refined at ${new Date().toLocaleTimeString()}</span>`;
+
+                renderClauses(data.relevant_clauses || []);
+
+                updateCraftLoadingSteps('Refinement complete');
+            } catch (e) {
+                loadingState.classList.add('hidden');
+                document.getElementById('craftErrorMessage').textContent = e.message;
+                document.getElementById('craftErrorState').classList.remove('hidden');
+            } finally {
+                loadingState.classList.add('hidden');
+                refineBtn.disabled = false;
+                refineBtn.innerHTML = '<i class="fas fa-rotate mr-1"></i>Refine';
+            }
+        }
+
+        function copyDraft() {
+            if (!currentDraft) return;
+            navigator.clipboard.writeText(currentDraft).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                btn.classList.add('text-party-accent');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy';
+                    btn.classList.remove('text-party-accent');
+                }, 2000);
+            });
+        }
+
+        function downloadDraft() {
+            if (!currentDraft) return;
+            const blob = new Blob([currentDraft], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const title = lastSeedIdea.split('\n')[0].replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 40) || 'law_draft';
+            a.download = title.toLowerCase().replace(/\s+/g, '_') + '.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadPdfDraft() {
+            if (!currentDraft) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+            const margin = 20;
+            const pageWidth = 210;
+            const maxWidth = pageWidth - margin * 2;
+            let y = margin;
+
+            const title = lastSeedIdea.split('\n')[0].replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 60) || 'Law Draft';
+            const filename = title.toLowerCase().replace(/\s+/g, '_') + '.pdf';
+
+            const addPageNumbers = () => {
+                const total = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= total; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(150, 150, 150);
+                    doc.text(`Page ${i} of ${total}`, pageWidth / 2, 288, { align: 'center' });
+                }
+            };
+
+            const checkPageBreak = (needed) => {
+                if (y + needed > 280) {
+                    doc.addPage();
+                    y = margin;
+                }
+            };
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(120, 120, 120);
+            doc.text('LEGISLATIVE PROPOSAL', margin, y);
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(120, 120, 120);
+            const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            doc.text(today, pageWidth - margin, y, { align: 'right' });
+            y += 10;
+
+            if (currentExecutiveSummary) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(40, 40, 40);
+                doc.text('SYNOPSIS', margin, y);
+                y += 2;
+                doc.setDrawColor(180, 180, 180);
+                doc.setLineWidth(0.3);
+                doc.line(margin, y, margin + 22, y);
+                doc.setLineWidth(0.2);
+                y += 5;
+
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(51, 51, 51);
+                const synopsisLines = doc.splitTextToSize(currentExecutiveSummary, maxWidth);
+                for (const line of synopsisLines) {
+                    checkPageBreak(5);
+                    doc.text(line, margin, y);
+                    y += 5;
+                }
+                y += 4;
+            }
+
+            checkPageBreak(12);
+            doc.setDrawColor(17, 17, 17);
+            doc.setLineWidth(1.8);
+            doc.line(margin, y, pageWidth - margin, y);
+            doc.setLineWidth(0.2);
+            y += 12;
+
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(10, 10, 10);
+            const titleLines = doc.splitTextToSize(title.toUpperCase(), maxWidth);
+            for (const line of titleLines) {
+                checkPageBreak(7);
+                doc.text(line, margin, y);
+                y += 7;
+            }
+            y += 8;
+
+            const draftLines = currentDraft.split('\n');
+
+            for (let idx = 0; idx < draftLines.length; idx++) {
+                const rawLine = draftLines[idx];
+                const line = rawLine.trimEnd();
+
+                if (!line) {
+                    y += 2.5;
+                    continue;
+                }
+
+                if (/^#\s+/.test(line)) {
+                    checkPageBreak(20);
+                    y += 6;
+                    doc.setFontSize(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(10, 10, 10);
+                    const text = line.replace(/^#\s+/, '');
+                    const wrapped = doc.splitTextToSize(text, maxWidth);
+                    doc.text(wrapped, margin, y);
+                    y += wrapped.length * 6 + 3;
+                    continue;
+                }
+
+                if (/^##\s+/.test(line)) {
+                    checkPageBreak(16);
+                    y += 5;
+                    doc.setFontSize(13);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(25, 25, 25);
+                    const text = line.replace(/^##\s+/, '');
+                    const wrapped = doc.splitTextToSize(text, maxWidth);
+                    doc.text(wrapped, margin, y);
+                    y += wrapped.length * 5.5 + 3;
+                    continue;
+                }
+
+                if (/^###\s+/.test(line)) {
+                    checkPageBreak(14);
+                    y += 4;
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(40, 40, 40);
+                    const text = line.replace(/^###\s+/, '');
+                    const wrapped = doc.splitTextToSize(text, maxWidth);
+                    doc.text(wrapped, margin, y);
+                    y += wrapped.length * 5 + 2;
+                    continue;
+                }
+
+                if (/^---+\s*$/.test(line) || /^===+\s*$/.test(line)) {
+                    checkPageBreak(6);
+                    doc.setDrawColor(150, 150, 150);
+                    doc.setLineWidth(0.5);
+                    doc.line(margin + 10, y, pageWidth - margin - 10, y);
+                    doc.setLineWidth(0.2);
+                    y += 6;
+                    continue;
+                }
+
+                if (/^[-*•]\s+/.test(line)) {
+                    checkPageBreak(5);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(51, 51, 51);
+                    const bulletText = '\u2022  ' + line.replace(/^[-*•]\s+/, '');
+                    const wrapped = doc.splitTextToSize(bulletText, maxWidth - 4);
+                    for (let w = 0; w < wrapped.length; w++) {
+                        const xOffset = w === 0 ? 0 : 3.5;
+                        checkPageBreak(5);
+                        doc.text(wrapped[w], margin + xOffset, y);
+                        y += 5;
+                    }
+                    continue;
+                }
+
+                if (/^\d+\.\s+/.test(line)) {
+                    checkPageBreak(5);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(51, 51, 51);
+                    const wrapped = doc.splitTextToSize(line, maxWidth);
+                    for (const w of wrapped) {
+                        checkPageBreak(5);
+                        doc.text(w, margin, y);
+                        y += 5;
+                    }
+                    continue;
+                }
+
+                if (/\*\*.+?\*\*/.test(line)) {
+                    checkPageBreak(5);
+                    const segments = line.split(/(\*\*.*?\*\*)/g);
+                    let x = margin;
+                    doc.setFontSize(10);
+                    doc.setTextColor(51, 51, 51);
+                    for (const seg of segments) {
+                        if (!seg) continue;
+                        const isBold = seg.startsWith('**') && seg.endsWith('**');
+                        const text = isBold ? seg.slice(2, -2) : seg;
+                        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+                        const parts = doc.splitTextToSize(text, maxWidth - (x - margin));
+                        for (let p = 0; p < parts.length; p++) {
+                            if (x + doc.getTextWidth(parts[p]) > pageWidth - margin + 1 && x > margin) {
+                                y += 5;
+                                x = margin;
+                                checkPageBreak(5);
+                            }
+                            doc.text(parts[p], x, y);
+                            x += doc.getTextWidth(parts[p]);
+                        }
+                    }
+                    y += 5;
+                    continue;
+                }
+
+                checkPageBreak(5);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(51, 51, 51);
+                const wrapped = doc.splitTextToSize(line, maxWidth);
+                for (const w of wrapped) {
+                    checkPageBreak(5);
+                    doc.text(w, margin, y);
+                    y += 5;
+                }
+            }
+
+            const totalPages = doc.internal.getNumberOfPages();
+            doc.setPage(totalPages);
+            if (y > 275) { doc.addPage(); y = margin; }
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(150, 150, 150);
+            doc.text('Generated by 3d Party — Legislative Drafting Tool', margin, 285);
+
+            addPageNumbers();
+            doc.save(filename);
+        }
+
+        // ==================== LAWS BROWSING & VOTING FUNCTIONS ====================
         let currentArticleId = null;
         let currentLawId = null;
-        
+
         async function loadStats() {
             try {
                 const res = await fetch('/api/mvlaws/stats');
@@ -183,7 +945,7 @@
                 }
             } catch (e) { console.error(e); }
         }
-        
+
         let isSearchMode = false;
 
         function toggleAdvancedSearch() {
@@ -195,11 +957,11 @@
             const searchInputEl = document.getElementById('searchInput');
             const searchInfoEl = document.getElementById('searchInfo');
             const catFilterEl = document.getElementById('categoryFilterContainer');
-            
+
             if (searchInputEl) searchInputEl.value = '';
             if (searchInfoEl) searchInfoEl.classList.add('hidden');
             if (catFilterEl) catFilterEl.classList.remove('hidden');
-            
+
             isSearchMode = false;
             loadLaws();
         }
@@ -215,18 +977,10 @@
             const category = document.getElementById('searchCategory').value;
             const includeClauses = document.getElementById('includeClauses').checked;
 
-            console.log('Running search, elements check:', {
-                loading: !!document.getElementById('loadingLaws'),
-                noLaws: !!document.getElementById('noLaws'),
-                catFilter: !!document.getElementById('categoryFilterContainer'),
-                searchInput: !!document.getElementById('searchInput'),
-                lawsContainer: !!document.getElementById('lawsContainer')
-            });
-            
             const loadingEl = document.getElementById('loadingLaws');
             const noLawsEl = document.getElementById('noLaws');
             const catFilterEl = document.getElementById('categoryFilterContainer');
-            
+
             if (loadingEl) loadingEl.classList.remove('hidden');
             if (noLawsEl) noLawsEl.classList.add('hidden');
             if (catFilterEl) catFilterEl.classList.add('hidden');
@@ -250,7 +1004,6 @@
                     return;
                 }
 
-                // Show search info
                 const searchInfoEl = document.getElementById('searchInfo');
                 const searchKeywordsEl = document.getElementById('searchKeywords');
                 if (searchInfoEl && searchKeywordsEl) {
@@ -259,11 +1012,9 @@
                 }
                 isSearchMode = true;
 
-                // Populate search category dropdown from results
                 if (data.laws && data.laws.length > 0) {
                     const categories = [...new Set(data.laws.map(l => l.category_name).filter(Boolean))];
                     const searchCat = document.getElementById('searchCategory');
-                    // Keep "All" option, add categories from results
                     while (searchCat.children.length > 1) {
                         searchCat.removeChild(searchCat.lastChild);
                     }
@@ -275,10 +1026,8 @@
                     });
                 }
 
-                // Build results HTML
                 let html = '';
 
-                // Laws section
                 if (data.laws && data.laws.length > 0) {
                     html += `<div class="mb-6">
                         <h3 class="text-lg font-bold text-party-accent mb-3">
@@ -303,7 +1052,6 @@
                     </div>`;
                 }
 
-                // Articles section
                 if (data.articles && data.articles.length > 0) {
                     html += `<div class="mb-6">
                         <h3 class="text-lg font-bold text-party-accent mb-3">
@@ -316,7 +1064,7 @@
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <h4 class="font-bold">
-                                                <span class="text-party-accent">Article ${art.article_number}:</span> 
+                                                <span class="text-party-accent">Article ${art.article_number}:</span>
                                                 ${Utils.escapeHtml(art.article_title || '')}
                                             </h4>
                                             <p class="text-gray-500 text-sm">${Utils.escapeHtml(art.law_name)}</p>
@@ -331,7 +1079,6 @@
                     </div>`;
                 }
 
-                // Clauses section
                 if (data.clauses && data.clauses.length > 0) {
                     html += `<div class="mb-6">
                         <h3 class="text-lg font-bold text-party-accent mb-3">
@@ -359,7 +1106,6 @@
                     </div>`;
                 }
 
-                // No results
                 if (data.total === 0) {
                     html = `<div class="text-center py-12">
                         <i class="fas fa-search text-4xl text-gray-600 mb-4"></i>
@@ -382,15 +1128,15 @@
             const category = document.getElementById('categoryFilter').value;
             document.getElementById('loadingLaws').classList.remove('hidden');
             document.getElementById('noLaws').classList.add('hidden');
-            
+
             try {
                 const url = category === 'all' ? '/api/mvlaws' : `/api/mvlaws?category=${encodeURIComponent(category)}`;
                 const res = await fetch(url);
                 const data = await res.json();
-                
+
                 document.getElementById('loadingLaws').classList.add('hidden');
                 document.getElementById('lawCount').textContent = data.total || 0;
-                
+
                 if (data.categories && document.getElementById('categoryFilter').children.length === 1) {
                     data.categories.forEach(cat => {
                         const opt = document.createElement('option');
@@ -399,7 +1145,7 @@
                         document.getElementById('categoryFilter').appendChild(opt);
                     });
                 }
-                
+
                 if (data.laws && data.laws.length > 0) {
                     document.getElementById('lawsContainer').innerHTML = data.laws.map(law => `
                         <div class="bg-party-card rounded-xl p-5 border border-gray-700 hover:border-party-accent cursor-pointer transition"
@@ -421,21 +1167,20 @@
                 document.getElementById('noLaws').classList.remove('hidden');
             }
         }
-        
+
         async function viewLaw(lawId, articleId = null, clauseId = null) {
             currentLawId = lawId;
             try {
                 const res = await fetch(`/api/mvlaws/${lawId}`);
                 const data = await res.json();
-                
+
                 if (!data.success) return;
-                
+
                 let html = `<div class="space-y-2 mb-4">
                     <h3 class="font-bold text-party-accent text-lg">${Utils.escapeHtml(data.law.law_name)}</h3>
                     <p class="text-gray-400 text-sm">${data.articles.length} articles</p>
                 </div>`;
-                
-                // Law-level voting section
+
                 html += `<div class="mb-6 p-4 bg-party-accent/10 rounded-lg border border-party-accent/30">
                     <div class="flex justify-between items-center mb-3">
                         <span class="font-bold">Vote on Full Law</span>
@@ -446,21 +1191,21 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-3" id="lawVoteButtons">
-                        <button onclick="castLawVote('support')" 
+                        <button onclick="castLawVote('support')"
                                 class="px-3 py-1 rounded text-sm font-bold bg-green-600/50 hover:bg-green-500">
                             <i class="fas fa-thumbs-up"></i> Support
                         </button>
-                        <button onclick="castLawVote('oppose')" 
+                        <button onclick="castLawVote('oppose')"
                                 class="px-3 py-1 rounded text-sm font-bold bg-red-600/50 hover:bg-red-500">
                             <i class="fas fa-thumbs-down"></i> Oppose
                         </button>
-                        <button onclick="castLawVote('abstain')" 
+                        <button onclick="castLawVote('abstain')"
                                 class="px-3 py-1 rounded text-sm font-bold bg-gray-600/50 hover:bg-gray-500">
                             Abstain
                         </button>
                     </div>
                 </div>`;
-                
+
                 if (data.articles.length > 0) {
                     html += '<div class="space-y-2">';
                     html += '<h4 class="font-bold text-gray-400 text-sm mb-2">Articles (vote on each clause)</h4>';
@@ -472,19 +1217,17 @@
                     });
                     html += '</div>';
                 }
-                
+
                 document.getElementById('lawsContainer').innerHTML = html;
-                
-                // Load law-level votes
+
                 loadLawVotes(lawId);
 
-                // Auto-open article or clause if specified (from search)
                 if (articleId) {
                     setTimeout(() => viewArticle(articleId, clauseId), 300);
                 }
             } catch (e) { console.error(e); }
         }
-        
+
         async function loadLawVotes(lawId) {
             try {
                 const res = await fetch(`/api/mvlaws/${lawId}/law-votes`);
@@ -499,22 +1242,20 @@
                     document.getElementById('lawSupportCount').textContent = '+' + support;
                     document.getElementById('lawOpposeCount').textContent = '-' + oppose;
                     document.getElementById('lawAbstainCount').textContent = abstain + ' abs';
-                    
-                    // Highlight user's vote if any
+
                     if (data.userVote) {
                         const buttons = document.getElementById('lawVoteButtons');
                         if (buttons) {
-                            const voteClass = data.userVote.vote === 'support' ? 'bg-green-600' : data.userVote.vote === 'oppose' ? 'bg-red-600' : 'bg-gray-600';
                             const buttonsHtml = `
-                                <button onclick="castLawVote('support')" 
+                                <button onclick="castLawVote('support')"
                                         class="px-3 py-1 rounded text-sm font-bold ${data.userVote.vote === 'support' ? 'bg-green-600' : 'bg-green-600/50 hover:bg-green-500'}">
                                     <i class="fas fa-thumbs-up"></i> Support
                                 </button>
-                                <button onclick="castLawVote('oppose')" 
+                                <button onclick="castLawVote('oppose')"
                                         class="px-3 py-1 rounded text-sm font-bold ${data.userVote.vote === 'oppose' ? 'bg-red-600' : 'bg-red-600/50 hover:bg-red-500'}">
                                     <i class="fas fa-thumbs-down"></i> Oppose
                                 </button>
-                                <button onclick="castLawVote('abstain')" 
+                                <button onclick="castLawVote('abstain')"
                                         class="px-3 py-1 rounded text-sm font-bold ${data.userVote.vote === 'abstain' ? 'bg-gray-600' : 'bg-gray-600/50 hover:bg-gray-500'}">
                                     Abstain
                                 </button>
@@ -525,12 +1266,12 @@
                 }
             } catch (e) {}
         }
-        
+
         async function castLawVote(vote) {
             if (!currentLawId) return;
-            
+
             const phone = Auth.getPhone() || null;
-            
+
             try {
                 const res = await fetch('/api/mvlaws/vote-law', {
                     method: 'POST',
@@ -541,7 +1282,7 @@
                         phone: phone
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.success) {
                     loadLawVotes(currentLawId);
@@ -554,23 +1295,22 @@
                 alert('Error recording vote. Please try again.');
             }
         }
-        
+
         async function viewArticle(articleId, highlightClauseId = null) {
             currentArticleId = articleId;
             try {
                 const res = await fetch(`/api/mvlaws/${currentLawId}/articles/${articleId}`);
                 const data = await res.json();
-                
+
                 if (!data.success) return;
-                
+
                 document.getElementById('modalLawTitle').textContent = data.law.law_name;
                 document.getElementById('modalArticleTitle').textContent = `Article ${data.article.article_number}: ${data.article.article_title || ''}`;
-                
-                // Load votes for each sub-article
+
                 const subArticlesHtml = await Promise.all(data.subArticles.map(async (sa) => {
                     let saVotes = { support: 0, oppose: 0, abstain: 0 };
                     let userVote = null;
-                    
+
                     try {
                         const saRes = await fetch(`/api/mvlaws/${currentLawId}/articles/${articleId}/subarticles/${sa.id}`);
                         const saData = await saRes.json();
@@ -583,12 +1323,9 @@
                             userVote = saData.userVote;
                         }
                     } catch(e) {}
-                    
-                    const userVoteClass = userVote ? 
-                        (userVote.vote === 'support' ? 'bg-green-600' : userVote.vote === 'oppose' ? 'bg-red-600' : 'bg-gray-600') : '';
-                    
+
                     const isHighlighted = highlightClauseId === sa.id ? 'ring-2 ring-party-accent' : '';
-                    
+
                     return `
                         <div class="bg-gray-800/50 rounded-lg p-4 ${isHighlighted}" id="clause-${sa.id}">
                             <div class="flex justify-between items-start mb-2">
@@ -601,15 +1338,15 @@
                             </div>
                             <p class="text-gray-300 mb-3">${Utils.escapeHtml(sa.text_content)}</p>
                             <div class="flex flex-wrap gap-2">
-                                <button onclick="castSubArticleVote(${sa.id}, 'support')" 
+                                <button onclick="castSubArticleVote(${sa.id}, 'support')"
                                         class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'support' ? 'bg-green-600' : 'bg-green-600/50 hover:bg-green-500'}">
                                     <i class="fas fa-thumbs-up"></i> Support
                                 </button>
-                                <button onclick="castSubArticleVote(${sa.id}, 'oppose')" 
+                                <button onclick="castSubArticleVote(${sa.id}, 'oppose')"
                                         class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'oppose' ? 'bg-red-600' : 'bg-red-600/50 hover:bg-red-500'}">
                                     <i class="fas fa-thumbs-down"></i> Oppose
                                 </button>
-                                <button onclick="castSubArticleVote(${sa.id}, 'abstain')" 
+                                <button onclick="castSubArticleVote(${sa.id}, 'abstain')"
                                         class="px-3 py-1 rounded text-sm font-bold ${userVote?.vote === 'abstain' ? 'bg-gray-600' : 'bg-gray-600/50 hover:bg-gray-500'}">
                                     Abstain
                                 </button>
@@ -617,12 +1354,11 @@
                         </div>
                     `;
                 }));
-                
+
                 document.getElementById('subArticlesContainer').innerHTML = subArticlesHtml.join('');
-                
+
                 document.getElementById('articleModal').classList.remove('hidden');
-                
-                // Auto-scroll to highlighted clause if from search
+
                 if (highlightClauseId) {
                     setTimeout(() => {
                         const elem = document.getElementById(`clause-${highlightClauseId}`);
@@ -633,11 +1369,11 @@
                 }
             } catch (e) { console.error(e); }
         }
-        
+
         function closeModal() {
             document.getElementById('articleModal').classList.add('hidden');
         }
-        
+
         async function castSubArticleVote(subArticleId, vote) {
             try {
                 const res = await fetch('/api/mvlaws/vote-subarticle', {
@@ -648,7 +1384,7 @@
                         vote: vote
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.success) {
                     viewArticle(currentArticleId);
@@ -661,38 +1397,19 @@
                 alert('Error recording vote. Please try again.');
             }
         }
-        
-        async function castVote(vote) {
-            if (!currentArticleId) return;
-            
-            try {
-                const res = await fetch('/api/mvlaws/vote', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        article_id: currentArticleId,
-                        vote: vote,
-                        reasoning: document.getElementById('reasoning').value
-                    })
-                });
-                
-                const data = await res.json();
-                if (data.success) {
-                    alert('Vote recorded! Thanks for participating.');
-                    loadStats();
-                    viewArticle(currentArticleId);
-                } else if (res.status === 429) {
-                    alert('Please wait an hour before voting again.');
-                } else {
-                    alert(data.error);
-                }
-            } catch (e) {
-                alert('Error recording vote. Please try again.');
-            }
-        }
-        
+
+        // ==================== INIT ====================
         loadStats();
         loadLaws();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('seedIdea');
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    generateDraft();
+                }
+            });
+        });
     </script>
 </body>
 </html>

@@ -57,11 +57,10 @@ function createNavigation() {
             </div>
             <div class="flex items-center space-x-4 text-sm">
                 <a href="/" class="hover:text-party-accent transition ${currentPage === 'home' ? 'text-party-accent font-bold' : 'text-gray-300'}">Home</a>
-                <a href="/intro" class="hover:text-party-accent transition ${currentPage === 'intro' ? 'text-party-accent font-bold' : 'text-gray-300'}">Intro</a>
+                <a href="/intro" class="hover:text-party-accent transition ${currentPage === 'intro' ? 'text-party-accent font-bold' : 'text-gray-300'}">Our Story</a>
                 <a href="/how-it-works" class="hover:text-party-accent transition ${currentPage === 'how-it-works' ? 'text-party-accent font-bold' : 'text-gray-300'}">How</a>
                 <a href="/whitepaper" class="hover:text-party-accent transition ${currentPage === 'whitepaper' ? 'text-party-accent font-bold' : 'text-gray-300'}">Whitepaper</a>
                 <a href="/laws" class="hover:text-party-accent transition ${currentPage === 'laws' ? 'text-party-accent font-bold' : 'text-gray-300'}">Laws</a>
-                <a href="/generate-law" class="hover:text-party-accent transition ${currentPage === 'generate-law' ? 'text-party-accent font-bold' : 'text-gray-300'}">Craft a Law</a>
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/enroll" class="hover:text-party-accent transition ${currentPage === 'enroll' ? 'text-party-accent font-bold' : 'text-gray-300'}">Enroll</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
@@ -229,11 +228,10 @@ function createFooter() {
                     <p class="text-gray-500 text-sm">The actual third option. Still not insurance.</p>
                 </div>
                 <div class="flex gap-6 text-sm flex-wrap">
-                    <a href="/intro" class="text-gray-400 hover:text-party-accent">Intro</a>
+                    <a href="/intro" class="text-gray-400 hover:text-party-accent">Our Story</a>
                     <a href="/how-it-works" class="text-gray-400 hover:text-party-accent">How</a>
                     <a href="/whitepaper" class="text-gray-400 hover:text-party-accent">Whitepaper</a>
                     <a href="/laws" class="text-gray-400 hover:text-party-accent">Laws</a>
-                    <a href="/generate-law" class="text-gray-400 hover:text-party-accent">Craft a Law</a>
                     <a href="/proposals" class="text-gray-400 hover:text-party-accent">Proposals</a>
                     <a href="/enroll" class="text-gray-400 hover:text-party-accent">Enroll</a>
                     <a href="/wall" class="text-gray-400 hover:text-party-accent">Wall</a>
@@ -242,6 +240,9 @@ function createFooter() {
                     <a href="/join" class="text-gray-400 hover:text-party-accent">Join</a>
                     <a href="/donate" class="text-gray-400 hover:text-party-accent">Donate</a>
                     <a href="/treasury" class="text-gray-400 hover:text-party-accent">Treasury</a>
+                </div>
+                <div class="text-center mt-4 max-w-xl mx-auto">
+                    <p class="text-gray-600 text-sm italic">"No party bosses. No backroom deals. No lifetime politicians. Just citizens serving citizens."</p>
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="https://github.com/3dparty" target="_blank" rel="noopener" class="text-gray-400 hover:text-party-accent">
