@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
-module.exports = function({ db, dataDir, getSettings, logActivity, userAuth }) {
+module.exports = function({ db, dataDir, getSettings, logActivity }) {
 
   // GET /api/donation-info - Get bank details (public)
   router.get('/api/donation-info', (req, res) => {
@@ -54,18 +54,19 @@ module.exports = function({ db, dataDir, getSettings, logActivity, userAuth }) {
       return res.status(400).json({ error: 'Deposit slip is required', success: false });
     }
 
+    // Detect logged-in user so merit can be awarded on verification
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) userId = user.id;
+      } catch (e) {}
+    }
+
     try {
       const createdAt = new Date().toISOString();
-
-      let userId = null;
-      const authHeader = req.headers.authorization;
-      if (authHeader) {
-        const token = authHeader.replace(/^Bearer\s+/i, '');
-        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
-        if (user) {
-          userId = user.id;
-        }
-      }
 
       const donationCols = db.prepare(`PRAGMA table_info(donations)`).all();
       const colNames = donationCols.map(c => c.name);
@@ -82,7 +83,7 @@ module.exports = function({ db, dataDir, getSettings, logActivity, userAuth }) {
       const stmt = db.prepare(`INSERT INTO donations (${insertCols.join(', ')}) VALUES (${placeholders})`);
       const result = stmt.run(...insertVals);
       
-      logActivity('donation_pending', userId, result.insertId, {
+      logActivity('donation_pending', userId, null, {
         phone: phone ? phone.substring(0, 3) + 'xxxx' : null,
         nid: nid ? nid.substring(0, 2) + 'xxxxx' : null,
         amount: donationAmount,

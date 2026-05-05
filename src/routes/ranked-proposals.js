@@ -128,7 +128,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
 
       if (userId) {
         logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
-        const createdMerit = settings.merit_proposal_created ?? 10;
+        const createdMerit = settings.merit_proposal_created;
         db.prepare(`
           INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
           VALUES (?, 'proposal_created', ?, ?, 'ranked_proposal', 'Created a ranked choice proposal', ?)
@@ -136,6 +136,25 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
         db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
           .run(createdMerit, userId);
         maybeEngageReferral(userId);
+      }
+
+      // Post notification to wall
+      try {
+        let creatorName = 'Anonymous';
+        if (userId) {
+          const userRow = db.prepare('SELECT COALESCE(name, username) as display_name FROM signups WHERE id = ?').get(userId);
+          if (userRow) creatorName = userRow.display_name;
+        } else if (nickname) {
+          creatorName = sanitizeHTML(nickname.trim().substring(0, settings.nickname_max_length));
+        }
+        const safeTitle = sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length));
+        const safeDesc = description ? sanitizeHTML(description.trim()) : 'No description provided.';
+        const truncatedDesc = safeDesc.length > 150 ? safeDesc.substring(0, 150) + '...' : safeDesc;
+        const wallMessage = `🎉 Congratulations to **${creatorName}** for creating the ranked choice election "**${safeTitle}**"!\n\n**Intent:** ${truncatedDesc}\n\nLet's discuss this — what do you think? Share your thoughts and help shape our future! 💬🗳️`;
+        db.prepare('INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
+          .run('3rd Party', wallMessage, null, null, null, 1, createdAt);
+      } catch (e) {
+        console.error('Wall notification error:', e);
       }
 
       res.status(201).json({ message: 'Ranked choice proposal created!', success: true, id: result.lastInsertRowid });
@@ -171,17 +190,28 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
       // Check if already voted (by user_id or IP)
       let existing;
       if (userId) {
-        existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(proposal_id, userId);
+        existing = db.prepare('SELECT id, user_id FROM ranked_votes WHERE proposal_id = ? AND user_id = ?').get(proposal_id, userId);
       }
       if (!existing) {
-        existing = db.prepare('SELECT id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
+        existing = db.prepare('SELECT id, user_id FROM ranked_votes WHERE proposal_id = ? AND voter_ip = ?').get(proposal_id, userIP);
       }
       if (existing) {
         db.prepare('UPDATE ranked_votes SET ranking = ?, voted_at = ?, user_id = COALESCE(user_id, ?) WHERE id = ?')
           .run(JSON.stringify(ranking), votedAt, userId, existing.id);
+
+        // Award participation merit if an anonymous vote is now being linked to a logged-in user
+        if (userId && !existing.user_id) {
+          const participation = getSettings().merit_vote_participation || 0.5;
+          merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'ranked_proposal', 'Participation: voted on ranked choice proposal');
+        }
       } else {
         db.prepare('INSERT INTO ranked_votes (proposal_id, ranking, voter_ip, voted_at, user_id) VALUES (?, ?, ?, ?, ?)')
           .run(proposal_id, JSON.stringify(ranking), userIP, votedAt, userId);
+
+        if (userId) {
+          const participation = getSettings().merit_vote_participation || 0.5;
+          merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'ranked_proposal', 'Participation: voted on ranked choice proposal');
+        }
       }
 
       res.json({ message: 'Vote recorded!', success: true });

@@ -1,28 +1,29 @@
-const ROLE_STIPENDS = { council: 150, committee: 75, advisory: 50 };
-const LAMBDA_BASE = 0.001267;
-const HALF_LIFE_DAYS = 547.5;
-
-function getLoyaltyCoefficient(joinDate) {
+function getLoyaltyCoefficient(joinDate, settings) {
+  let s = settings;
+  if (!s) {
+    try { if (this && this.getSettings) s = this.getSettings(); } catch (e) {}
+  }
+  s = s || { loyalty_threshold_days_1: 180, loyalty_threshold_days_2: 365 };
   const now = new Date();
   const join = new Date(joinDate);
   const daysSinceJoin = (now - join) / (1000 * 60 * 60 * 24);
 
-  if (daysSinceJoin < 180) return 1.0;
-  if (daysSinceJoin < 365) return 1.2;
+  if (daysSinceJoin < s.loyalty_threshold_days_1) return 1.0;
+  if (daysSinceJoin < s.loyalty_threshold_days_2) return 1.2;
   return 1.5;
 }
 
 function calculateVoteWeight(joinDate, createdAt) {
   const settings = this.getSettings();
-  const lc = getLoyaltyCoefficient(joinDate);
+  const lc = getLoyaltyCoefficient(joinDate, settings);
   const created = new Date(createdAt);
   const now = new Date();
   const daysSinceCreated = (now - created) / (1000 * 60 * 60 * 24);
 
-  const primaryWindowDays = settings.voting_window_primary_days ?? 7;
-  const extendedWindowDays = settings.voting_window_extended_days ?? 3;
-  const primaryWeight = settings.voting_weight_primary ?? 1.0;
-  const extendedWeight = settings.voting_window_extended ?? 0.5;
+  const primaryWindowDays = settings.voting_window_primary_days;
+  const extendedWindowDays = settings.voting_window_extended_days;
+  const primaryWeight = settings.voting_weight_primary;
+  const extendedWeight = settings.voting_weight_extended;
 
   let windowWeight = primaryWeight;
   if (daysSinceCreated > primaryWindowDays) {
@@ -37,15 +38,16 @@ function calculateVoteWeight(joinDate, createdAt) {
 function calculateApprovalThreshold(category) {
   const settings = this.getSettings();
   if (category === 'constitutional') {
-    return settings.approval_threshold_constitutional ?? 0.80;
+    return settings.approval_threshold_constitutional;
   } else if (category === 'policy') {
-    return settings.approval_threshold_policy ?? 0.60;
+    return settings.approval_threshold_policy;
   }
-  return settings.approval_threshold_routine ?? 0.50;
+  return settings.approval_threshold_routine;
 }
 
 function calculateDecayedScore(userId, joinDate) {
-  const lc = getLoyaltyCoefficient(joinDate);
+  const settings = this.getSettings();
+  const lc = getLoyaltyCoefficient(joinDate, settings);
   const events = this.db.prepare('SELECT * FROM merit_events WHERE user_id = ?').all(userId);
 
   let totalScore = 0;
@@ -54,7 +56,7 @@ function calculateDecayedScore(userId, joinDate) {
   events.forEach(event => {
     const eventDate = new Date(event.created_at);
     const daysSince = (now - eventDate) / (1000 * 60 * 60 * 24);
-    const decayFactor = Math.exp(-(LAMBDA_BASE / lc) * daysSince);
+    const decayFactor = Math.exp(-(settings.merit_lambda_base / lc) * daysSince);
     totalScore += event.points * decayFactor;
   });
 
@@ -76,9 +78,10 @@ function calculateEndorsementPoints(count) {
 }
 
 function calculateStakeAmount(userId) {
+  const settings = this.getSettings();
   const events = this.db.prepare('SELECT SUM(points) as total FROM merit_events WHERE user_id = ?').get(userId);
   const ms = events.total || 0;
-  return Math.max(10, Math.round(ms * 0.005 * 100) / 100);
+  return Math.max(settings.min_stake_amount, Math.round(ms * 0.005 * 100) / 100);
 }
 
 function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
@@ -95,12 +98,7 @@ function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
           this.db.prepare("UPDATE proposal_stakes SET status = 'refunded', resolved_at = ? WHERE id = ?")
             .run(new Date().toISOString(), stake.id);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_refund', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, stake.stake_amount, proposalId, 'Proposal stake refunded', new Date().toISOString());
-          this.db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-            .run(stake.stake_amount, stake.user_id);
+          awardMerit.call(this, stake.user_id, 'stake_refund', stake.stake_amount, proposalId, 'proposal', 'Proposal stake refunded');
         }
       });
     } else if (supportPct < 10 && supportPct > 0) {
@@ -121,12 +119,7 @@ function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
           this.db.prepare("UPDATE proposal_stakes SET status = 'forfeited', resolved_at = ? WHERE id = ?")
             .run(new Date().toISOString(), stake.id);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_penalty', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, -penalty, proposalId, `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`, new Date().toISOString());
-          this.db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-            .run(-penalty, stake.user_id);
+          awardMerit.call(this, stake.user_id, 'stake_penalty', -penalty, proposalId, 'proposal', `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`);
         }
       });
     }
@@ -135,6 +128,32 @@ function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
   } catch (e) {
     console.error('Process stakes error:', e);
   }
+}
+
+function getRoleStipend(role) {
+  const settings = this.getSettings();
+  const map = {
+    council: settings.stipend_council,
+    committee: settings.stipend_committee,
+    advisory: settings.stipend_advisory
+  };
+  return map[role] || 0;
+}
+
+function awardMerit(userId, eventType, points, referenceId, referenceType, description) {
+  if (!userId || points === undefined || points === null) return;
+  const now = new Date().toISOString();
+  const safeRefId = referenceId || null;
+  const safeRefType = referenceType || null;
+  const safeDesc = description || '';
+
+  this.db.prepare(`
+    INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(userId, eventType, points, safeRefId, safeRefType, safeDesc, now);
+
+  this.db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+    .run(points, userId);
 }
 
 function processMonthlyStipends() {
@@ -152,14 +171,14 @@ function processMonthlyStipends() {
     `).all();
 
     activeTerms.forEach(term => {
-      if (!term.ended_at && ROLE_STIPENDS[term.position_type]) {
+      const stipendAmount = getRoleStipend.call(this, term.position_type);
+      if (!term.ended_at && stipendAmount > 0) {
         const existing = this.db.prepare(`
           SELECT id FROM leadership_stipends
           WHERE user_id = ? AND position_id = ? AND period_year = ? AND period_month = ?
         `).get(term.user_id, term.position_id, year, month);
 
         if (!existing) {
-          const stipendAmount = ROLE_STIPENDS[term.position_type];
           const awardedAt = now.toISOString();
 
           this.db.prepare(`
@@ -167,12 +186,7 @@ function processMonthlyStipends() {
             VALUES (?, ?, ?, ?, ?, ?)
           `).run(term.user_id, term.position_id, year, month, stipendAmount, awardedAt);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'leadership_stipend', ?, ?, 'stipend', ?, ?)
-          `).run(term.user_id, stipendAmount, term.position_id, `${term.position_title} stipend (${month}/${year})`, awardedAt);
-          this.db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-            .run(stipendAmount, term.user_id);
+          awardMerit.call(this, term.user_id, 'leadership_stipend', stipendAmount, term.position_id, 'stipend', `${term.position_title} stipend (${month}/${year})`);
 
           this.logActivity('stipend_awarded', term.user_id, term.position_id, { amount: stipendAmount, period: `${month}/${year}` }, {});
         }
@@ -189,10 +203,9 @@ module.exports = function({ db, getSettings, logActivity }) {
   const ctx = { db, getSettings, logActivity };
 
   return {
-    ROLE_STIPENDS,
-    LAMBDA_BASE,
-    HALF_LIFE_DAYS,
-    getLoyaltyCoefficient,
+    getSettings,
+    getRoleStipend: getRoleStipend.bind(ctx),
+    getLoyaltyCoefficient: getLoyaltyCoefficient.bind(ctx),
     calculateVoteWeight: calculateVoteWeight.bind(ctx),
     calculateApprovalThreshold: calculateApprovalThreshold.bind(ctx),
     calculateDecayedScore: calculateDecayedScore.bind(ctx),
@@ -201,5 +214,6 @@ module.exports = function({ db, getSettings, logActivity }) {
     calculateStakeAmount: calculateStakeAmount.bind(ctx),
     processProposalStakes: processProposalStakes.bind(ctx),
     processMonthlyStipends: processMonthlyStipends.bind(ctx),
+    awardMerit: awardMerit.bind(ctx),
   };
 };

@@ -38,7 +38,9 @@ module.exports = function(db) {
     },
     getVoteCountsForClose(proposalId) {
       return db.prepare(`
-        SELECT choice, SUM(vote_weight) as weighted_yes,
+        SELECT
+          COALESCE(SUM(CASE WHEN choice = 'yes' THEN vote_weight ELSE 0 END), 0) as weighted_yes,
+          COALESCE(SUM(CASE WHEN choice = 'no' THEN vote_weight ELSE 0 END), 0) as weighted_no,
           SUM(CASE WHEN choice = 'yes' THEN 1 ELSE 0 END) as raw_yes,
           SUM(CASE WHEN choice = 'no' THEN 1 ELSE 0 END) as raw_no,
           SUM(CASE WHEN choice = 'abstain' THEN 1 ELSE 0 END) as raw_abstain
@@ -95,7 +97,7 @@ module.exports = function(db) {
     },
     close(proposalId, passed, weightedYes, weightedNo, rawAbstain) {
       return db.prepare('UPDATE proposals SET is_closed = 1, passed = ?, yes_votes = ?, no_votes = ?, abstain_votes = ? WHERE id = ?')
-        .run(weightedYes, weightedNo, rawAbstain, proposalId);
+        .run(passed ? 1 : 0, weightedYes, weightedNo, rawAbstain, proposalId);
     },
     getOriginal(amendmentOf) {
       return db.prepare('SELECT id, created_by_user_id FROM proposals WHERE id = ?').get(amendmentOf);

@@ -26,7 +26,10 @@
       gtag('js', new Date());
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
     <script src="nav.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -222,14 +225,8 @@
     </div>
 
     <script>
-        let authToken = localStorage.getItem('authToken');
+        let authToken = Auth.getToken();
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
 
         // Check auth on load
         if (authToken) {
@@ -290,10 +287,7 @@
             try {
                 const res = await fetch('/api/enroll-family-friend', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -328,7 +322,7 @@
 
             try {
                 const res = await fetch('/api/referrals', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
 
                 const data = await res.json();
@@ -403,10 +397,7 @@
             try {
                 const res = await fetch('/api/enroll/lookup', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -433,7 +424,7 @@
                         <label class="flex items-start space-x-3 cursor-pointer bg-gray-800 border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
                             <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
                             <div class="flex-1">
-                                <div class="font-bold text-sm">${escapeHtml(parts.join(', '))}</div>
+                                <div class="font-bold text-sm">${Utils.escapeHtml(parts.join(', '))}</div>
                             </div>
                         </label>
                     `;
@@ -490,16 +481,16 @@
                 const displayParts = [e.name, e.address, e.island].filter(p => p);
                 return `
                 <div class="bg-party-card border border-gray-600 rounded-lg p-4" id="pending-entry-${e.id}">
-                    <div class="font-bold text-white text-sm mb-3 pb-2 border-b border-gray-700">${escapeHtml(displayParts.join(', '))}</div>
+                    <div class="font-bold text-white text-sm mb-3 pb-2 border-b border-gray-700">${Utils.escapeHtml(displayParts.join(', '))}</div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Name</label>
-                            <input type="text" id="pend-name-${e.id}" value="${escapeHtml(e.name)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <input type="text" id="pend-name-${e.id}" value="${Utils.escapeHtml(e.name)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Phone</label>
                             ${e.phone ? `
-                            <input type="hidden" id="pend-phone-${e.id}" value="${escapeHtml(e.phone)}">
+                            <input type="hidden" id="pend-phone-${e.id}" value="${Utils.escapeHtml(e.phone)}">
                             <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
                             ` : `
                             <input type="tel" id="pend-phone-${e.id}" placeholder="7-digit (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
@@ -507,14 +498,14 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Island</label>
-                            <input type="text" id="pend-island-${e.id}" value="${escapeHtml(e.island)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <input type="text" id="pend-island-${e.id}" value="${Utils.escapeHtml(e.island)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">NID</label>
                             ${e.nid ? `
-                            <input type="hidden" id="pend-nid-${e.id}" value="${escapeHtml(e.nid)}">
+                            <input type="hidden" id="pend-nid-${e.id}" value="${Utils.escapeHtml(e.nid)}">
                             <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
                             ` : `
                             <input type="text" id="pend-nid-${e.id}" placeholder="A123456 (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
@@ -620,10 +611,7 @@
             try {
                 const res = await fetch('/api/enroll-family-friend', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 

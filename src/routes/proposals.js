@@ -61,10 +61,10 @@ router.get('/api/proposals', (req, res) => {
       p.passing_threshold_display = `${Math.round(p.approval_threshold * 100)}% ${p.category === 'constitutional' ? 'constitutional' : p.category === 'policy' ? 'policy shift' : 'routine'} majority required`;
       p.is_weighted = true;
       p.window_info = {
-        primary_days: settings.voting_window_primary_days ?? 7,
-        extended_days: settings.voting_window_extended_days ?? 3,
-        primary_weight: settings.voting_weight_primary ?? 1.0,
-        extended_weight: settings.voting_weight_extended ?? 0.5
+        primary_days: settings.voting_window_primary_days,
+        extended_days: settings.voting_window_extended_days,
+        primary_weight: settings.voting_weight_primary,
+        extended_weight: settings.voting_weight_extended
       };
     });
 
@@ -91,7 +91,7 @@ router.post('/api/proposals', (req, res) => {
 
   if (userId) {
     const settings = getSettings();
-    const cooldownHours = settings.proposal_cooldown_hours ?? 8;
+    const cooldownHours = settings.proposal_cooldown_hours;
     const cooldownMs = cooldownHours * 60 * 60 * 1000;
     const lastProposal = db.prepare(`
       SELECT created_at FROM proposals WHERE created_by_user_id = ? ORDER BY created_at DESC LIMIT 1
@@ -108,7 +108,7 @@ router.post('/api/proposals', (req, res) => {
     }
   } else {
     const settings = getSettings();
-    const cooldownHours = settings.proposal_cooldown_hours ?? 8;
+    const cooldownHours = settings.proposal_cooldown_hours;
     const cooldownMs = cooldownHours * 60 * 60 * 1000;
     const userIP = req.ip || req.connection.remoteAddress || 'unknown';
     const lastAnonProposal = db.prepare(`
@@ -159,7 +159,7 @@ router.post('/api/proposals', (req, res) => {
     if (userId) {
       logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
       // Award merit for creating a proposal
-      const createdMerit = settings.merit_proposal_created ?? 10;
+      const createdMerit = settings.merit_proposal_created;
       db.prepare(`
         INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
         VALUES (?, 'proposal_created', ?, ?, 'proposal', 'Created a new proposal', ?)
@@ -170,6 +170,26 @@ router.post('/api/proposals', (req, res) => {
     } else {
       logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
     }
+
+    // Post notification to wall
+    try {
+      let creatorName = 'Anonymous';
+      if (userId) {
+        const userRow = db.prepare('SELECT COALESCE(name, username) as display_name FROM signups WHERE id = ?').get(userId);
+        if (userRow) creatorName = userRow.display_name;
+      } else if (nickname) {
+        creatorName = sanitizeHTML(nickname.trim().substring(0, settings.nickname_max_length));
+      }
+      const safeTitle = sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length));
+      const safeDesc = sanitizeHTML(description.trim());
+      const truncatedDesc = safeDesc.length > 150 ? safeDesc.substring(0, 150) + '...' : safeDesc;
+      const wallMessage = `🎉 Congratulations to **${creatorName}** for proposing "**${safeTitle}**"!\n\n**Intent:** ${truncatedDesc}\n\nLet's discuss this — what do you think? Share your thoughts and help shape our future! 💬🗳️`;
+      db.prepare('INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run('3rd Party', wallMessage, null, null, null, 1, createdAt);
+    } catch (e) {
+      console.error('Wall notification error:', e);
+    }
+
     res.status(201).json({
       message: 'Proposal created! Members can now vote.',
       success: true,
@@ -226,9 +246,20 @@ router.post('/api/vote', (req, res) => {
     if (existingVote) {
       db.prepare('UPDATE votes SET choice = ?, voted_at = ?, user_id = ?, vote_weight = ?, loyalty_coefficient = ?, days_since_created = ? WHERE id = ?')
         .run(choice, votedAt, userId || existingVote.user_id, voteWeight, lc, daysSinceCreated, existingVote.id);
+
+      // Award participation merit if an anonymous vote is now being linked to a logged-in user
+      if (userId && !existingVote.user_id) {
+        const participation = getSettings().merit_vote_participation || 0.5;
+        merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'proposal', 'Participation: voted on proposal');
+      }
     } else {
       db.prepare('INSERT INTO votes (proposal_id, choice, voter_ip, voted_at, user_id, vote_weight, loyalty_coefficient, days_since_created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(proposal_id, choice, userIP, votedAt, userId, voteWeight, lc, daysSinceCreated);
+
+      if (userId) {
+        const participation = getSettings().merit_vote_participation || 0.5;
+        merit.awardMerit(userId, 'vote_cast', participation, proposal_id, 'proposal', 'Participation: voted on proposal');
+      }
     }
 
     const weightedCounts = db.prepare(`
@@ -356,12 +387,7 @@ router.post('/api/proposals/:id/stake', userAuth, (req, res) => {
     db.prepare('INSERT INTO proposal_stakes (proposal_id, user_id, stake_amount, created_at) VALUES (?, ?, ?, ?)')
       .run(id, userId, stakeAmount, now);
 
-    db.prepare(`
-      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-      VALUES (?, 'stake_locked', ?, ?, 'proposal', ?, ?)
-    `).run(userId, -stakeAmount, id, `Proposal stake locked: ${stakeAmount} pts`, now);
-    db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-      .run(-stakeAmount, userId);
+    merit.awardMerit(userId, 'stake_locked', -stakeAmount, id, 'proposal', `Proposal stake locked: ${stakeAmount} pts`);
 
     res.json({ success: true, message: `Staked ${stakeAmount} points on this proposal` });
   } catch (error) {

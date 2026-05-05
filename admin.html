@@ -30,9 +30,12 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="nav.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -69,8 +72,8 @@
                     <span class="text-sm text-gray-400">Admin Panel</span>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button onclick="refreshData()" class="text-gray-400 hover:text-white transition">
-                        <i class="fas fa-sync-alt"></i>
+                    <button onclick="refreshCurrentTab()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
                     </button>
                     <button onclick="logout()" class="text-gray-400 hover:text-white transition">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -80,32 +83,7 @@
         </nav>
 
         <div class="max-w-7xl mx-auto px-4 py-8">
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
-                <button onclick="switchTab('overview')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-party-accent text-party-dark" data-tab="overview">
-                    <i class="fas fa-chart-bar mr-1"></i>Overview
-                </button>
-                <button onclick="switchTab('proposals')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="proposals">
-                    <i class="fas fa-file-alt mr-1"></i>Proposals
-                </button>
-                <button onclick="switchTab('donations')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="donations">
-                    <i class="fas fa-coins mr-1"></i>Donations & Treasury
-                </button>
-                <button onclick="switchTab('wall')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="wall">
-                    <i class="fas fa-gavel mr-1"></i>Wall Moderation
-                </button>
-                <button onclick="switchTab('events')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="events">
-                    <i class="fas fa-calendar-alt mr-1"></i>Events
-                </button>
-                <button onclick="switchTab('leadership')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="leadership">
-                    <i class="fas fa-users-cog mr-1"></i>Leadership
-                </button>
-                <button onclick="switchTab('settings')" class="admin-tab px-4 py-2 rounded-lg font-bold text-sm transition bg-gray-800 text-gray-400 hover:text-white" data-tab="settings">
-                    <i class="fas fa-cogs mr-1"></i>Settings
-                </button>
-            </div>
-
-            <!-- Stats Cards (always visible) -->
+            <!-- Stats Cards -->
             <div class="grid md:grid-cols-5 gap-6 mb-8">
                 <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                     <div class="text-gray-400 text-sm mb-2">Total Members</div>
@@ -128,263 +106,248 @@
                     <div class="text-2xl font-bold" id="leadershipStatus">--</div>
                     <div class="text-xs text-gray-500 mt-1" id="leadershipThreshold">Threshold: 1000</div>
                 </div>
+            </div>
+
+            <!-- Main Tab Navigation -->
+            <div class="flex border-b border-gray-700 mb-6 overflow-x-auto whitespace-nowrap" id="mainTabs">
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-party-accent text-party-accent" data-tab="members"><i class="fas fa-users mr-1"></i>Members</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="proposals"><i class="fas fa-file-alt mr-1"></i>Proposals</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="donations"><i class="fas fa-money-check-alt mr-1"></i>Donations</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="treasury"><i class="fas fa-coins mr-1"></i>Treasury</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="wall"><i class="fas fa-gavel mr-1"></i>Wall</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="events"><i class="fas fa-calendar-alt mr-1"></i>Events</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="leadership"><i class="fas fa-users-cog mr-1"></i>Leadership</button>
+                <button class="dash-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="settings"><i class="fas fa-cogs mr-1"></i>Settings</button>
+            </div>
+
+            <!-- Tab: Members -->
+            <div id="tab-members" class="dash-content">
+                <div class="flex flex-wrap gap-4 mb-8">
+                    <button onclick="exportToCSV()" class="bg-party-accent text-party-dark px-6 py-3 rounded-lg font-bold hover:scale-105 transform transition inline-flex items-center space-x-2">
+                        <i class="fas fa-download"></i><span>Export CSV</span>
+                    </button>
+                    <select id="filterType" onchange="applyFilter()" class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+                        <option value="all">All Types</option>
+                        <option value="skills">Skills & Expertise</option>
+                        <option value="action">On-the-Ground Action</option>
+                        <option value="ideas">Ideas & Proposals</option>
+                        <option value="donation">Support & Donations</option>
+                    </select>
+                    <select id="filterStatus" onchange="applyFilter()" class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent">
+                        <option value="all">All Status</option>
+                        <option value="verified">Verified</option>
+                        <option value="unregistered">Unregistered</option>
+                    </select>
+                    <input type="text" id="searchInput" oninput="applyFilter()" class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent flex-1 min-w-[200px]" placeholder="Search by name, phone, or NID...">
+                </div>
+
+                <div class="bg-party-card rounded-xl border border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-party-dark">
+                                <tr class="text-left text-sm text-gray-400">
+                                    <th class="px-6 py-4">ID</th>
+                                    <th class="px-6 py-4">Phone</th>
+                                    <th class="px-6 py-4">NID</th>
+                                    <th class="px-6 py-4">Name</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4">Contribution</th>
+                                    <th class="px-6 py-4">Donation</th>
+                                    <th class="px-6 py-4">Merit</th>
+                                    <th class="px-6 py-4">Time</th>
+                                    <th class="px-6 py-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signupsTableBody" class="divide-y divide-gray-700"></tbody>
+                        </table>
+                    </div>
+                    <div id="noData" class="text-center py-12 text-gray-500 hidden">
+                        <div class="text-4xl mb-4">📭</div>
+                        <p>No signups yet. The party is empty!</p>
+                    </div>
+                    <div id="paginationControls" class="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+                        <div id="pageInfo" class="text-sm text-gray-400"></div>
+                        <div id="pageButtons" class="flex items-center space-x-2"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Proposals Tab -->
-            <div id="tab-proposals" class="tab-content hidden">
-                <!-- Proposals Management Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-file-alt text-party-accent mr-3"></i>
-                            Proposals Management
-                        </h2>
-                        <button onclick="loadProposalsAdmin()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
-                    </div>
-                    <div id="proposalsAdminList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">Loading proposals...</div>
-                    </div>
+            <!-- Tab: Proposals -->
+            <div id="tab-proposals" class="dash-content hidden">
+                <div id="proposalsAdminList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">Loading proposals...</div>
                 </div>
             </div>
 
-            <!-- Donations & Treasury Tab -->
-            <div id="tab-donations" class="tab-content hidden">
-                <!-- Donation Verification Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-money-check-alt text-green-400 mr-3"></i>
-                            Pending Donations
-                        </h2>
-                        <button onclick="loadPendingDonations()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
+            <!-- Tab: Donations -->
+            <div id="tab-donations" class="dash-content hidden">
+                <div id="donationsList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">Loading donations...</div>
+                </div>
+            </div>
+
+            <!-- Tab: Treasury -->
+            <div id="tab-treasury" class="dash-content hidden">
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="bg-green-400/10 border border-green-400/30 rounded-lg p-3 text-center">
+                        <div class="text-xs text-gray-400">Balance</div>
+                        <div class="text-lg font-bold text-green-400" id="adminBalance">—</div>
                     </div>
-                    <div id="donationsList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">Loading donations...</div>
+                    <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
+                        <div class="text-xs text-gray-400">Income</div>
+                        <div class="text-lg font-bold text-green-400" id="adminIncome">—</div>
+                    </div>
+                    <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
+                        <div class="text-xs text-gray-400">Expenses</div>
+                        <div class="text-lg font-bold text-red-400" id="adminExpenses">—</div>
                     </div>
                 </div>
 
-                <!-- Treasury Management Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-coins text-yellow-400 mr-3"></i>
-                            Live Treasury
-                        </h2>
+                <div id="expenditureForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
+                    <h3 class="text-lg font-bold mb-4">Log New Expenditure</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Amount (MVR) *</label>
+                            <input type="number" id="expAmount" min="1" step="0.01" placeholder="e.g. 5000" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Description *</label>
+                            <input type="text" id="expDescription" placeholder="e.g. Office rent for May" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Category</label>
+                            <select id="expCategory" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="operational">Operational</option>
+                                <option value="media">Media Collective</option>
+                                <option value="events">Events</option>
+                                <option value="circulos">Círculos Budget</option>
+                                <option value="bounties">Bounties</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
                         <div class="flex gap-2">
-                            <button onclick="loadTreasuryLedger()" class="text-party-accent hover:underline text-sm">
-                                <i class="fas fa-sync-alt mr-1"></i>Refresh
-                            </button>
-                            <button onclick="showExpenditureForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400">
-                                <i class="fas fa-plus mr-1"></i>Log Expense
-                            </button>
+                            <button onclick="createExpenditure()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400"><i class="fas fa-save mr-1"></i>Record Expense</button>
+                            <button onclick="hideExpenditureForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">Cancel</button>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Balance summary -->
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <div class="bg-green-400/10 border border-green-400/30 rounded-lg p-3 text-center">
-                            <div class="text-xs text-gray-400">Balance</div>
-                            <div class="text-lg font-bold text-green-400" id="adminBalance">—</div>
-                        </div>
-                        <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
-                            <div class="text-xs text-gray-400">Income</div>
-                            <div class="text-lg font-bold text-green-400" id="adminIncome">—</div>
-                        </div>
-                        <div class="bg-party-card border border-gray-700 rounded-lg p-3 text-center">
-                            <div class="text-xs text-gray-400">Expenses</div>
-                            <div class="text-lg font-bold text-red-400" id="adminExpenses">—</div>
-                        </div>
-                    </div>
+                <div class="flex gap-2 mb-4">
+                    <button onclick="loadTreasuryLedger()" class="text-party-accent hover:underline text-sm"><i class="fas fa-sync-alt mr-1"></i>Refresh</button>
+                    <button onclick="showExpenditureForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400"><i class="fas fa-plus mr-1"></i>Log Expense</button>
+                </div>
 
-                    <!-- Expenditure creation form -->
-                    <div id="expenditureForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
-                        <h3 class="text-lg font-bold mb-4">Log New Expenditure</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">Amount (MVR) *</label>
-                                <input type="number" id="expAmount" min="1" step="0.01" placeholder="e.g. 5000" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">Description *</label>
-                                <input type="text" id="expDescription" placeholder="e.g. Office rent for May" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">Category</label>
-                                <select id="expCategory" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
-                                    <option value="operational">Operational</option>
-                                    <option value="media">Media Collective</option>
-                                    <option value="events">Events</option>
-                                    <option value="circulos">Círculos Budget</option>
-                                    <option value="bounties">Bounties</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="createExpenditure()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400">
-                                    <i class="fas fa-save mr-1"></i>Record Expense
-                                </button>
-                                <button onclick="hideExpenditureForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Transaction list -->
-                    <div class="bg-party-card border border-gray-700 rounded-xl overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase">
-                                        <th class="text-left p-3">Date</th>
-                                        <th class="text-left p-3">Type</th>
-                                        <th class="text-left p-3">Description</th>
-                                        <th class="text-right p-3">Amount</th>
-                                        <th class="text-left p-3">Source</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="adminLedgerBody">
-                                    <tr><td colspan="5" class="p-6 text-center text-gray-500">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="bg-party-card border border-gray-700 rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase">
+                                    <th class="text-left p-3">Date</th>
+                                    <th class="text-left p-3">Type</th>
+                                    <th class="text-left p-3">Description</th>
+                                    <th class="text-right p-3">Amount</th>
+                                    <th class="text-left p-3">Source</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminLedgerBody">
+                                <tr><td colspan="5" class="p-6 text-center text-gray-500">Loading...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Wall Moderation Tab -->
-            <div id="tab-wall" class="tab-content hidden">
-                <!-- Wall Moderation Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-gavel text-yellow-400 mr-3"></i>
-                            Wall Moderation
-                        </h2>
-                        <button onclick="loadFlaggedPosts()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
-                    </div>
-                    <div id="flaggedPostsList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">Loading flagged posts...</div>
-                    </div>
+            <!-- Tab: Wall Moderation -->
+            <div id="tab-wall" class="dash-content hidden">
+                <div id="allPostsList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">Loading all posts...</div>
+                </div>
+                <div id="loadMoreContainer" class="text-center mt-4 hidden">
+                    <button onclick="loadMorePosts()" class="bg-party-card border border-gray-600 text-gray-300 px-6 py-2 rounded-xl hover:bg-gray-700 text-sm">
+                        <i class="fas fa-chevron-down mr-1"></i>Load More
+                    </button>
+                </div>
+                <div class="text-center mt-4">
+                    <span id="postCount" class="text-gray-500 text-sm"></span>
                 </div>
             </div>
 
-            <!-- Events Tab -->
-            <div id="tab-events" class="tab-content hidden">
-                <!-- Events Management Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-calendar-alt text-party-accent mr-3"></i>
-                            Events Management
-                        </h2>
+            <!-- Tab: Events -->
+            <div id="tab-events" class="dash-content hidden">
+                <div class="flex gap-2 mb-4">
+                    <button onclick="loadAdminEvents()" class="text-party-accent hover:underline text-sm"><i class="fas fa-sync-alt mr-1"></i>Refresh</button>
+                    <button onclick="showAddEventForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400"><i class="fas fa-plus mr-1"></i>Add Event</button>
+                </div>
+
+                <div id="eventForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
+                    <h3 class="text-lg font-bold mb-4" id="eventFormTitle">New Event</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Title *</label>
+                            <input type="text" id="eventTitle" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Description</label>
+                            <textarea id="eventDescription" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Date *</label>
+                                <input type="date" id="eventDate" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Location</label>
+                                <input type="text" id="eventLocation" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="e.g. Online / Male' City">
+                            </div>
+                        </div>
                         <div class="flex gap-2">
-                            <button onclick="loadAdminEvents()" class="text-party-accent hover:underline text-sm">
-                                <i class="fas fa-sync-alt mr-1"></i>Refresh
-                            </button>
-                            <button onclick="showAddEventForm()" class="bg-party-accent text-party-dark px-3 py-1 rounded text-sm font-bold hover:bg-yellow-400">
-                                <i class="fas fa-plus mr-1"></i>Add Event
-                            </button>
+                            <button onclick="saveEvent()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400"><i class="fas fa-save mr-1"></i>Save Event</button>
+                            <button onclick="hideEventForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">Cancel</button>
                         </div>
+                        <input type="hidden" id="editingEventId" value="">
                     </div>
+                </div>
 
-                    <!-- Add/Edit Event Form -->
-                    <div id="eventForm" class="hidden bg-party-card rounded-xl p-6 mb-4 border border-party-accent/30">
-                        <h3 class="text-lg font-bold mb-4" id="eventFormTitle">New Event</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">Title *</label>
-                                <input type="text" id="eventTitle" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">Description</label>
-                                <textarea id="eventDescription" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white"></textarea>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm text-gray-400 mb-1">Date *</label>
-                                    <input type="date" id="eventDate" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white">
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-gray-400 mb-1">Location</label>
-                                    <input type="text" id="eventLocation" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="e.g. Online / Male' City">
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="saveEvent()" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:bg-yellow-400">
-                                    <i class="fas fa-save mr-1"></i>Save Event
-                                </button>
-                                <button onclick="hideEventForm()" class="bg-gray-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-500">
-                                    Cancel
-                                </button>
-                            </div>
-                            <input type="hidden" id="editingEventId" value="">
-                        </div>
-                    </div>
-
-                    <div id="eventsAdminList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">Loading events...</div>
-                    </div>
+                <div id="eventsAdminList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">Loading events...</div>
                 </div>
             </div>
 
-            <!-- Leadership Tab -->
-            <div id="tab-leadership" class="tab-content hidden">
-                <!-- Leadership Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-users-cog text-party-accent mr-3"></i>
-                            Leadership Structure
-                        </h2>
-                        <button onclick="showLeadershipTab('settings')" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-cog mr-1"></i>Settings
-                        </button>
+            <!-- Tab: Leadership -->
+            <div id="tab-leadership" class="dash-content hidden">
+                <div class="grid md:grid-cols-5 gap-4 mb-4">
+                    <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Open Positions</div>
+                        <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
                     </div>
-                    
-                    <div class="grid md:grid-cols-5 gap-4 mb-4">
-                        <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                            <div class="text-gray-400 text-sm">Open Positions</div>
-                            <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
-                        </div>
-                        <div onclick="showLeadershipTab('applications')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                            <div class="text-gray-400 text-sm">Pending Applications</div>
-                            <div class="text-2xl font-bold text-party-accent" id="pendingApps">0</div>
-                        </div>
-                        <div onclick="showLeadershipTab('leaders')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                            <div class="text-gray-400 text-sm">Active Leaders</div>
-                            <div class="text-2xl font-bold text-green-400" id="activeLeaders">0</div>
-                        </div>
-                        <div onclick="showLeadershipTab('sops')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                            <div class="text-gray-400 text-sm">SOPs Active</div>
-                            <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
-                        </div>
-                        <div onclick="showLeadershipTab('appraisals')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
-                            <div class="text-gray-400 text-sm">Appraisals Due</div>
-                            <div class="text-2xl font-bold text-yellow-400" id="pendingAppraisals">0</div>
-                        </div>
+                    <div onclick="showLeadershipTab('applications')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Pending Applications</div>
+                        <div class="text-2xl font-bold text-party-accent" id="pendingApps">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('leaders')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Active Leaders</div>
+                        <div class="text-2xl font-bold text-green-400" id="activeLeaders">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('sops')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">SOPs Active</div>
+                        <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
+                    </div>
+                    <div onclick="showLeadershipTab('appraisals')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Appraisals Due</div>
+                        <div class="text-2xl font-bold text-yellow-400" id="pendingAppraisals">0</div>
+                    </div>
+                </div>
+
+                <div id="leadershipPanel">
+                    <div class="flex border-b border-gray-700 mb-6 overflow-x-auto whitespace-nowrap" id="leadershipTabs">
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-party-accent text-party-accent" data-tab="settings">Settings</button>
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="positions">Positions</button>
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="applications">Applications</button>
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="leaders">Current Leaders</button>
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="sops">SOPs</button>
+                        <button class="leadership-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="appraisals">Appraisals</button>
                     </div>
 
-                    <!-- Leadership Panels -->
-                <div id="leadershipPanel" class="hidden">
-                    <!-- Tab Navigation -->
-                    <div class="flex border-b border-gray-700 mb-6">
-                        <button onclick="switchLeadershipTab('settings')" class="leadership-tab px-4 py-2 text-party-accent border-b-2 border-party-accent" data-tab="settings">Settings</button>
-                        <button onclick="switchLeadershipTab('positions')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="positions">Positions</button>
-                        <button onclick="switchLeadershipTab('applications')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="applications">Applications</button>
-                        <button onclick="switchLeadershipTab('leaders')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="leaders">Current Leaders</button>
-                        <button onclick="switchLeadershipTab('sops')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="sops">SOPs</button>
-                        <button onclick="switchLeadershipTab('appraisals')" class="leadership-tab px-4 py-2 text-gray-400 hover:text-white" data-tab="appraisals">Appraisals</button>
-                    </div>
-
-                    <!-- Settings Panel -->
                     <div id="leadership-settings" class="leadership-content">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <h3 class="text-lg font-bold mb-4">Leadership Configuration</h3>
@@ -428,20 +391,16 @@
                         </div>
                     </div>
 
-                    <!-- Positions Panel -->
                     <div id="leadership-positions" class="leadership-content hidden">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-bold">Leadership Positions</h3>
-                                <button onclick="showAddPositionForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm">
-                                    <i class="fas fa-plus mr-2"></i>Add Position
-                                </button>
+                                <button onclick="showAddPositionForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm"><i class="fas fa-plus mr-2"></i>Add Position</button>
                             </div>
                             <div id="positionsList" class="space-y-4"></div>
                         </div>
                     </div>
 
-                    <!-- Applications Panel -->
                     <div id="leadership-applications" class="leadership-content hidden">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <h3 class="text-lg font-bold mb-4">Leadership Applications</h3>
@@ -449,7 +408,6 @@
                         </div>
                     </div>
 
-                    <!-- Leaders Panel -->
                     <div id="leadership-leaders" class="leadership-content hidden">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <h3 class="text-lg font-bold mb-4">Current Leadership (Governing Council & Committees)</h3>
@@ -457,107 +415,30 @@
                         </div>
                     </div>
 
-                    <!-- SOPs Panel -->
                     <div id="leadership-sops" class="leadership-content hidden">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-bold">Standard Operating Procedures</h3>
-                                <button onclick="showAddSOPForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm">
-                                    <i class="fas fa-plus mr-2"></i>Add SOP
-                                </button>
+                                <button onclick="showAddSOPForm()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg font-bold text-sm"><i class="fas fa-plus mr-2"></i>Add SOP</button>
                             </div>
                             <div id="sopsList" class="space-y-4"></div>
                         </div>
                     </div>
 
-                    <!-- Appraisals Panel -->
                     <div id="leadership-appraisals" class="leadership-content hidden">
                         <div class="bg-party-card p-6 rounded-xl border border-gray-700">
                             <h3 class="text-lg font-bold mb-4">Performance Appraisals</h3>
                             <p class="text-gray-400 mb-4">Yearly appraisals required for all leadership positions per whitepaper requirements.</p>
                             <div id="appraisalsList" class="space-y-4"></div>
-                    </div>
-                </div>
-            </div>
-            </div>
-            </div>
-
-            <!-- Settings Tab -->
-            <div id="tab-settings" class="tab-content hidden">
-                <!-- System Settings Section -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-cogs text-party-accent mr-3"></i>
-                            System Settings
-                        </h2>
-                        <button onclick="loadSystemSettings()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
-                    </div>
-                    <div id="systemSettingsPanel" class="space-y-6">
-                        <div class="text-center py-8 text-gray-500">Loading settings...</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Overview Tab -->
-            <div id="tab-overview" class="tab-content">
-                <div class="flex flex-wrap items-center gap-4 mb-4">
-                    <div>
-                        <select id="filterType" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-party-accent">
-                            <option value="all">All Contributions</option>
-                            <option value="skills">Skills</option>
-                            <option value="action">Action</option>
-                            <option value="ideas">Ideas</option>
-                            <option value="donation">Donation</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="filterStatus" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-party-accent">
-                            <option value="all">All Status</option>
-                            <option value="verified">Verified</option>
-                            <option value="unregistered">Unregistered</option>
-                        </select>
-                    </div>
-                    <div class="flex-1 min-w-[200px]">
-                        <input type="text" id="searchInput" placeholder="Search name, phone or NID..."
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-party-accent">
-                    </div>
-                    <button onclick="exportToCSV()" class="bg-party-accent text-party-dark px-4 py-2 rounded-lg text-sm font-bold hover:scale-105 transform transition">
-                        <i class="fas fa-download mr-1"></i>Export CSV
-                    </button>
-                </div>
-                <div class="bg-party-card rounded-xl border border-gray-700 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-party-dark">
-                                <tr class="text-left text-sm text-gray-400">
-                                    <th class="px-6 py-4">ID</th>
-                                    <th class="px-6 py-4">Phone</th>
-                                    <th class="px-6 py-4">NID</th>
-                                    <th class="px-6 py-4">Name</th>
-                                    <th class="px-6 py-4">Status</th>
-                                    <th class="px-6 py-4">Contribution</th>
-                                    <th class="px-6 py-4">Donation</th>
-                                    <th class="px-6 py-4">Merit</th>
-                                    <th class="px-6 py-4">Time</th>
-                                    <th class="px-6 py-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="signupsTableBody" class="divide-y divide-gray-700">
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="noData" class="text-center py-12 text-gray-500 hidden">
-                        <div class="text-4xl mb-4">📭</div>
-                        <p>No signups yet. The party is empty!</p>
-                    </div>
-                    <!-- Pagination -->
-                    <div id="paginationControls" class="flex items-center justify-between px-6 py-4 border-t border-gray-700">
-                        <div id="pageInfo" class="text-sm text-gray-400"></div>
-                        <div id="pageButtons" class="flex items-center space-x-2"></div>
-                    </div>
+            <!-- Tab: Settings -->
+            <div id="tab-settings" class="dash-content hidden">
+                <div id="systemSettingsPanel" class="space-y-6">
+                    <div class="text-center py-8 text-gray-500">Loading settings...</div>
                 </div>
             </div>
         </div>
@@ -568,21 +449,17 @@
         <div class="bg-party-card p-6 rounded-xl border border-gray-700 max-w-lg w-full">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-party-accent">Edit Proposal</h3>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
             <form id="editProposalForm" class="space-y-4">
                 <input type="hidden" id="editProposalId">
                 <div>
                     <label class="block text-sm font-medium mb-2">Title</label>
-                    <input type="text" id="editProposalTitle" required maxlength="200"
-                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                    <input type="text" id="editProposalTitle" required maxlength="200" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-2">Category</label>
-                    <select id="editProposalCategory"
-                            class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                    <select id="editProposalCategory" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
                         <option value="general">General</option>
                         <option value="infrastructure">Infrastructure</option>
                         <option value="environment">Environment</option>
@@ -594,16 +471,11 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-2">Description</label>
-                    <textarea id="editProposalDescription" required rows="5" maxlength="2000"
-                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                    <textarea id="editProposalDescription" required rows="5" maxlength="2000" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
-                        <i class="fas fa-save mr-2"></i>Save Changes
-                    </button>
-                    <button type="button" onclick="closeEditModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">
-                        Cancel
-                    </button>
+                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition"><i class="fas fa-save mr-2"></i>Save Changes</button>
+                    <button type="button" onclick="closeEditModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">Cancel</button>
                 </div>
             </form>
             <p id="editProposalError" class="text-red-400 text-sm mt-4 hidden"></p>
@@ -611,116 +483,83 @@
     </div>
 
     <script>
-        let authToken = localStorage.getItem('3dparty_admin_token');
         let allSignups = [];
         let currentPage = 1;
         let totalPages = 1;
         const PAGE_SIZE = 50;
-        let loadedTabs = new Set();
+        let currentTab = 'members';
 
-        if (authToken) {
-            showDashboard();
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.admin-tab').forEach(t => {
-                t.classList.remove('bg-party-accent', 'text-party-dark');
-                t.classList.add('bg-gray-800', 'text-gray-400');
-            });
-            document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.add('bg-party-accent', 'text-party-dark');
-            document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.remove('bg-gray-800', 'text-gray-400');
-
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
-
-            if (!loadedTabs.has(tab)) {
-                loadedTabs.add(tab);
-                loadTabData(tab);
-            }
-        }
-
-        function loadTabData(tab) {
-            switch(tab) {
-                case 'proposals': loadProposalsAdmin(); break;
-                case 'donations': loadPendingDonations(); loadTreasuryLedger(); break;
-                case 'wall': loadFlaggedPosts(); break;
-                case 'events': loadAdminEvents(); break;
-                case 'leadership': loadLeadershipData(); break;
-                case 'settings': loadSystemSettings(); break;
-            }
-        }
+        if (Auth.getToken()) showDashboard();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const password = document.getElementById('password').value;
-            
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    authToken = result.token;
-                    localStorage.setItem('3dparty_admin_token', authToken);
-                    showDashboard();
-                } else {
-                    document.getElementById('loginError').classList.remove('hidden');
-                    document.getElementById('loginError').textContent = result.error;
-                }
-            } catch (error) {
-                document.getElementById('loginError').classList.remove('hidden');
-                document.getElementById('loginError').textContent = 'Connection error';
+            const { ok, data } = await api.post('/api/login', { password: document.getElementById('password').value });
+            if (ok && data.success) {
+                Auth.setToken(data.token);
+                showDashboard();
+            } else {
+                const errEl = document.getElementById('loginError');
+                errEl.classList.remove('hidden');
+                errEl.textContent = data?.error || 'Connection error';
             }
         });
 
         function showDashboard() {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
-            loadedTabs.add('overview');
             refreshData();
-            document.getElementById('filterType').addEventListener('change', applyFilter);
-            document.getElementById('filterStatus').addEventListener('change', applyFilter);
-            document.getElementById('searchInput').addEventListener('input', applyFilter);
         }
 
         function logout() {
-            localStorage.removeItem('3dparty_admin_token');
-            authToken = null;
+            Auth.clearToken();
             document.getElementById('dashboard').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('password').value = '';
         }
 
-        async function refreshData() {
-            try {
-                const response = await fetch(`/api/signups?page=${currentPage}&limit=${PAGE_SIZE}`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                
-                if (!response.ok) {
-                    logout();
-                    return;
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    allSignups = result.signups;
-                    totalPages = result.totalPages || 1;
-                    updateStats(result);
-                    applyFilter();
-                    renderPagination();
-                    await loadLeadershipData();
-                } else {
-                    logout();
-                }
-            } catch (error) {
-                console.error('Error fetching data:', error);
+        // ── Tab Navigation ──
+        document.querySelectorAll('#mainTabs .dash-tab').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('#mainTabs .dash-tab').forEach(t => {
+                t.classList.remove('border-party-accent', 'text-party-accent');
+                t.classList.add('border-transparent', 'text-gray-400');
+            });
+            document.querySelector(`#mainTabs .dash-tab[data-tab="${tab}"]`).classList.add('border-party-accent', 'text-party-accent');
+            document.querySelector(`#mainTabs .dash-tab[data-tab="${tab}"]`).classList.remove('border-transparent', 'text-gray-400');
+            document.querySelectorAll('.dash-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            loadTabData(tab);
+        }
+
+        function loadTabData(tab) {
+            switch(tab) {
+                case 'members': refreshData(); break;
+                case 'proposals': loadProposalsAdmin(); break;
+                case 'donations': loadPendingDonations(); break;
+                case 'treasury': loadTreasuryLedger(); break;
+                case 'wall': loadAllPosts(); break;
+                case 'events': loadAdminEvents(); break;
+                case 'leadership': loadLeadershipData(); break;
+                case 'settings': loadSystemSettings(); break;
             }
+        }
+
+        function refreshCurrentTab() { loadTabData(currentTab); }
+
+        // ── Members ──
+        async function refreshData() {
+            const { ok, data } = await api.get(`/api/signups?page=${currentPage}&limit=${PAGE_SIZE}`);
+            if (!ok || !data?.success) { logout(); return; }
+            allSignups = data.signups;
+            totalPages = data.totalPages || 1;
+            updateStats(data);
+            applyFilter();
+            renderPagination();
+            await loadLeadershipData();
         }
 
         function updateStats(result) {
@@ -734,55 +573,21 @@
             const filterType = document.getElementById('filterType').value;
             const filterStatus = document.getElementById('filterStatus').value;
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            
             let filtered = allSignups;
-            
-            if (filterType !== 'all') {
-                filtered = filtered.filter(s => {
-                    const types = Array.isArray(s.contribution_type) ? s.contribution_type : [];
-                    return types.includes(filterType);
-                });
-            }
-            
-            if (filterStatus !== 'all') {
-                if (filterStatus === 'verified') {
-                    filtered = filtered.filter(s => s.is_verified === 1);
-                } else {
-                    filtered = filtered.filter(s => s.is_verified === 0);
-                }
-            }
-            
-            if (searchTerm) {
-                filtered = filtered.filter(s =>
-                    (s.name && s.name.toLowerCase().includes(searchTerm)) ||
-                    (s.phone && s.phone.includes(searchTerm)) ||
-                    (s.nid && s.nid.toLowerCase().includes(searchTerm))
-                );
-            }
-            
+            if (filterType !== 'all') filtered = filtered.filter(s => (Array.isArray(s.contribution_type) ? s.contribution_type : []).includes(filterType));
+            if (filterStatus !== 'all') filtered = filtered.filter(s => filterStatus === 'verified' ? s.is_verified === 1 : s.is_verified === 0);
+            if (searchTerm) filtered = filtered.filter(s => (s.name && s.name.toLowerCase().includes(searchTerm)) || (s.phone && s.phone.includes(searchTerm)) || (s.nid && s.nid.toLowerCase().includes(searchTerm)));
             renderTable(filtered);
         }
 
-        const typeLabels = {
-            'skills': '🧠 Skills',
-            'action': '🏃 Action',
-            'ideas': '💡 Ideas',
-            'donation': '💰 Donation'
-        };
+        const typeLabels = { 'skills': '🧠 Skills', 'action': '🏃 Action', 'ideas': '💡 Ideas', 'donation': '💰 Donation' };
 
         function renderTable(signups) {
             const tbody = document.getElementById('signupsTableBody');
             const noData = document.getElementById('noData');
-            
-            if (signups.length === 0) {
-                tbody.innerHTML = '';
-                noData.classList.remove('hidden');
-                return;
-            }
-            
+            if (signups.length === 0) { tbody.innerHTML = ''; noData.classList.remove('hidden'); return; }
             noData.classList.add('hidden');
-            
-                tbody.innerHTML = signups.map(s => `
+            tbody.innerHTML = signups.map(s => `
                 <tr class="hover:bg-gray-800/50 text-sm ${s.is_verified ? '' : 'opacity-50'}">
                     <td class="px-6 py-4 text-gray-500">#${s.id}</td>
                     <td class="px-6 py-4">${s.phone ? '+960 ' + s.phone : '<span class="text-gray-600">—</span>'}</td>
@@ -792,302 +597,119 @@
                         ${s.is_verified 
                             ? '<span class="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs">Verified</span>'
                             : `<span class="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs">Unregistered</span>
-                               <div class="text-xs text-gray-500 mt-1">${s.unregister_justification || ''}</div>`
-                        }
+                               <div class="text-xs text-gray-500 mt-1">${Utils.escapeHtml(s.unregister_justification || '')}</div>`}
                     </td>
                     <td class="px-6 py-4">
-                        ${(Array.isArray(s.contribution_type) ? s.contribution_type : []).map(t => 
-                            `<span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs mr-1">${typeLabels[t] || t}</span>`
-                        ).join('')}
+                        ${(Array.isArray(s.contribution_type) ? s.contribution_type : []).map(t => `<span class="bg-party-accent/10 text-party-accent px-2 py-1 rounded text-xs mr-1">${typeLabels[t] || t}</span>`).join('')}
                         ${(!s.contribution_type || s.contribution_type.length === 0) ? '<span class="text-gray-500">Supporter</span>' : ''}
                     </td>
-                    <td class="px-6 py-4">
-                        ${s.donation_amount > 0 ? `<span class="text-green-400">MVR ${s.donation_amount}</span>` : '<span class="text-gray-600">—</span>'}
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="text-party-accent font-bold">${s.initial_merit_estimate}</span>
-                    </td>
-                    <td class="px-6 py-4 text-gray-400 text-xs">
-                        ${new Date(s.timestamp).toLocaleString()}
-                    </td>
+                    <td class="px-6 py-4">${s.donation_amount > 0 ? `<span class="text-green-400">MVR ${s.donation_amount}</span>` : '<span class="text-gray-600">—</span>'}</td>
+                    <td class="px-6 py-4"><span class="text-party-accent font-bold">${s.initial_merit_estimate}</span></td>
+                    <td class="px-6 py-4 text-gray-400 text-xs">${new Date(s.timestamp).toLocaleString()}</td>
                     <td class="px-6 py-4">
                         ${s.is_verified 
-                            ? `<button onclick="unregisterUser(${s.id})" class="text-red-400 hover:text-red-300 text-sm">
-                                <i class="fas fa-user-minus mr-1"></i>Unregister
-                               </button>`
-                            : `<button onclick="reregisterUser(${s.id})" class="text-green-400 hover:text-green-300 text-sm">
-                                <i class="fas fa-user-plus mr-1"></i>Re-register
-                               </button>`
-                        }
+                            ? `<button onclick="unregisterUser(${s.id})" class="text-red-400 hover:text-red-300 text-sm"><i class="fas fa-user-minus mr-1"></i>Unregister</button>`
+                            : `<button onclick="reregisterUser(${s.id})" class="text-green-400 hover:text-green-300 text-sm"><i class="fas fa-user-plus mr-1"></i>Re-register</button>`}
                     </td>
                 </tr>
             `).join('');
         }
 
         async function exportToCSV() {
-            try {
-                const response = await fetch('/api/signups?limit=999999', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                const result = await response.json();
-                if (!result.success) {
-                    alert('Failed to fetch data for export');
-                    return;
-                }
-                const allData = result.signups;
-                
-                let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
-                
-                allData.forEach(s => {
-                    const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
-                    csv += `${s.id},${s.phone ? '+960' + s.phone : ''},${s.nid || ''},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
-                });
-                
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `3dparty-signups-${new Date().toISOString().split('T')[0]}.csv`;
-                a.click();
-            } catch (error) {
-                alert('Error exporting CSV');
-            }
+            const { ok, data } = await api.get('/api/signups?limit=999999');
+            if (!ok || !data?.success) { alert('Failed to fetch data for export'); return; }
+            let csv = 'ID,Phone,NID,Name,Email,Island,Verified,Contribution Type,Donation Amount,Initial Merit,Unregistered,Unregister Justification,Timestamp\n';
+            data.signups.forEach(s => {
+                const types = Array.isArray(s.contribution_type) ? s.contribution_type.join(';') : '';
+                csv += `${s.id},${s.phone ? '+960' + s.phone : ''},${s.nid || ''},"${s.name || ''}","${s.email || ''}","${s.island || ''}",${s.is_verified ? 'Yes' : 'No'},"${types}",${s.donation_amount},${s.initial_merit_estimate},${s.unregistered_at ? 'Yes' : 'No'},"${s.unregister_justification || ''}","${s.timestamp}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = window.URL.createObjectURL(blob);
+            a.download = `3dparty-signups-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
         }
 
         async function unregisterUser(userId) {
-            if (!authToken) {
-                alert('Session expired. Please login again.');
-                logout();
-                return;
-            }
-
             const justification = prompt('Enter justification for unregistering this user (required):');
-            
-            if (!justification || justification.trim().length < 10) {
-                alert('Justification note must be at least 10 characters.');
-                return;
-            }
-            
+            if (!justification || justification.trim().length < 10) { alert('Justification must be at least 10 characters.'); return; }
             if (!confirm('This will remove the user\'s verified status. Continue?')) return;
-            
-            try {
-                const response = await fetch('/api/unregister', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ user_id: userId, justification: justification.trim() })
-                });
-                
-                if (!response.ok) {
-                    alert('Server error. Please try again.');
-                    return;
-                }
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    await refreshData();
-                } else {
-                    alert(result.error || 'Failed to unregister user');
-                }
-            } catch (error) {
-                alert('Error unregistering user');
-            }
+            const { ok, data } = await api.post('/api/unregister', { user_id: userId, justification: justification.trim() });
+            if (ok && data?.success) { alert(data.message); refreshData(); } else { alert(data?.error || 'Failed to unregister user'); }
         }
 
         async function reregisterUser(userId) {
-            if (!authToken) {
-                alert('Session expired. Please login again.');
-                logout();
-                return;
-            }
-            
             if (!confirm('Re-register this user? This will restore their verified status.')) return;
-            
-            try {
-                const response = await fetch('/api/reregister', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ user_id: userId })
-                });
-                
-                if (!response.ok) {
-                    alert('Server error. Please try again.');
-                    return;
-                }
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert(result.message);
-                    await refreshData();
-                } else {
-                    alert(result.error || 'Failed to re-register user');
-                }
-            } catch (error) {
-                alert('Error re-registering user');
-            }
+            const { ok, data } = await api.post('/api/reregister', { user_id: userId });
+            if (ok && data?.success) { alert(data.message); refreshData(); } else { alert(data?.error || 'Failed to re-register user'); }
         }
 
-        // ==================== PAGINATION ====================
         function renderPagination() {
             const pageInfo = document.getElementById('pageInfo');
             const pageButtons = document.getElementById('pageButtons');
-            
-            if (!totalPages || totalPages <= 1) {
-                pageInfo.textContent = `Showing all ${allSignups.length} members`;
-                pageButtons.innerHTML = '';
-                return;
-            }
-            
-            const start = (currentPage - 1) * PAGE_SIZE + 1;
-            const end = Math.min(currentPage * PAGE_SIZE, allSignups.length + (currentPage - 1) * PAGE_SIZE);
-            pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${allSignups.length} members on this page)`;
-            
-            let buttonsHtml = '';
-            
-            // Previous button
-            buttonsHtml += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} 
-                class="px-3 py-1 rounded ${currentPage <= 1 ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-600'}">
-                <i class="fas fa-chevron-left"></i>
-            </button>`;
-            
-            // Page numbers
+            if (!totalPages || totalPages <= 1) { pageInfo.textContent = `Showing all ${allSignups.length} members`; pageButtons.innerHTML = ''; return; }
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            let html = '';
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled class="px-3 py-1 rounded bg-gray-700 text-gray-500 cursor-not-allowed"' : 'class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600"'}><i class="fas fa-chevron-left"></i></button>`;
             const maxVisible = 5;
             let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
             let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            if (endPage - startPage < maxVisible - 1) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            
-            if (startPage > 1) {
-                buttonsHtml += `<button onclick="goToPage(1)" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">1</button>`;
-                if (startPage > 2) {
-                    buttonsHtml += `<span class="text-gray-500">...</span>`;
-                }
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                if (i === currentPage) {
-                    buttonsHtml += `<button class="px-3 py-1 rounded bg-party-accent text-party-dark font-bold">${i}</button>`;
-                } else {
-                    buttonsHtml += `<button onclick="goToPage(${i})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${i}</button>`;
-                }
-            }
-            
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    buttonsHtml += `<span class="text-gray-500">...</span>`;
-                }
-                buttonsHtml += `<button onclick="goToPage(${totalPages})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${totalPages}</button>`;
-            }
-            
-            // Next button
-            buttonsHtml += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} 
-                class="px-3 py-1 rounded ${currentPage >= totalPages ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-700 text-white hover:bg-gray-600'}">
-                <i class="fas fa-chevron-right"></i>
-            </button>`;
-            
-            pageButtons.innerHTML = buttonsHtml;
+            if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+            if (startPage > 1) { html += `<button onclick="goToPage(1)" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">1</button>`; if (startPage > 2) html += `<span class="text-gray-500">...</span>`; }
+            for (let i = startPage; i <= endPage; i++) html += i === currentPage ? `<button class="px-3 py-1 rounded bg-party-accent text-party-dark font-bold">${i}</button>` : `<button onclick="goToPage(${i})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${i}</button>`;
+            if (endPage < totalPages) { if (endPage < totalPages - 1) html += `<span class="text-gray-500">...</span>`; html += `<button onclick="goToPage(${totalPages})" class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600">${totalPages}</button>`; }
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled class="px-3 py-1 rounded bg-gray-700 text-gray-500 cursor-not-allowed"' : 'class="px-3 py-1 rounded bg-gray-700 text-white hover:bg-gray-600"'}><i class="fas fa-chevron-right"></i></button>`;
+            pageButtons.innerHTML = html;
         }
 
-        async function goToPage(page) {
-            if (page < 1 || page > totalPages) return;
-            currentPage = page;
-            await refreshData();
-        }
+        async function goToPage(page) { if (page < 1 || page > totalPages) return; currentPage = page; await refreshData(); }
 
-        // Keyboard shortcut: Ctrl+R to refresh
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-                refreshData();
-            }
-        });
-
-        // ==================== LEADERSHIP MANAGEMENT ====================
-        
-        let leadershipData = {
-            settings: {},
-            positions: [],
-            applications: [],
-            terms: [],
-            sops: []
-        };
+        // ── Leadership ──
+        let leadershipData = { settings: {}, positions: [], applications: [], terms: [], sops: [] };
 
         async function loadLeadershipData() {
-            try {
-                const [settingsRes, posRes, appRes, termsRes, sopsRes] = await Promise.all([
-                    fetch('/api/leadership/settings', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/positions', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/applications', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/terms', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/sops', { headers: { 'Authorization': `Bearer ${authToken}` } })
-                ]);
-                
-                const settings = await settingsRes.json();
-                const positions = await posRes.json();
-                const applications = await appRes.json();
-                const terms = await termsRes.json();
-                const sops = await sopsRes.json();
-                
-                if (settings.success) {
-                    leadershipData.settings = settings.settings;
-                    leadershipData.memberCount = settings.memberCount;
-                    
-                    document.getElementById('leadershipThresholdInput').value = settings.settings.member_threshold;
-                    document.getElementById('leadershipMinMerit').value = settings.settings.min_merit_for_leadership;
-                    document.getElementById('leadershipMaxTerm').value = settings.settings.max_term_years;
-                    document.getElementById('leadershipAppraisalFreq').value = settings.settings.appraisal_frequency_days;
-                    document.getElementById('leadershipThreshold').textContent = `Threshold: ${settings.settings.member_threshold}`;
-                    
-                    const thresholdMet = settings.memberCount >= settings.settings.member_threshold;
-                    const statusEl = document.getElementById('leadershipStatus');
-                    if (thresholdMet) {
-                        statusEl.textContent = 'OPEN';
-                        statusEl.className = 'text-2xl font-bold text-green-400';
-                    } else {
-                        statusEl.textContent = `${settings.memberCount}/${settings.settings.member_threshold}`;
-                        statusEl.className = 'text-2xl font-bold text-yellow-400';
-                    }
-                    
-                    document.getElementById('openPositions').textContent = positions.positions.filter(p => p.is_active).length;
-                    document.getElementById('pendingApps').textContent = applications.applications.filter(a => a.status === 'pending').length;
-                    document.getElementById('activeLeaders').textContent = terms.terms.length;
-                    document.getElementById('activeSOPs').textContent = sops.sops.length;
-                }
-                
-                if (positions.success) leadershipData.positions = positions.positions;
-                if (applications.success) leadershipData.applications = applications.applications;
-                if (terms.success) leadershipData.terms = terms.terms;
-                if (sops.success) leadershipData.sops = sops.sops;
-                
-            } catch (error) {
-                console.error('Error loading leadership data:', error);
+            const [settingsRes, posRes, appRes, termsRes, sopsRes] = await Promise.all([
+                api.get('/api/leadership/settings'), api.get('/api/leadership/positions'), api.get('/api/leadership/applications'), api.get('/api/leadership/terms'), api.get('/api/leadership/sops')
+            ]);
+            if (settingsRes.data?.success) {
+                const s = settingsRes.data;
+                leadershipData.settings = s.settings;
+                leadershipData.memberCount = s.memberCount;
+                document.getElementById('leadershipThresholdInput').value = s.settings.member_threshold;
+                document.getElementById('leadershipMinMerit').value = s.settings.min_merit_for_leadership;
+                document.getElementById('leadershipMaxTerm').value = s.settings.max_term_years;
+                document.getElementById('leadershipAppraisalFreq').value = s.settings.appraisal_frequency_days;
+                document.getElementById('leadershipThreshold').textContent = `Threshold: ${s.settings.member_threshold}`;
+                const thresholdMet = s.memberCount >= s.settings.member_threshold;
+                const statusEl = document.getElementById('leadershipStatus');
+                statusEl.textContent = thresholdMet ? 'OPEN' : `${s.memberCount}/${s.settings.member_threshold}`;
+                statusEl.className = `text-2xl font-bold ${thresholdMet ? 'text-green-400' : 'text-yellow-400'}`;
+                if (posRes.data?.success) leadershipData.positions = posRes.data.positions;
+                if (appRes.data?.success) leadershipData.applications = appRes.data.applications;
+                if (termsRes.data?.success) leadershipData.terms = termsRes.data.terms;
+                if (sopsRes.data?.success) leadershipData.sops = sopsRes.data.sops;
+                document.getElementById('openPositions').textContent = leadershipData.positions.filter(p => p.is_active).length;
+                document.getElementById('pendingApps').textContent = leadershipData.applications.filter(a => a.status === 'pending').length;
+                document.getElementById('activeLeaders').textContent = leadershipData.terms.length;
+                document.getElementById('activeSOPs').textContent = leadershipData.sops.length;
             }
         }
 
         function showLeadershipTab(tab) {
             document.getElementById('leadershipPanel').classList.remove('hidden');
             switchLeadershipTab(tab);
-            loadLeadershipData();
         }
 
         function switchLeadershipTab(tab) {
-            document.querySelectorAll('.leadership-tab').forEach(t => {
-                t.classList.remove('text-party-accent', 'border-b-2', 'border-party-accent');
-                t.classList.add('text-gray-400');
+            document.querySelectorAll('#leadershipTabs .leadership-tab').forEach(t => {
+                t.classList.remove('border-party-accent', 'text-party-accent');
+                t.classList.add('border-transparent', 'text-gray-400');
             });
-            document.querySelector(`.leadership-tab[data-tab="${tab}"]`).classList.add('text-party-accent', 'border-b-2', 'border-party-accent');
-            document.querySelectorAll('.leadership-tab[data-tab="' + tab + '"]').forEach(t => t.classList.remove('text-gray-400'));
-            
+            const activeBtn = document.querySelector(`#leadershipTabs .leadership-tab[data-tab="${tab}"]`);
+            if (activeBtn) { activeBtn.classList.add('border-party-accent', 'text-party-accent'); activeBtn.classList.remove('border-transparent', 'text-gray-400'); }
             document.querySelectorAll('.leadership-content').forEach(c => c.classList.add('hidden'));
-            document.getElementById(`leadership-${tab}`).classList.remove('hidden');
-            
+            const panel = document.getElementById(`leadership-${tab}`);
+            if (panel) panel.classList.remove('hidden');
             renderLeadershipContent(tab);
         }
 
@@ -1103,25 +725,19 @@
 
         function renderPositions() {
             const container = document.getElementById('positionsList');
-            if (leadershipData.positions.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No positions defined</p>';
-                return;
-            }
-            
+            if (!leadershipData.positions.length) { container.innerHTML = '<p class="text-gray-500">No positions defined</p>'; return; }
             container.innerHTML = leadershipData.positions.map(p => `
                 <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
                     <div>
-                        <div class="font-bold text-white">${p.title}</div>
-                        <div class="text-sm text-gray-400">${p.description || ''}</div>
+                        <div class="font-bold text-white">${Utils.escapeHtml(p.title)}</div>
+                        <div class="text-sm text-gray-400">${Utils.escapeHtml(p.description || '')}</div>
                         <div class="text-xs text-gray-500 mt-1">
-                            <span class="px-2 py-0.5 rounded ${p.position_type === 'council' ? 'bg-purple-500/20 text-purple-400' : p.position_type === 'committee' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}">${p.position_type}</span>
+                            <span class="px-2 py-0.5 rounded ${p.position_type === 'council' ? 'bg-purple-500/20 text-purple-400' : p.position_type === 'committee' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}">${Utils.escapeHtml(p.position_type)}</span>
                             <span class="ml-2">Min Merit: ${p.min_merit_required}</span>
                             <span class="ml-2">Current: ${p.current_holders || 0}</span>
                         </div>
                     </div>
-                    <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}">
-                        <i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i>
-                    </button>
+                    <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}"><i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i></button>
                 </div>
             `).join('');
         }
@@ -1130,71 +746,52 @@
             const container = document.getElementById('applicationsList');
             const pending = leadershipData.applications.filter(a => a.status === 'pending');
             const other = leadershipData.applications.filter(a => a.status !== 'pending');
-            
             let html = '<h4 class="font-bold text-party-accent mb-3">Pending Review (' + pending.length + ')</h4>';
-            if (pending.length === 0) {
-                html += '<p class="text-gray-500 mb-4">No pending applications</p>';
-            } else {
-                html += pending.map(a => `
-                    <div class="p-4 bg-gray-800/50 rounded-lg mb-4">
-                        <div class="flex justify-between">
-                            <div>
-                                <div class="font-bold">${a.name || 'Member #' + a.user_id}</div>
-                                <div class="text-sm text-gray-400">Applied for: ${a.position_title}</div>
-                                <div class="text-xs text-gray-500">Merit Score: ${a.merit_score}</div>
-                                <div class="text-xs text-gray-500">Applied: ${new Date(a.applied_at).toLocaleDateString()}</div>
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <button onclick="processApplication(${a.id}, 'interview')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs">Schedule Interview</button>
-                                <button onclick="processApplication(${a.id}, 'approved')" class="bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
-                                <button onclick="processApplication(${a.id}, 'rejected')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Reject</button>
-                            </div>
+            if (!pending.length) { html += '<p class="text-gray-500 mb-4">No pending applications</p>'; }
+            else { html += pending.map(a => `
+                <div class="p-4 bg-gray-800/50 rounded-lg mb-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="font-bold">${Utils.escapeHtml(a.name || 'Member #' + a.user_id)}</div>
+                            <div class="text-sm text-gray-400">Applied for: ${Utils.escapeHtml(a.position_title)}</div>
+                            <div class="text-xs text-gray-500">Merit Score: ${a.merit_score}</div>
+                            <div class="text-xs text-gray-500">Applied: ${Utils.formatDate(a.applied_at)}</div>
                         </div>
-                        <div class="mt-3 p-3 bg-gray-900/50 rounded text-sm text-gray-300">${a.application_text}</div>
-                        ${a.status === 'interview' ? '<div class="mt-2 text-blue-400 text-xs"><i class="fas fa-video mr-1"></i>Live public interview scheduled</div>' : ''}
+                        <div class="flex flex-col gap-2">
+                            <button onclick="processApplication(${a.id}, 'interview')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs">Schedule Interview</button>
+                            <button onclick="processApplication(${a.id}, 'approved')" class="bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
+                            <button onclick="processApplication(${a.id}, 'rejected')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Reject</button>
+                        </div>
                     </div>
-                `).join('');
-            }
-            
-            if (other.length > 0) {
+                    <div class="mt-3 p-3 bg-gray-900/50 rounded text-sm text-gray-300">${Utils.escapeHtml(a.application_text)}</div>
+                    ${a.status === 'interview' ? '<div class="mt-2 text-blue-400 text-xs"><i class="fas fa-video mr-1"></i>Live public interview scheduled</div>' : ''}
+                </div>
+            `).join(''); }
+            if (other.length) {
                 html += '<h4 class="font-bold text-gray-400 mt-6 mb-3">Processed Applications</h4>';
                 html += other.map(a => `
                     <div class="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg text-sm">
-                        <div>
-                            <span class="text-gray-300">${a.name || 'Member #' + a.user_id}</span>
-                            <span class="text-gray-500"> - ${a.position_title}</span>
-                        </div>
-                        <span class="px-2 py-1 rounded text-xs ${a.status === 'approved' ? 'bg-green-500/20 text-green-400' : a.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">${a.status}</span>
+                        <div><span class="text-gray-300">${Utils.escapeHtml(a.name || 'Member #' + a.user_id)}</span><span class="text-gray-500"> - ${Utils.escapeHtml(a.position_title)}</span></div>
+                        <span class="px-2 py-1 rounded text-xs ${a.status === 'approved' ? 'bg-green-500/20 text-green-400' : a.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">${Utils.escapeHtml(a.status)}</span>
                     </div>
                 `).join('');
             }
-            
             container.innerHTML = html;
         }
 
         function renderLeaders() {
             const container = document.getElementById('leadersList');
-            if (leadershipData.terms.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No active leadership. Applications open at ' + leadershipData.settings.member_threshold + ' members.</p>';
-                return;
-            }
-            
+            if (!leadershipData.terms.length) { container.innerHTML = `<p class="text-gray-500">No active leadership. Applications open at ${leadershipData.settings.member_threshold} members.</p>`; return; }
             container.innerHTML = leadershipData.terms.map(t => `
                 <div class="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg">
                     <div>
-                        <div class="font-bold text-white">${t.name || 'Leader #' + t.user_id}</div>
-                        <div class="text-sm text-party-accent">${t.position_title}</div>
-                        <div class="text-xs text-gray-500">
-                            Term ${t.term_number} since ${new Date(t.started_at).toLocaleDateString()} | Merit: ${t.merit_score}
-                        </div>
+                        <div class="font-bold text-white">${Utils.escapeHtml(t.name || 'Leader #' + t.user_id)}</div>
+                        <div class="text-sm text-party-accent">${Utils.escapeHtml(t.position_title)}</div>
+                        <div class="text-xs text-gray-500">Term ${t.term_number} since ${Utils.formatDate(t.started_at)} | Merit: ${t.merit_score}</div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="showAppraisalForm(${t.id}, '${t.name}', '${t.position_title}')" class="text-party-accent hover:text-white text-sm">
-                            <i class="fas fa-star mr-1"></i>Appraise
-                        </button>
-                        <button onclick="endTerm(${t.id})" class="text-red-400 hover:text-red-300 text-sm">
-                            <i class="fas fa-user-minus mr-1"></i>End Term
-                        </button>
+                        <button onclick="showAppraisalForm(${t.id}, '${Utils.escapeHtml(t.name)}', '${Utils.escapeHtml(t.position_title)}')" class="text-party-accent hover:text-white text-sm"><i class="fas fa-star mr-1"></i>Appraise</button>
+                        <button onclick="endTerm(${t.id})" class="text-red-400 hover:text-red-300 text-sm"><i class="fas fa-user-minus mr-1"></i>End Term</button>
                     </div>
                 </div>
             `).join('');
@@ -1202,28 +799,20 @@
 
         function renderSOPs() {
             const container = document.getElementById('sopsList');
-            if (leadershipData.sops.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No SOPs defined</p>';
-                return;
-            }
-            
+            if (!leadershipData.sops.length) { container.innerHTML = '<p class="text-gray-500">No SOPs defined</p>'; return; }
             const byCategory = {};
-            leadershipData.sops.forEach(s => {
-                if (!byCategory[s.category]) byCategory[s.category] = [];
-                byCategory[s.category].push(s);
-            });
-            
+            leadershipData.sops.forEach(s => { if (!byCategory[s.category]) byCategory[s.category] = []; byCategory[s.category].push(s); });
             container.innerHTML = Object.entries(byCategory).map(([cat, sops]) => `
                 <div class="mb-4">
-                    <h4 class="font-bold text-party-accent capitalize mb-2">${cat} Operations</h4>
+                    <h4 class="font-bold text-party-accent capitalize mb-2">${Utils.escapeHtml(cat)} Operations</h4>
                     ${sops.map(s => `
                         <div class="p-3 bg-gray-800/50 rounded-lg mb-2">
                             <div class="flex justify-between items-start">
-                                <div class="font-medium text-white">${s.title}</div>
+                                <div class="font-medium text-white">${Utils.escapeHtml(s.title)}</div>
                                 <button onclick="editSOP(${s.id})" class="text-gray-500 hover:text-white"><i class="fas fa-edit"></i></button>
                             </div>
-                            <div class="text-sm text-gray-400 mt-1">${s.content.substring(0, 150)}...</div>
-                            <div class="text-xs text-gray-500 mt-1">v${s.version} | Updated: ${new Date(s.updated_at).toLocaleDateString()}</div>
+                            <div class="text-sm text-gray-400 mt-1">${Utils.escapeHtml(s.content.substring(0, 150))}...</div>
+                            <div class="text-xs text-gray-500 mt-1">v${s.version} | Updated: ${Utils.formatDate(s.updated_at)}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -1231,8 +820,7 @@
         }
 
         function renderAppraisals() {
-            const container = document.getElementById('appraisalsList');
-            container.innerHTML = '<p class="text-gray-400">Use the "Appraise" button on current leaders to record yearly performance reviews.</p>';
+            document.getElementById('appraisalsList').innerHTML = '<p class="text-gray-400">Use the "Appraise" button on current leaders to record yearly performance reviews.</p>';
         }
 
         async function saveLeadershipSettings() {
@@ -1242,170 +830,75 @@
                 max_term_years: parseInt(document.getElementById('leadershipMaxTerm').value),
                 appraisal_frequency_days: parseInt(document.getElementById('leadershipAppraisalFreq').value)
             };
-            
-            try {
-                const res = await fetch('/api/leadership/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify(data)
-                });
-                const result = await res.json();
-                if (result.success) {
-                    alert('Settings saved!');
-                    loadLeadershipData();
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                alert('Failed to save settings');
-            }
+            const { ok, result } = await api.post('/api/leadership/settings', data);
+            if (ok && result?.success) { alert('Settings saved!'); loadLeadershipData(); } else { alert('Error: ' + (result?.error || 'Unknown')); }
         }
 
         async function processApplication(id, status) {
             if (!confirm('Update application status to: ' + status + '?')) return;
-            
-            try {
-                const res = await fetch('/api/leadership/applications/' + id + '/status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify({ status })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    alert('Application ' + status);
-                    loadLeadershipData();
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                alert('Failed to process application');
-            }
+            const { ok, data } = await api.post(`/api/leadership/applications/${id}/status`, { status });
+            if (ok && data?.success) { alert('Application ' + status); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
         async function endTerm(id) {
             if (!confirm('End this leadership term? This action cannot be undone.')) return;
-            
-            try {
-                const res = await fetch('/api/leadership/terms/' + id + '/end', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify({ reason: 'Ended by admin' })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    alert('Term ended');
-                    loadLeadershipData();
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                alert('Failed to end term');
-            }
+            const { ok, data } = await api.post(`/api/leadership/terms/${id}/end`, { reason: 'Ended by admin' });
+            if (ok && data?.success) { alert('Term ended'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
-        async function togglePosition(id, currentState) {
-            // For now, just reload - would need endpoint to toggle
-            alert('Position toggle - reload to see changes');
-        }
+        function togglePosition() { alert('Position toggle - reload to see changes'); }
 
         function showAddPositionForm() {
             const title = prompt('Position Title:');
             if (!title) return;
-            const desc = prompt('Description:') || '';
-            const type = prompt('Type (council/committee/hub/advisory):') || 'council';
-            const merit = parseInt(prompt('Minimum Merit Required:') || '500');
-            
-            // Would call API here
             alert('Position creation endpoint ready');
         }
 
         function showAddSOPForm() {
             const title = prompt('SOP Title:');
             if (!title) return;
-            const content = prompt('SOP Content:') || '';
-            const category = prompt('Category (operations/governance/finance/accountability):') || 'operations';
-            
-            // Would call API here
             alert('SOP creation endpoint ready');
         }
 
         function editSOP(id) {
             const sop = leadershipData.sops.find(s => s.id === id);
             if (!sop) return;
-            
-            const newContent = prompt('Update SOP Content:', sop.content);
-            if (newContent === null) return;
-            
-            // Would call API here
             alert('SOP update endpoint ready');
         }
 
         function showAppraisalForm(termId, name, position) {
             const rating = prompt('Rating (1-5) for ' + name + ' (' + position + '):');
             if (!rating) return;
-            const feedback = prompt('Overall Feedback:') || '';
-            
-            const data = {
-                term_id: termId,
-                appraisal_period: new Date().toISOString().split('T')[0],
-                rating: parseInt(rating),
-                overall_feedback: feedback
-            };
-            
-            // Would call API here
             alert('Appraisal saved for ' + name);
         }
 
-        // ==================== PROPOSALS MANAGEMENT ====================
+        // ── Proposals ──
         async function loadProposalsAdmin() {
             const container = document.getElementById('proposalsAdminList');
             container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-
-            try {
-                const res = await fetch('/api/admin/proposals', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const data = await res.json();
-
-                if (data.success && data.proposals) {
-                    container.innerHTML = data.proposals.map(p => `
-                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${escapeHtml(p.title)}</h3>
-                                    <span class="text-xs text-gray-400">${escapeHtml(p.category)} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
-                                </div>
-                                <span class="text-xs px-2 py-1 rounded ${getStatusColor(p.status)}">${p.status}</span>
+            const { ok, data } = await api.get('/api/admin/proposals');
+            if (ok && data?.success && data.proposals) {
+                container.innerHTML = data.proposals.map(p => `
+                    <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${Utils.escapeHtml(p.title)}</h3>
+                                <span class="text-xs text-gray-400">${Utils.escapeHtml(p.category)} | ${p.status} | ${Utils.formatDate(p.created_at)}</span>
                             </div>
-                            <p class="text-gray-400 text-sm mb-3">${escapeHtml(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</p>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="openEditProposal(${p.id}, '${encodeURIComponent(p.title)}', '${encodeURIComponent(p.description)}', '${encodeURIComponent(p.category)}')" class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded text-sm hover:bg-blue-500/30">
-                                    <i class="fas fa-edit mr-1"></i>Edit
-                                </button>
-                                ${p.status === 'active' ? `
-                                    <button onclick="updateProposalStatus(${p.id}, 'approved')" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
-                                        <i class="fas fa-check mr-1"></i>Approve
-                                    </button>
-                                    <button onclick="updateProposalStatus(${p.id}, 'rejected')" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30">
-                                        <i class="fas fa-times mr-1"></i>Reject
-                                    </button>
-                                    <button onclick="updateProposalStatus(${p.id}, 'postponed')" class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded text-sm hover:bg-yellow-500/30">
-                                        <i class="fas fa-pause mr-1"></i>Postpone
-                                    </button>
-                                ` : `
-                                    <button onclick="updateProposalStatus(${p.id}, 'active')" class="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-600">
-                                        <i class="fas fa-undo mr-1"></i>Re-open
-                                    </button>
-                                `}
-                            </div>
+                            <span class="text-xs px-2 py-1 rounded ${getStatusColor(p.status)}">${p.status}</span>
                         </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-500">No proposals found.</div>';
-                }
-            } catch (err) {
-                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading proposals.</div>';
-            }
+                        <p class="text-gray-400 text-sm mb-3">${Utils.escapeHtml(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="openEditProposal(${p.id}, '${encodeURIComponent(p.title)}', '${encodeURIComponent(p.description)}', '${encodeURIComponent(p.category)}')" class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded text-sm hover:bg-blue-500/30"><i class="fas fa-edit mr-1"></i>Edit</button>
+                            ${p.status === 'active' ? `
+                                <button onclick="updateProposalStatus(${p.id}, 'approved')" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30"><i class="fas fa-check mr-1"></i>Approve</button>
+                                <button onclick="updateProposalStatus(${p.id}, 'rejected')" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30"><i class="fas fa-times mr-1"></i>Reject</button>
+                                <button onclick="updateProposalStatus(${p.id}, 'postponed')" class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded text-sm hover:bg-yellow-500/30"><i class="fas fa-pause mr-1"></i>Postpone</button>
+                            ` : `<button onclick="updateProposalStatus(${p.id}, 'active')" class="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-600"><i class="fas fa-undo mr-1"></i>Re-open</button>`}
+                        </div>
+                    </div>
+                `).join('');
+            } else { container.innerHTML = '<div class="text-center py-8 text-gray-500">No proposals found.</div>'; }
         }
 
         function getStatusColor(status) {
@@ -1417,38 +910,12 @@
             }
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         async function updateProposalStatus(proposalId, status) {
             const feedback = status === 'rejected' ? prompt('Reason for rejection:') : '';
-
-            try {
-                const res = await fetch(`/api/admin/proposals/${proposalId}/status`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ status, feedback })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    alert('Proposal ' + status + '!');
-                    loadProposalsAdmin();
-                } else {
-                    alert(data.error || 'Failed to update');
-                }
-            } catch (err) {
-                alert('Network error');
-            }
+            const { ok, data } = await api.post(`/api/admin/proposals/${proposalId}/status`, { status, feedback });
+            if (ok && data?.success) { alert('Proposal ' + status + '!'); loadProposalsAdmin(); } else { alert(data?.error || 'Failed to update'); }
         }
 
-        // ==================== PROPOSAL EDITING ====================
         function openEditProposal(id, title, description, category) {
             document.getElementById('editProposalId').value = id;
             document.getElementById('editProposalTitle').value = decodeURIComponent(title);
@@ -1468,175 +935,75 @@
             const title = document.getElementById('editProposalTitle').value.trim();
             const description = document.getElementById('editProposalDescription').value.trim();
             const category = document.getElementById('editProposalCategory').value;
-
-            if (title.length < 5) {
-                document.getElementById('editProposalError').textContent = 'Title must be at least 5 characters';
-                document.getElementById('editProposalError').classList.remove('hidden');
-                return;
-            }
-
-            if (description.length < 20) {
-                document.getElementById('editProposalError').textContent = 'Description must be at least 20 characters';
-                document.getElementById('editProposalError').classList.remove('hidden');
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/admin/proposals/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ title, description, category })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    closeEditModal();
-                    loadProposalsAdmin();
-                } else {
-                    document.getElementById('editProposalError').textContent = data.error || 'Failed to save';
-                    document.getElementById('editProposalError').classList.remove('hidden');
-                }
-            } catch (err) {
-                document.getElementById('editProposalError').textContent = 'Network error';
-                document.getElementById('editProposalError').classList.remove('hidden');
-            }
+            if (title.length < 5) { document.getElementById('editProposalError').textContent = 'Title must be at least 5 characters'; document.getElementById('editProposalError').classList.remove('hidden'); return; }
+            if (description.length < 20) { document.getElementById('editProposalError').textContent = 'Description must be at least 20 characters'; document.getElementById('editProposalError').classList.remove('hidden'); return; }
+            const { ok, data } = await api.put(`/api/admin/proposals/${id}`, { title, description, category });
+            if (ok && data?.success) { closeEditModal(); loadProposalsAdmin(); } else { document.getElementById('editProposalError').textContent = data?.error || 'Failed to save'; document.getElementById('editProposalError').classList.remove('hidden'); }
         });
 
-        // ==================== DONATION VERIFICATION ====================
+        // ── Donations ──
         async function loadPendingDonations() {
             const container = document.getElementById('donationsList');
             container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-            
-            try {
-                const res = await fetch('/api/admin/donations/pending', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const data = await res.json();
-                
-                if (data.success && data.donations && data.donations.length > 0) {
-                    container.innerHTML = data.donations.map(d => `
-                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <div class="font-bold text-lg">MVR ${d.amount}</div>
-                                    <div class="text-sm text-gray-400">${d.phone || '—'} | ${d.nid || '—'}</div>
-                                    <div class="text-xs text-gray-500">${new Date(d.created_at).toLocaleString()}</div>
-                                </div>
-                                <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">Pending</span>
+            const { ok, data } = await api.get('/api/admin/donations/pending');
+            if (ok && data?.success && data.donations?.length) {
+                container.innerHTML = data.donations.map(d => `
+                    <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="font-bold text-lg">MVR ${d.amount}</div>
+                                <div class="text-sm text-gray-400">${Utils.escapeHtml(d.phone || '—')} | ${Utils.escapeHtml(d.nid || '—')}</div>
+                                <div class="text-xs text-gray-500">${new Date(d.created_at).toLocaleString()}</div>
                             </div>
-                            ${d.slip_filename ? `
-                                <div class="mb-3">
-                                    <img src="/uploads/${d.slip_filename}" class="max-h-32 rounded border border-gray-700" alt="Deposit Slip">
-                                </div>
-                            ` : ''}
-                            <div class="flex gap-2">
-                                <button onclick="verifyDonation(${d.id})" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30">
-                                    <i class="fas fa-check mr-1"></i>Verify & Approve
-                                </button>
-                                <button onclick="rejectDonation(${d.id})" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30">
-                                    <i class="fas fa-times mr-1"></i>Reject
-                                </button>
-                            </div>
+                            <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">Pending</span>
                         </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">💰</div><p>No pending donations.</p></div>';
-                }
-            } catch (err) {
-                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading donations.</div>';
-            }
+                        ${d.slip_filename ? `<div class="mb-3"><img src="/uploads/${Utils.escapeHtml(d.slip_filename)}" class="max-h-32 rounded border border-gray-700" alt="Deposit Slip"></div>` : ''}
+                        <div class="flex gap-2">
+                            <button onclick="verifyDonation(${d.id})" class="bg-green-500/20 text-green-400 px-3 py-1 rounded text-sm hover:bg-green-500/30"><i class="fas fa-check mr-1"></i>Verify & Approve</button>
+                            <button onclick="rejectDonation(${d.id})" class="bg-red-500/20 text-red-400 px-3 py-1 rounded text-sm hover:bg-red-500/30"><i class="fas fa-times mr-1"></i>Reject</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else { container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">💰</div><p>No pending donations.</p></div>'; }
         }
 
-        async function verifyDonation(donationId) {
-            try {
-                const res = await fetch(`/api/admin/donations/${donationId}/verify`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    alert('Donation verified! Amount added to Live Treasury.');
-                    loadPendingDonations();
-                    refreshData();
-                } else {
-                    alert(data.error || 'Failed to verify');
-                }
-            } catch (err) {
-                alert('Network error');
-            }
+        async function verifyDonation(id) {
+            const { ok, data } = await api.post(`/api/admin/donations/${id}/verify`);
+            if (ok && data?.success) { alert('Donation verified!'); loadPendingDonations(); refreshData(); } else { alert(data?.error || 'Failed to verify'); }
         }
 
-        async function rejectDonation(donationId) {
+        async function rejectDonation(id) {
             const reason = prompt('Reason for rejection:');
             if (reason === null) return;
-            
-            try {
-                const res = await fetch(`/api/admin/donations/${donationId}/reject`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ reason })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    alert('Donation rejected.');
-                    loadPendingDonations();
-                }
-            } catch (err) {
-                alert('Network error');
-            }
+            const { ok, data } = await api.post(`/api/admin/donations/${id}/reject`, { reason });
+            if (ok && data?.success) { alert('Donation rejected.'); loadPendingDonations(); }
         }
 
-        // ==================== TREASURY MANAGEMENT ====================
+        // ── Treasury ──
         async function loadTreasuryLedger() {
             const tbody = document.getElementById('adminLedgerBody');
             tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
-            try {
-                const [ledgerRes, summaryRes] = await Promise.all([
-                    fetch('/api/admin/treasury/ledger', { headers: { 'Authorization': 'Bearer ' + authToken } }),
-                    fetch('/api/treasury/summary')
-                ]);
-                const ledgerData = await ledgerRes.json();
-                const summaryData = await summaryRes.json();
-
-                if (summaryData.success) {
-                    document.getElementById('adminBalance').textContent = 'MVR ' + summaryData.balance.toLocaleString();
-                    document.getElementById('adminIncome').textContent = 'MVR ' + summaryData.total_income.toLocaleString();
-                    document.getElementById('adminExpenses').textContent = 'MVR ' + summaryData.total_expenses.toLocaleString();
-                }
-
-                if (ledgerData.success && ledgerData.transactions && ledgerData.transactions.length > 0) {
-                    tbody.innerHTML = ledgerData.transactions.map(tx => {
-                        const date = new Date(tx.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                        const isDonation = tx.type === 'donation';
-                        const typeBadge = isDonation
-                            ? '<span class="px-2 py-0.5 bg-green-400/10 text-green-400 rounded text-xs">Donation</span>'
-                            : '<span class="px-2 py-0.5 bg-red-400/10 text-red-400 rounded text-xs">Expense</span>';
-                        const amountClass = isDonation ? 'text-green-400' : 'text-red-400';
-                        const amountPrefix = isDonation ? '+' : '-';
-                        const source = tx.donor_nickname ? escapeHtml(tx.donor_nickname) : (tx.verified_by || tx.source_ref_type || '—');
-
-                        return '<tr class="border-b border-gray-800 hover:bg-white/5 transition">' +
-                            '<td class="p-3 text-gray-400 whitespace-nowrap">' + date + '</td>' +
-                            '<td class="p-3">' + typeBadge + '</td>' +
-                            '<td class="p-3">' + escapeHtml(tx.description) + '</td>' +
-                            '<td class="p-3 text-right font-mono ' + amountClass + '">' + amountPrefix + tx.amount.toLocaleString() + '</td>' +
-                            '<td class="p-3 text-gray-500 text-xs">' + source + '</td>' +
-                            '</tr>';
-                    }).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500">No transactions yet.</td></tr>';
-                }
-            } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-400">Error loading ledger.</td></tr>';
+            const [ledgerRes, summaryRes] = await Promise.all([api.get('/api/admin/treasury/ledger'), api.get('/api/treasury/summary')]);
+            if (summaryRes.data?.success) {
+                const s = summaryRes.data;
+                document.getElementById('adminBalance').textContent = 'MVR ' + s.balance.toLocaleString();
+                document.getElementById('adminIncome').textContent = 'MVR ' + s.total_income.toLocaleString();
+                document.getElementById('adminExpenses').textContent = 'MVR ' + s.total_expenses.toLocaleString();
             }
+            if (ledgerRes.data?.success && ledgerRes.data.transactions?.length) {
+                tbody.innerHTML = ledgerRes.data.transactions.map(tx => {
+                    const date = new Date(tx.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const isDonation = tx.type === 'donation';
+                    const source = tx.donor_nickname ? Utils.escapeHtml(tx.donor_nickname) : (tx.verified_by || tx.source_ref_type || '—');
+                    return `<tr class="border-b border-gray-800 hover:bg-white/5 transition">
+                        <td class="p-3 text-gray-400 whitespace-nowrap">${date}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-xs ${isDonation ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}">${isDonation ? 'Donation' : 'Expense'}</span></td>
+                        <td class="p-3">${Utils.escapeHtml(tx.description)}</td>
+                        <td class="p-3 text-right font-mono ${isDonation ? 'text-green-400' : 'text-red-400'}">${isDonation ? '+' : '-'}${tx.amount.toLocaleString()}</td>
+                        <td class="p-3 text-gray-500 text-xs">${source}</td>
+                    </tr>`;
+                }).join('');
+            } else { tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500">No transactions yet.</td></tr>'; }
         }
 
         function showExpenditureForm() {
@@ -1646,81 +1013,41 @@
             document.getElementById('expCategory').value = 'operational';
         }
 
-        function hideExpenditureForm() {
-            document.getElementById('expenditureForm').classList.add('hidden');
-        }
+        function hideExpenditureForm() { document.getElementById('expenditureForm').classList.add('hidden'); }
 
         async function createExpenditure() {
             const amount = parseFloat(document.getElementById('expAmount').value);
             const description = document.getElementById('expDescription').value.trim();
             const category = document.getElementById('expCategory').value;
-
             if (!amount || amount <= 0) return alert('Please enter a valid amount.');
             if (!description) return alert('Please enter a description.');
-
-            try {
-                const res = await fetch('/api/admin/treasury/expenditure', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ amount, description, category })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert('Expenditure recorded! Balance: MVR ' + data.balance.toLocaleString());
-                    hideExpenditureForm();
-                    loadTreasuryLedger();
-                    refreshData();
-                } else {
-                    alert(data.error || 'Failed to record expenditure.');
-                }
-            } catch (e) {
-                alert('Network error');
-            }
+            const { ok, data } = await api.post('/api/admin/treasury/expenditure', { amount, description, category });
+            if (ok && data?.success) { alert('Expenditure recorded! Balance: MVR ' + data.balance.toLocaleString()); hideExpenditureForm(); loadTreasuryLedger(); refreshData(); } else { alert(data?.error || 'Failed to record expenditure.'); }
         }
 
-        // ==================== EVENTS MANAGEMENT ====================
+        // ── Events ──
         async function loadAdminEvents() {
             const container = document.getElementById('eventsAdminList');
             container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-
-            try {
-                const res = await fetch('/api/admin/events', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const data = await res.json();
-
-                if (data.success && data.events && data.events.length > 0) {
-                    container.innerHTML = data.events.map(e => `
-                        <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <div class="font-bold">${e.title}</div>
-                                    <div class="text-sm text-gray-400 mt-1">${e.description || ''}</div>
-                                    ${e.location ? `<div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>${e.location}</div>` : ''}
-                                </div>
-                                <span class="text-xs px-2 py-1 rounded ${new Date(e.event_date) > new Date() ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}">
-                                    ${new Date(e.event_date).toLocaleDateString()}
-                                </span>
+            const { ok, data } = await api.get('/api/admin/events');
+            if (ok && data?.success && data.events?.length) {
+                container.innerHTML = data.events.map(e => `
+                    <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="font-bold">${Utils.escapeHtml(e.title)}</div>
+                                <div class="text-sm text-gray-400 mt-1">${Utils.escapeHtml(e.description || '')}</div>
+                                ${e.location ? `<div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>${Utils.escapeHtml(e.location)}</div>` : ''}
                             </div>
-                            <div class="flex gap-2 mt-3">
-                                <button onclick='editEvent(${JSON.stringify(e.id)}, ${JSON.stringify(e.title)}, ${JSON.stringify(e.description || "")}, ${JSON.stringify(e.event_date)}, ${JSON.stringify(e.location || "")})' class="text-blue-400 hover:text-blue-300 text-sm">
-                                    <i class="fas fa-edit mr-1"></i>Edit
-                                </button>
-                                <button onclick="deleteEvent(${e.id})" class="text-red-400 hover:text-red-300 text-sm">
-                                    <i class="fas fa-trash mr-1"></i>Delete
-                                </button>
-                            </div>
+                            <span class="text-xs px-2 py-1 rounded ${new Date(e.event_date) > new Date() ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'}">${new Date(e.event_date).toLocaleDateString()}</span>
                         </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">📅</div><p>No events scheduled.</p></div>';
-                }
-            } catch (err) {
-                container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading events.</div>';
-            }
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="editEvent(${e.id}, ${JSON.stringify(e.title)}, ${JSON.stringify(e.description || '')}, ${JSON.stringify(e.event_date)}, ${JSON.stringify(e.location || '')})" class="text-blue-400 hover:text-blue-300 text-sm"><i class="fas fa-edit mr-1"></i>Edit</button>
+                            <button onclick="deleteEvent(${e.id})" class="text-red-400 hover:text-red-300 text-sm"><i class="fas fa-trash mr-1"></i>Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else { container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">📅</div><p>No events scheduled.</p></div>'; }
         }
 
         function showAddEventForm() {
@@ -1733,9 +1060,7 @@
             document.getElementById('eventForm').classList.remove('hidden');
         }
 
-        function hideEventForm() {
-            document.getElementById('eventForm').classList.add('hidden');
-        }
+        function hideEventForm() { document.getElementById('eventForm').classList.add('hidden'); }
 
         function editEvent(id, title, description, eventDate, location) {
             document.getElementById('eventFormTitle').textContent = 'Edit Event';
@@ -1753,310 +1078,319 @@
             const description = document.getElementById('eventDescription').value.trim();
             const eventDate = document.getElementById('eventDate').value;
             const location = document.getElementById('eventLocation').value.trim();
-
             if (!title) { alert('Event title is required'); return; }
             if (!eventDate) { alert('Event date is required'); return; }
-
             const isEdit = !!id;
-            const url = isEdit ? `/api/admin/events/${id}` : '/api/admin/events';
-            const method = isEdit ? 'PUT' : 'POST';
-
-            try {
-                const res = await fetch(url, {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ title, description, event_date: eventDate, location })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    hideEventForm();
-                    loadAdminEvents();
-                } else {
-                    alert(data.error || 'Failed to save event');
-                }
-            } catch (err) {
-                alert('Network error');
-            }
+            const { ok, data } = isEdit ? await api.put(`/api/admin/events/${id}`, { title, description, event_date: eventDate, location }) : await api.post('/api/admin/events', { title, description, event_date: eventDate, location });
+            if (ok && data?.success) { hideEventForm(); loadAdminEvents(); } else { alert(data?.error || 'Failed to save event'); }
         }
 
         async function deleteEvent(id) {
             if (!confirm('Delete this event?')) return;
-
-            try {
-                const res = await fetch(`/api/admin/events/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    loadAdminEvents();
-                } else {
-                    alert(data.error || 'Failed to delete event');
-                }
-            } catch (err) {
-                alert('Network error');
-            }
+            const { ok, data } = await api.del(`/api/admin/events/${id}`);
+            if (ok && data?.success) { loadAdminEvents(); } else { alert(data?.error || 'Failed to delete event'); }
         }
 
-        // ==================== SYSTEM SETTINGS ====================
-let systemSettings = {};
+        // ── Wall Moderation ──
+        let allPostsOffset = 0;
+        const ALL_POSTS_LIMIT = 50;
 
-async function loadSystemSettings() {
-    try {
-        const res = await fetch('/api/system-settings', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
-        });
-        if (!res.ok) {
-            document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Failed to load settings. Please try refreshing.</div>';
-            return;
+        async function loadAllPosts() {
+            allPostsOffset = 0;
+            const container = document.getElementById('allPostsList');
+            const loadMoreBtn = document.getElementById('loadMoreContainer');
+            container.innerHTML = '<div class="text-center py-8 text-gray-500">Loading all posts...</div>';
+            loadMoreBtn.classList.add('hidden');
+            const { ok, data } = await api.get(`/api/admin/wall/all?limit=${ALL_POSTS_LIMIT}&offset=0`);
+            if (ok && data?.success) {
+                renderAllPosts(data.posts, container);
+                allPostsOffset = data.posts.length;
+                document.getElementById('postCount').textContent = `${data.total} total posts`;
+                if (allPostsOffset < data.total) loadMoreBtn.classList.remove('hidden');
+            } else { container.innerHTML = '<div class="text-center py-8 text-gray-500">No posts found.</div>'; }
         }
-        const data = await res.json();
-        if (data.success) {
-            systemSettings = data.settings;
-            renderSystemSettings();
-        } else {
-            document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Failed to load settings.</div>';
+
+        async function loadMorePosts() {
+            const container = document.getElementById('allPostsList');
+            const { ok, data } = await api.get(`/api/admin/wall/all?limit=${ALL_POSTS_LIMIT}&offset=${allPostsOffset}`);
+            if (ok && data?.success && data.posts?.length) {
+                renderAllPosts(data.posts, container, true);
+                allPostsOffset += data.posts.length;
+                if (allPostsOffset >= data.total) document.getElementById('loadMoreContainer').classList.add('hidden');
+            } else { document.getElementById('loadMoreContainer').classList.add('hidden'); }
         }
-    } catch (err) {
-        console.error('Error loading system settings:', err);
-        document.getElementById('systemSettingsPanel').innerHTML = '<div class="text-center py-8 text-red-400">Network error loading settings.</div>';
-    }
-}
 
-function renderSystemSettings() {
-    const panel = document.getElementById('systemSettingsPanel');
-    
-    let csvContent = '';
-    const keys = Object.keys(systemSettings).sort();
-    for (const key of keys) {
-        csvContent += `${key}=${systemSettings[key]}\n`;
-    }
-
-    panel.innerHTML = `
-        <form id="systemSettingsForm" onsubmit="saveSystemSettings(event)">
-            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
-                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-cogs mr-2"></i>All Settings (key=value format)</h3>
-                <p class="text-sm text-gray-400 mb-3">Edit values below. One setting per line. Format: <code class="bg-gray-800 px-1 rounded">key=value</code></p>
-                <textarea id="ss_csv_editor" rows="30" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 font-mono text-sm text-white focus:outline-none focus:border-party-accent resize-y">${csvContent}</textarea>
-            </div>
-            <div class="flex gap-4 mt-4">
-                <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
-                    <i class="fas fa-save mr-2"></i>Save All Settings
-                </button>
-                <button type="button" onclick="resetSystemSettings()" class="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg font-bold hover:bg-gray-600 transition">
-                    <i class="fas fa-undo mr-2"></i>Reset to Defaults
-                </button>
-            </div>
-        </form>
-    `;
-}
-
-async function saveSystemSettings(e) {
-    e.preventDefault();
-    
-    const raw = document.getElementById('ss_csv_editor').value;
-    const data = {};
-    const lines = raw.split('\n');
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        const eqIdx = trimmed.indexOf('=');
-        if (eqIdx === -1) continue;
-        const key = trimmed.substring(0, eqIdx).trim();
-        const val = trimmed.substring(eqIdx + 1).trim();
-        if (!key) continue;
-        const num = Number(val);
-        data[key] = (val !== '' && !isNaN(num)) ? num : val;
-    }
-    
-    try {
-        const res = await fetch('/api/system-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (result.success) {
-            alert('Settings saved successfully!');
-            systemSettings = result.settings;
-            renderSystemSettings();
-        } else {
-            alert('Error: ' + result.error);
-        }
-    } catch (err) {
-        alert('Failed to save settings');
-    }
-}
-
-async function resetSystemSettings() {
-    if (!confirm('Reset all settings to their default values?')) return;
-    
-    const defaults = {
-        enroll_rate_limit_ms: 60000,
-        enroll_max_per_day: 50,
-        vote_cooldown_ms: 3600000,
-        visitor_timeout_ms: 300000,
-        proposal_voting_days: 7,
-        wall_post_max_length: 500,
-        proposal_title_max_length: 200,
-        proposal_description_max_length: 8000,
-        nickname_max_length: 50,
-        wall_posts_limit: 100,
-        recent_votes_limit: 50,
-        signup_base_merit: 50,
-        merit_skills: 250,
-        merit_action: 200,
-        merit_ideas: 150,
-        merit_donation: 100,
-        donation_bonus_per_100: 5,
-        max_upload_bytes: 5242880,
-        target_members: 13000,
-        target_treasury: 13000,
-        signup_random_bonus_max: 50,
-        donation_divisor_mvr: 100,
-        donation_log_multiplier: 35,
-        donation_usd_mvr_rate: 15.4,
-        donation_formula: 'log',
-        referral_tier1_limit: 5,
-        referral_tier2_limit: 20,
-        referral_base_t1: 2,
-        referral_base_t2: 1,
-        referral_base_t3: 0.5,
-        referral_engage_t1: 8,
-        referral_engage_t2: 4,
-        referral_engage_t3: 0.5,
-        endorsement_tier1_limit: 10,
-        endorsement_tier2_limit: 50,
-        endorsement_tier3_limit: 200,
-        endorsement_tier1_pts: 2.0,
-        endorsement_tier2_pts: 1.0,
-        endorsement_tier3_pts: 0.5,
-        endorsement_tier4_pts: 0.1,
-        approval_threshold_routine: 0.50,
-        approval_threshold_policy: 0.60,
-        approval_threshold_constitutional: 0.80,
-        voting_window_primary_days: 7,
-        voting_window_extended_days: 3,
-        voting_weight_primary: 1.0,
-        voting_weight_extended: 0.5,
-        proposal_cooldown_hours: 8,
-        merit_vote_pass: 2.5,
-        merit_vote_fail: 1.0,
-        merit_proposal_author: 200,
-        merit_proposal_created: 10
-    };
-    
-    try {
-        const res = await fetch('/api/system-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-            body: JSON.stringify(defaults)
-        });
-        const result = await res.json();
-        if (result.success) {
-            alert('Settings reset to defaults!');
-            systemSettings = result.settings;
-            renderSystemSettings();
-        }
-    } catch (err) {
-        alert('Failed to reset settings');
-    }
-}
-
-// ── Wall Moderation ──
-async function loadFlaggedPosts() {
-    const container = document.getElementById('flaggedPostsList');
-    try {
-        const res = await fetch('/api/admin/wall/flagged', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await res.json();
-        if (data.success && data.posts && data.posts.length > 0) {
-            container.innerHTML = data.posts.map(p => `
-                <div class="bg-party-card rounded-xl p-5 border ${p.is_hidden ? 'border-red-600/50' : 'border-yellow-600/50'}">
+        function renderAllPosts(posts, container, append = false) {
+            const html = posts.map(p => {
+                const statusBadges = [];
+                if (p.is_hidden) statusBadges.push('<span class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded">Hidden</span>');
+                if (p.is_flagged) statusBadges.push(`<span class="text-xs bg-yellow-600/30 text-yellow-400 px-2 py-0.5 rounded"><i class="fas fa-flag mr-1"></i>Flagged</span>`);
+                if (!p.is_flagged && !p.is_hidden) statusBadges.push('<span class="text-xs bg-green-600/30 text-green-400 px-2 py-0.5 rounded">Published</span>');
+                const actions = [];
+                if (!p.is_hidden) actions.push(`<button onclick="hideWallPost(${p.id})" class="bg-red-600/80 text-white px-3 py-1.5 rounded hover:bg-red-700">Unpublish</button>`);
+                else actions.push(`<button onclick="unhideWallPost(${p.id})" class="bg-green-600/80 text-white px-3 py-1.5 rounded hover:bg-green-700">Publish</button>`);
+                if (p.is_flagged) actions.push(`<button onclick="approveWallPost(${p.id})" class="bg-blue-600/80 text-white px-3 py-1.5 rounded hover:bg-blue-700">Dismiss Flag</button>`);
+                actions.push(`<button onclick="deleteWallPost(${p.id})" class="bg-gray-600/80 text-white px-3 py-1.5 rounded hover:bg-gray-700">Delete</button>`);
+                return `<div class="bg-party-card rounded-xl p-5 border border-gray-700">
                     <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-party-accent">${escapeHtml(p.display_name || p.nickname)}</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-party-accent">${Utils.escapeHtml(p.display_name || p.nickname)}</span>
                             ${p.user_id ? '<span class="text-xs text-green-400">Member</span>' : '<span class="text-xs text-gray-500">Guest</span>'}
-                            ${p.is_hidden ? '<span class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded">Hidden</span>' : ''}
-                            <span class="text-xs text-yellow-500"><i class="fas fa-flag mr-1"></i>${p.flag_count} flags</span>
+                            ${statusBadges.join(' ')}
+                            ${p.flag_count > 0 ? `<span class="text-xs text-yellow-500"><i class="fas fa-flag mr-1"></i>${p.flag_count} flags</span>` : ''}
                         </div>
-                        <span class="text-gray-600 text-xs">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
+                        <span class="text-gray-600 text-xs whitespace-nowrap ml-2">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
                     </div>
-                    <p class="text-gray-300 text-sm mb-3 whitespace-pre-wrap">${escapeHtml(p.message || '')}</p>
-                    ${p.latest_flag_reason ? `<p class="text-yellow-400/70 text-xs mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>${escapeHtml(p.latest_flag_reason)}</p>` : ''}
-                    <div class="flex gap-2 text-xs">
-                        ${!p.is_hidden ? `<button onclick="hideWallPost(${p.id})" class="bg-red-600/80 text-white px-3 py-1.5 rounded hover:bg-red-700">Hide</button>` : ''}
-                        ${p.is_flagged || p.is_hidden ? `<button onclick="approveWallPost(${p.id})" class="bg-green-600/80 text-white px-3 py-1.5 rounded hover:bg-green-700">Approve</button>` : ''}
-                        <button onclick="deleteWallPost(${p.id})" class="bg-gray-600/80 text-white px-3 py-1.5 rounded hover:bg-gray-700">Delete</button>
+                    <p class="text-gray-300 text-sm mb-3 whitespace-pre-wrap">${Utils.escapeHtml(p.message || '')}</p>
+                    ${p.latest_flag_reason ? `<p class="text-yellow-400/70 text-xs mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>${Utils.escapeHtml(p.latest_flag_reason)}</p>` : ''}
+                    <div class="flex gap-2 text-xs flex-wrap">${actions.join(' ')}</div>
+                </div>`;
+            }).join('');
+            if (append) container.insertAdjacentHTML('beforeend', html); else container.innerHTML = html;
+        }
+
+        async function hideWallPost(id) {
+            if (!confirm('Unpublish this post?')) return;
+            const { ok, data } = await api.post(`/api/admin/wall/${id}/hide`);
+            if (ok && data?.success) { alert(data.message); loadAllPosts(); } else { alert(data?.error); }
+        }
+
+        async function unhideWallPost(id) {
+            if (!confirm('Publish this post?')) return;
+            const { ok, data } = await api.post(`/api/admin/wall/${id}/unhide`);
+            if (ok && data?.success) { alert(data.message); loadAllPosts(); } else { alert(data?.error); }
+        }
+
+        async function approveWallPost(id) {
+            if (!confirm('Dismiss flag on this post?')) return;
+            const { ok, data } = await api.post(`/api/admin/wall/${id}/approve`);
+            if (ok && data?.success) { alert(data.message); loadAllPosts(); } else { alert(data?.error); }
+        }
+
+        async function deleteWallPost(id) {
+            if (!confirm('PERMANENTLY delete this post and all its replies?')) return;
+            const { ok, data } = await api.post(`/api/admin/wall/${id}/delete`);
+            if (ok && data?.success) { alert(data.message); loadAllPosts(); } else { alert(data?.error); }
+        }
+
+        // ── System Settings ──
+        let systemSettings = {};
+
+        async function loadSystemSettings() {
+            const { ok, data } = await api.get('/api/system-settings');
+            if (ok && data?.success) { systemSettings = data.settings; renderSystemSettings(); }
+        }
+
+        function renderSystemSettings() {
+            const panel = document.getElementById('systemSettingsPanel');
+            const ms = (val) => { if (val < 60000) return val + ' ms'; if (val < 3600000) return Math.round(val / 60000) + ' min'; if (val < 86400000) return Math.round(val / 3600000) + ' hr'; return Math.round(val / 86400000) + ' days'; };
+            const bytes = (val) => { if (val < 1024) return val + ' B'; if (val < 1048576) return Math.round(val / 1024) + ' KB'; return Math.round(val / 1048576) + ' MB'; };
+
+            panel.innerHTML = `
+                <form id="systemSettingsForm" onsubmit="saveSystemSettings(event)">
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-clock mr-2"></i>Rate Limits & Timeouts</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Enrollment Rate Limit (ms)</label><input type="number" id="ss_enroll_rate_limit_ms" value="${systemSettings.enroll_rate_limit_ms}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Min time between enrollment searches per IP</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Enrollment Max Per Day</label><input type="number" id="ss_enroll_max_per_day" value="${systemSettings.enroll_max_per_day}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max enrollment searches per IP per day</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Vote Cooldown (ms)</label><input type="number" id="ss_vote_cooldown_ms" value="${systemSettings.vote_cooldown_ms}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Cooldown between law/article votes (default: 3600000 = 1hr)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Visitor Session Timeout (ms)</label><input type="number" id="ss_visitor_timeout_ms" value="${systemSettings.visitor_timeout_ms}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Active visitor session timeout (default: 300000 = 5min)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Proposal Voting Period (days)</label><input type="number" id="ss_proposal_voting_days" value="${systemSettings.proposal_voting_days}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">How long proposals stay open for voting</p></div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">✅</div><p>No flagged posts to review.</p></div>';
-        }
-    } catch (err) {
-        container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading flagged posts.</div>';
-    }
-}
 
-async function hideWallPost(id) {
-    if (!confirm('Hide this post? It will no longer be visible on the wall.')) return;
-    try {
-        const res = await fetch(`/api/admin/wall/${id}/hide`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(data.message);
-            loadFlaggedPosts();
-        } else {
-            alert(data.error);
-        }
-    } catch (err) { alert('Error'); }
-}
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-text-width mr-2"></i>Content Limits</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Wall Post Max Length</label><input type="number" id="ss_wall_post_max_length" value="${systemSettings.wall_post_max_length}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max characters for wall posts</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Proposal Title Max Length</label><input type="number" id="ss_proposal_title_max_length" value="${systemSettings.proposal_title_max_length}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max characters for proposal titles</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Proposal Description Max Length</label><input type="number" id="ss_proposal_description_max_length" value="${systemSettings.proposal_description_max_length}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max characters for proposal descriptions</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Nickname Max Length</label><input type="number" id="ss_nickname_max_length" value="${systemSettings.nickname_max_length}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max characters for user nicknames</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Wall Posts Limit</label><input type="number" id="ss_wall_posts_limit" value="${systemSettings.wall_posts_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max wall posts returned per request</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Recent Votes Limit</label><input type="number" id="ss_recent_votes_limit" value="${systemSettings.recent_votes_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max recent votes returned per request</p></div>
+                        </div>
+                    </div>
 
-async function approveWallPost(id) {
-    if (!confirm('Approve this post? It will be un-flagged and visible again.')) return;
-    try {
-        const res = await fetch(`/api/admin/wall/${id}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(data.message);
-            loadFlaggedPosts();
-        } else {
-            alert(data.error);
-        }
-    } catch (err) { alert('Error'); }
-}
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-star mr-2"></i>Merit System</h3>
+                        <div class="grid md:grid-cols-4 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Base Merit</label><input type="number" id="ss_signup_base_merit" value="${systemSettings.signup_base_merit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Starting merit for new members</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Skills Merit</label><input type="number" id="ss_merit_skills" value="${systemSettings.merit_skills}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit bonus for skills</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Action Merit</label><input type="number" id="ss_merit_action" value="${systemSettings.merit_action}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit bonus for action</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Ideas Merit</label><input type="number" id="ss_merit_ideas" value="${systemSettings.merit_ideas}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit bonus for ideas</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Donation Merit</label><input type="number" id="ss_merit_donation" value="${systemSettings.merit_donation}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit bonus for donations</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Donation Bonus Per 100 MVR</label><input type="number" id="ss_donation_bonus_per_100" value="${systemSettings.donation_bonus_per_100}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit points per 100 MVR donated (flat formula only)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Random Bonus Max</label><input type="number" id="ss_signup_random_bonus_max" value="${systemSettings.signup_random_bonus_max}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max random merit bonus at signup (0 to value-1)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Donation Formula</label><select id="ss_donation_formula" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><option value="log" ${systemSettings.donation_formula === 'log' ? 'selected' : ''}>Logarithmic (whitepaper)</option><option value="flat" ${systemSettings.donation_formula === 'flat' ? 'selected' : ''}>Flat (MVR/divisor * bonus)</option></select><p class="text-xs text-gray-500 mt-1">How donation merit is calculated</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Donation Divisor (MVR)</label><input type="number" id="ss_donation_divisor_mvr" value="${systemSettings.donation_divisor_mvr}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">MVR per unit for flat formula (default: 100)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Donation Log Multiplier</label><input type="number" id="ss_donation_log_multiplier" value="${systemSettings.donation_log_multiplier}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Multiplier for log formula (default: 35)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">USD/MVR Exchange Rate</label><input type="number" id="ss_donation_usd_mvr_rate" value="${systemSettings.donation_usd_mvr_rate}" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Exchange rate for log formula (default: 15.4)</p></div>
+                        </div>
+                    </div>
 
-async function deleteWallPost(id) {
-    if (!confirm('PERMANENTLY delete this post and all its replies? This cannot be undone.')) return;
-    try {
-        const res = await fetch(`/api/admin/wall/${id}/delete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(data.message);
-            loadFlaggedPosts();
-        } else {
-            alert(data.error);
-        }
-    } catch (err) { alert('Error'); }
-}
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-upload mr-2"></i>Upload Limits</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Max Upload Size (bytes)</label><input type="number" id="ss_max_upload_bytes" value="${systemSettings.max_upload_bytes}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max file upload size (default: 5242880 = 5MB)</p></div>
+                        </div>
+                    </div>
 
-// Load data on page load (handled by tab switching lazy loading)
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-bullseye mr-2"></i>Goals</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Target Members</label><input type="number" id="ss_target_members" value="${systemSettings.target_members}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Goal for membership (used for progress percentage)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Target Treasury (MVR)</label><input type="number" id="ss_target_treasury" value="${systemSettings.target_treasury}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Fundraising goal in MVR</p></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-users mr-2"></i>Referral Points</h3>
+                        <div class="grid md:grid-cols-4 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Tier 1 Limit (invites)</label><input type="number" id="ss_referral_tier1_limit" value="${systemSettings.referral_tier1_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max invites for tier 1 rewards</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 2 Limit (invites)</label><input type="number" id="ss_referral_tier2_limit" value="${systemSettings.referral_tier2_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max invites for tier 2 rewards</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Base Reward T1</label><input type="number" id="ss_referral_base_t1" value="${systemSettings.referral_base_t1}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Base points per invite (tier 1)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Base Reward T2</label><input type="number" id="ss_referral_base_t2" value="${systemSettings.referral_base_t2}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Base points per invite (tier 2)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Base Reward T3</label><input type="number" id="ss_referral_base_t3" value="${systemSettings.referral_base_t3}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Base points per invite (tier 3+)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Engage Bonus T1</label><input type="number" id="ss_referral_engage_t1" value="${systemSettings.referral_engage_t1}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 1)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Engage Bonus T2</label><input type="number" id="ss_referral_engage_t2" value="${systemSettings.referral_engage_t2}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 2)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Engage Bonus T3</label><input type="number" id="ss_referral_engage_t3" value="${systemSettings.referral_engage_t3}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Engage bonus per invite (tier 3+)</p></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-thumbs-up mr-2"></i>Endorsement Points</h3>
+                        <div class="grid md:grid-cols-4 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Tier 1 Limit</label><input type="number" id="ss_endorsement_tier1_limit" value="${systemSettings.endorsement_tier1_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max endorsements for tier 1 pts</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 2 Limit</label><input type="number" id="ss_endorsement_tier2_limit" value="${systemSettings.endorsement_tier2_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max endorsements for tier 2 pts</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 3 Limit</label><input type="number" id="ss_endorsement_tier3_limit" value="${systemSettings.endorsement_tier3_limit}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Max endorsements for tier 3 pts</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 1 Points</label><input type="number" id="ss_endorsement_tier1_pts" value="${systemSettings.endorsement_tier1_pts}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 1)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 2 Points</label><input type="number" id="ss_endorsement_tier2_pts" value="${systemSettings.endorsement_tier2_pts}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 2)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 3 Points</label><input type="number" id="ss_endorsement_tier3_pts" value="${systemSettings.endorsement_tier3_pts}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 3)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Tier 4 Points</label><input type="number" id="ss_endorsement_tier4_pts" value="${systemSettings.endorsement_tier4_pts}" step="0.1" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Points per endorsement (tier 4+)</p></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-balance-scale mr-2"></i>Voting Thresholds & Windows</h3>
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Routine Approval Threshold</label><input type="number" id="ss_approval_threshold_routine" value="${systemSettings.approval_threshold_routine}" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Pass threshold for routine proposals (default: 0.50)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Policy Approval Threshold</label><input type="number" id="ss_approval_threshold_policy" value="${systemSettings.approval_threshold_policy}" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Pass threshold for policy proposals (default: 0.60)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Constitutional Approval Threshold</label><input type="number" id="ss_approval_threshold_constitutional" value="${systemSettings.approval_threshold_constitutional}" step="0.01" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Pass threshold for constitutional proposals (default: 0.80)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Primary Voting Window (days)</label><input type="number" id="ss_voting_window_primary_days" value="${systemSettings.voting_window_primary_days}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Days for primary voting period (default: 7)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Extended Voting Window (days)</label><input type="number" id="ss_voting_window_extended_days" value="${systemSettings.voting_window_extended_days}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Extra days if threshold not met (default: 3)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Primary Vote Weight</label><input type="number" id="ss_voting_weight_primary" value="${systemSettings.voting_weight_primary}" step="0.1" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Vote weight multiplier in primary window (default: 1.0)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Extended Vote Weight</label><input type="number" id="ss_voting_weight_extended" value="${systemSettings.voting_weight_extended}" step="0.1" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Vote weight multiplier in extended window (default: 0.5)</p></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-trophy mr-2"></i>Proposal & Vote Merit</h3>
+                        <div class="grid md:grid-cols-4 gap-6">
+                            <div><label class="block text-sm font-medium mb-2">Proposal Cooldown (hours)</label><input type="number" id="ss_proposal_cooldown_hours" value="${systemSettings.proposal_cooldown_hours}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Hours between proposals per user/IP (default: 8)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Vote Pass Merit</label><input type="number" id="ss_merit_vote_pass" value="${systemSettings.merit_vote_pass}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit pts for voting on passing proposal (default: 2.5)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Vote Fail Merit</label><input type="number" id="ss_merit_vote_fail" value="${systemSettings.merit_vote_fail}" step="0.5" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit pts for voting on failing proposal (default: 1.0)</p></div>
+                            <div><label class="block text-sm font-medium mb-2">Proposal Author Merit</label><input type="number" id="ss_merit_proposal_author" value="${systemSettings.merit_proposal_author}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"><p class="text-xs text-gray-500 mt-1">Merit awarded to author of passing proposal (default: 200)</p></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-robot mr-2"></i>AI Law Draft Prompt</h3>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">System Prompt</label>
+                            <textarea id="ss_ai_law_draft_prompt" rows="12" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent font-mono text-sm">${(systemSettings.ai_law_draft_prompt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                            <p class="text-xs text-gray-500 mt-1">This prompt is sent to the AI model when generating law drafts. Changes take effect immediately.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition"><i class="fas fa-save mr-2"></i>Save All Settings</button>
+                        <button type="button" onclick="resetSystemSettings()" class="bg-gray-700 text-gray-300 px-6 py-2 rounded-lg font-bold hover:bg-gray-600 transition"><i class="fas fa-undo mr-2"></i>Reset to Defaults</button>
+                    </div>
+                </form>
+            `;
+        }
+
+        async function saveSystemSettings(e) {
+            e.preventDefault();
+            const data = {
+                enroll_rate_limit_ms: parseInt(document.getElementById('ss_enroll_rate_limit_ms').value),
+                enroll_max_per_day: parseInt(document.getElementById('ss_enroll_max_per_day').value),
+                vote_cooldown_ms: parseInt(document.getElementById('ss_vote_cooldown_ms').value),
+                visitor_timeout_ms: parseInt(document.getElementById('ss_visitor_timeout_ms').value),
+                proposal_voting_days: parseInt(document.getElementById('ss_proposal_voting_days').value),
+                wall_post_max_length: parseInt(document.getElementById('ss_wall_post_max_length').value),
+                proposal_title_max_length: parseInt(document.getElementById('ss_proposal_title_max_length').value),
+                proposal_description_max_length: parseInt(document.getElementById('ss_proposal_description_max_length').value),
+                nickname_max_length: parseInt(document.getElementById('ss_nickname_max_length').value),
+                wall_posts_limit: parseInt(document.getElementById('ss_wall_posts_limit').value),
+                recent_votes_limit: parseInt(document.getElementById('ss_recent_votes_limit').value),
+                signup_base_merit: parseInt(document.getElementById('ss_signup_base_merit').value),
+                merit_skills: parseInt(document.getElementById('ss_merit_skills').value),
+                merit_action: parseInt(document.getElementById('ss_merit_action').value),
+                merit_ideas: parseInt(document.getElementById('ss_merit_ideas').value),
+                merit_donation: parseInt(document.getElementById('ss_merit_donation').value),
+                donation_bonus_per_100: parseInt(document.getElementById('ss_donation_bonus_per_100').value),
+                max_upload_bytes: parseInt(document.getElementById('ss_max_upload_bytes').value),
+                target_members: parseInt(document.getElementById('ss_target_members').value),
+                target_treasury: parseInt(document.getElementById('ss_target_treasury').value),
+                signup_random_bonus_max: parseInt(document.getElementById('ss_signup_random_bonus_max').value),
+                donation_divisor_mvr: parseInt(document.getElementById('ss_donation_divisor_mvr').value),
+                donation_log_multiplier: parseInt(document.getElementById('ss_donation_log_multiplier').value),
+                donation_usd_mvr_rate: parseFloat(document.getElementById('ss_donation_usd_mvr_rate').value),
+                donation_formula: document.getElementById('ss_donation_formula').value,
+                referral_tier1_limit: parseInt(document.getElementById('ss_referral_tier1_limit').value),
+                referral_tier2_limit: parseInt(document.getElementById('ss_referral_tier2_limit').value),
+                referral_base_t1: parseFloat(document.getElementById('ss_referral_base_t1').value),
+                referral_base_t2: parseFloat(document.getElementById('ss_referral_base_t2').value),
+                referral_base_t3: parseFloat(document.getElementById('ss_referral_base_t3').value),
+                referral_engage_t1: parseFloat(document.getElementById('ss_referral_engage_t1').value),
+                referral_engage_t2: parseFloat(document.getElementById('ss_referral_engage_t2').value),
+                referral_engage_t3: parseFloat(document.getElementById('ss_referral_engage_t3').value),
+                endorsement_tier1_limit: parseInt(document.getElementById('ss_endorsement_tier1_limit').value),
+                endorsement_tier2_limit: parseInt(document.getElementById('ss_endorsement_tier2_limit').value),
+                endorsement_tier3_limit: parseInt(document.getElementById('ss_endorsement_tier3_limit').value),
+                endorsement_tier1_pts: parseFloat(document.getElementById('ss_endorsement_tier1_pts').value),
+                endorsement_tier2_pts: parseFloat(document.getElementById('ss_endorsement_tier2_pts').value),
+                endorsement_tier3_pts: parseFloat(document.getElementById('ss_endorsement_tier3_pts').value),
+                endorsement_tier4_pts: parseFloat(document.getElementById('ss_endorsement_tier4_pts').value),
+                approval_threshold_routine: parseFloat(document.getElementById('ss_approval_threshold_routine').value),
+                approval_threshold_policy: parseFloat(document.getElementById('ss_approval_threshold_policy').value),
+                approval_threshold_constitutional: parseFloat(document.getElementById('ss_approval_threshold_constitutional').value),
+                voting_window_primary_days: parseInt(document.getElementById('ss_voting_window_primary_days').value),
+                voting_window_extended_days: parseInt(document.getElementById('ss_voting_window_extended_days').value),
+                voting_weight_primary: parseFloat(document.getElementById('ss_voting_weight_primary').value),
+                voting_weight_extended: parseFloat(document.getElementById('ss_voting_weight_extended').value),
+                proposal_cooldown_hours: parseInt(document.getElementById('ss_proposal_cooldown_hours').value),
+                merit_vote_pass: parseFloat(document.getElementById('ss_merit_vote_pass').value),
+                merit_vote_fail: parseFloat(document.getElementById('ss_merit_vote_fail').value),
+                merit_proposal_author: parseInt(document.getElementById('ss_merit_proposal_author').value),
+                ai_law_draft_prompt: document.getElementById('ss_ai_law_draft_prompt').value
+            };
+            const { ok, data: result } = await api.post('/api/system-settings', data);
+            if (ok && result?.success) { alert('Settings saved successfully!'); systemSettings = result.settings; renderSystemSettings(); } else { alert('Error: ' + (result?.error || 'Unknown')); }
+        }
+
+        async function resetSystemSettings() {
+            if (!confirm('Reset all settings to their default values?')) return;
+            const defaults = {
+                enroll_rate_limit_ms: 60000, enroll_max_per_day: 50, vote_cooldown_ms: 3600000, visitor_timeout_ms: 300000,
+                proposal_voting_days: 7, wall_post_max_length: 500, proposal_title_max_length: 200, proposal_description_max_length: 8000,
+                nickname_max_length: 50, wall_posts_limit: 100, recent_votes_limit: 50, signup_base_merit: 50,
+                merit_skills: 250, merit_action: 200, merit_ideas: 150, merit_donation: 100, donation_bonus_per_100: 5,
+                max_upload_bytes: 5242880, target_members: 13000, target_treasury: 13000, signup_random_bonus_max: 50,
+                donation_divisor_mvr: 100, donation_log_multiplier: 35, donation_usd_mvr_rate: 15.4, donation_formula: 'log',
+                referral_tier1_limit: 5, referral_tier2_limit: 20, referral_base_t1: 2, referral_base_t2: 1, referral_base_t3: 0.5,
+                referral_engage_t1: 8, referral_engage_t2: 4, referral_engage_t3: 0.5,
+                endorsement_tier1_limit: 10, endorsement_tier2_limit: 50, endorsement_tier3_limit: 200,
+                endorsement_tier1_pts: 2.0, endorsement_tier2_pts: 1.0, endorsement_tier3_pts: 0.5, endorsement_tier4_pts: 0.1,
+                approval_threshold_routine: 0.50, approval_threshold_policy: 0.60, approval_threshold_constitutional: 0.80,
+                voting_window_primary_days: 7, voting_window_extended_days: 3, voting_weight_primary: 1.0, voting_weight_extended: 0.5,
+                proposal_cooldown_hours: 8, merit_vote_pass: 2.5, merit_vote_fail: 1.0, merit_proposal_author: 200,
+                ai_law_draft_prompt: `You are a legal drafting assistant for the Maldives. Given a seed idea, produce a well-structured draft using proper legal formatting.\n\nIMPORTANT — First, determine the appropriate scope:\n- "law" - Broad, multi-section legislation that establishes a new regulatory framework\n- "regulation" - Specific rules under an existing law, narrower in scope\n- "clause" - A single provision or amendment to an existing law\n\nThe FIRST LINE of your response MUST be: **Draft Type:** law (or regulation, or clause)\n\nThen structure your response with these sections (each required section MUST start with ## ):\n\n## Executive Summary\nA concise, plain-language summary of the proposal in 3-5 bullet points, written for citizens who won't read the full legal text. Summarize: (1) What problem this solves, (2) What the law proposes to do, (3) Who is affected, (4) Key obligations/rights created, (5) How it will be enforced. Use simple language — no legal jargon.\n\n## Title\nA clear, concise title for the proposal.\n\n## Preamble\nA brief statement of purpose and rationale (2-3 sentences).\n\n## Definitions\nKey terms defined precisely (if applicable).\n\n## Provisions\nNumbered sections. Each section should have:\n- A clear heading\n- Specific requirements, prohibitions, or permissions\n- Enforcement mechanisms where appropriate\n\n## Penalties / Enforcement\nConsequences for non-compliance (if applicable).\n\n## Commencement\nWhen the law takes effect.\n\nDraft in a formal legal style. Use "shall" for obligations, "may" for permissions. Be specific and enforceable. Keep the draft proportional to the scope — a clause should be a few paragraphs, a law can be several pages. Do NOT include placeholder text or markdown formatting instructions in the output.`
+            };
+            const { ok, data: result } = await api.post('/api/system-settings', defaults);
+            if (ok && result?.success) { alert('Settings reset to defaults!'); systemSettings = result.settings; renderSystemSettings(); }
+        }
     </script>
 </body>
 </html>

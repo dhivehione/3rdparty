@@ -3,6 +3,9 @@ module.exports = function(db) {
     getPost(id) {
       return db.prepare('SELECT id, upvotes, downvotes, user_id FROM wall_posts WHERE id = ? AND is_hidden = 0').get(id);
     },
+    getPostAdmin(id) {
+      return db.prepare('SELECT id, upvotes, downvotes, user_id FROM wall_posts WHERE id = ?').get(id);
+    },
     getPostDetail(id) {
       return db.prepare(`
         SELECT wp.*, COALESCE(s.username, wp.nickname) as display_name, COALESCE(s.initial_merit_estimate, 0) as user_merit
@@ -87,19 +90,24 @@ module.exports = function(db) {
     swapVoteDown(postId) {
       return db.prepare('UPDATE wall_posts SET downvotes = downvotes + 1, upvotes = MAX(upvotes - 1, 0) WHERE id = ?').run(postId);
     },
-    getFlaggedPosts(limit) {
+    getAllPostsAdmin(limit, offset) {
       return db.prepare(`
         SELECT wp.*, COALESCE(s.username, wp.nickname) as display_name,
           (SELECT COUNT(*) FROM wall_flags WHERE post_id = wp.id) as flag_count,
           (SELECT reason FROM wall_flags WHERE post_id = wp.id ORDER BY created_at DESC LIMIT 1) as latest_flag_reason
         FROM wall_posts wp LEFT JOIN signups s ON wp.user_id = s.id
-        WHERE wp.is_flagged = 1 OR wp.is_hidden = 1
-        ORDER BY wp.timestamp DESC LIMIT ?
-      `).all(limit);
+        ORDER BY wp.timestamp DESC LIMIT ? OFFSET ?
+      `).all(limit, offset);
+    },
+    countAllPosts() {
+      return db.prepare('SELECT COUNT(*) as total FROM wall_posts').get().total;
     },
     hidePost(id, resolvedAt) {
       db.prepare('UPDATE wall_posts SET is_hidden = 1, is_flagged = 0 WHERE id = ?').run(id);
       db.prepare('UPDATE wall_flags SET status = "resolved", resolved_at = ? WHERE post_id = ?').run(resolvedAt, id);
+    },
+    unhidePost(id) {
+      db.prepare('UPDATE wall_posts SET is_hidden = 0 WHERE id = ?').run(id);
     },
     approvePost(id) {
       return db.prepare('UPDATE wall_posts SET is_flagged = 0, is_hidden = 0, flag_reason = NULL, flagged_by_ip = NULL WHERE id = ?').run(id);

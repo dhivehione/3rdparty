@@ -27,8 +27,23 @@ function getPageName() {
     return '';
 }
 
+function isLoggedIn() {
+    return window.Auth && typeof window.Auth.isLoggedIn === 'function' ? window.Auth.isLoggedIn() : !!localStorage.getItem('authToken');
+}
+
+function getDisplayName() {
+    if (!window.Auth || typeof window.Auth.getUser !== 'function') return 'Member';
+    const user = window.Auth.getUser();
+    if (user) {
+        return user.name || user.username || 'Member';
+    }
+    return 'Member';
+}
+
 function createNavigation() {
     const currentPage = getPageName();
+    const loggedIn = isLoggedIn();
+    const displayName = getDisplayName();
     
     const nav = document.createElement('nav');
     nav.className = 'border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur';
@@ -52,10 +67,29 @@ function createNavigation() {
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
-                <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
                 <a href="/treasury" class="hover:text-party-accent transition ${currentPage === 'treasury' ? 'text-party-accent font-bold' : 'text-gray-300'}">Treasury</a>
-                <a href="/profile" id="profile-nav-link" class="hover:text-party-accent transition ${currentPage === 'profile' ? 'text-party-accent font-bold' : 'text-gray-300'}" style="display:none"><i class="fas fa-user mr-1"></i>Profile</a>
+                ${loggedIn ? `
+                <div class="relative ml-2" id="user-menu-container">
+                    <button id="user-menu-btn" class="flex items-center space-x-1 px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition">
+                        <i class="fas fa-user-circle mr-1"></i>
+                        <span id="user-menu-name">${displayName}</span>
+                        <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                    </button>
+                    <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-xl z-50">
+                        <a href="/profile" class="block px-4 py-3 text-gray-300 hover:bg-party-dark hover:text-party-accent transition rounded-t-lg">
+                            <i class="fas fa-user mr-2"></i>Profile
+                        </a>
+                        <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-red-400 hover:bg-party-dark hover:text-red-300 transition rounded-b-lg">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </div>
+                </div>
+                ` : `
+                <button id="login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ml-2">
+                    <i class="fas fa-sign-in-alt mr-1"></i>Login
+                </button>
+                `}
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
                 </span>
@@ -67,6 +101,121 @@ function createNavigation() {
     `;
     
     return nav;
+}
+
+function openQuickLogin() {
+    const modal = document.getElementById('quick-login-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('quick-login-nid')?.focus();
+    }
+}
+
+function closeQuickLogin() {
+    const modal = document.getElementById('quick-login-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+async function quickLoginCheckNid() {
+    const nid = document.getElementById('quick-login-nid').value.trim();
+    if (!nid) { alert('Please enter your NID'); return; }
+    
+    try {
+        const res = await fetch('/api/check-registration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nid })
+        });
+        const data = await res.json();
+        
+        if (data.registered) {
+            document.getElementById('quick-login-nid-section').classList.add('hidden');
+            document.getElementById('quick-login-phone-section').classList.remove('hidden');
+            document.getElementById('quick-login-phone').focus();
+        } else {
+            alert('You are not registered yet. Please join first!');
+            window.location.href = '/join';
+        }
+    } catch (e) { alert('Error checking registration. Please try again.'); }
+}
+
+async function quickLoginWithPhone() {
+    const phone = document.getElementById('quick-login-phone').value.trim();
+    const nid = document.getElementById('quick-login-nid').value.trim();
+    
+    if (!phone) { alert('Please enter your phone number'); return; }
+    
+    try {
+        const res = await fetch('/api/user/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, nid })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            Auth.setToken(data.token);
+            Auth.setPhone(data.user.phone);
+            Auth.setUser(data.user);
+            Auth.markLogin();
+            closeQuickLogin();
+            window.location.reload();
+        } else {
+            alert(data.error || 'Login failed');
+        }
+    } catch (e) { alert('Login error. Please try again.'); }
+}
+
+function createQuickLoginModal() {
+    const modal = document.createElement('div');
+    modal.id = 'quick-login-modal';
+    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[100] hidden';
+    modal.onclick = (e) => { if (e.target === modal) closeQuickLogin(); };
+    modal.innerHTML = `
+        <div class="bg-party-card rounded-xl p-8 border border-gray-700 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-party-accent">Sign In</h2>
+                <button onclick="closeQuickLogin()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div id="quick-login-nid-section" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Enter your NID</label>
+                    <input type="text" id="quick-login-nid" placeholder="A123456" 
+                           class="w-full bg-party-dark border border-gray-600 rounded-lg px-4 py-3 text-white"
+                           onkeypress="if(event.key==='Enter')quickLoginCheckNid()">
+                </div>
+                <button onclick="quickLoginCheckNid()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                    Continue
+                </button>
+            </div>
+            
+            <div id="quick-login-phone-section" class="hidden space-y-4 mt-4">
+                <div class="p-4 bg-green-900/30 border border-green-600 rounded-lg">
+                    <p class="text-green-400">You are registered!</p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Phone Number</label>
+                    <input type="tel" id="quick-login-phone" placeholder="7-digit number" 
+                           class="w-full bg-party-dark border border-gray-600 rounded-lg px-4 py-3 text-white"
+                           onkeypress="if(event.key==='Enter')quickLoginWithPhone()">
+                </div>
+                <button onclick="quickLoginWithPhone()" class="w-full bg-party-accent text-black font-bold py-3 rounded-lg hover:bg-yellow-400">
+                    Sign In
+                </button>
+                <button onclick="document.getElementById('quick-login-nid-section').classList.remove('hidden');document.getElementById('quick-login-phone-section').classList.add('hidden');" class="w-full text-gray-400 text-sm hover:text-party-accent">
+                    ← Back
+                </button>
+            </div>
+            
+            <p class="text-center text-gray-500 text-sm mt-6">
+                Don't have an account? <a href="/join" class="text-party-accent hover:underline">Join here</a>
+            </p>
+        </div>
+    `;
+    return modal;
 }
 
 function createFooter() {
@@ -111,18 +260,18 @@ function createFooter() {
 }
 
 function injectNavigation() {
-    // Find existing nav or create new one
     const existingNav = document.querySelector('nav');
     const newNav = createNavigation();
     
     if (existingNav) {
         existingNav.parentNode.replaceChild(newNav, existingNav);
     } else {
-        // Insert at the beginning of body
         document.body.insertBefore(newNav, document.body.firstChild);
     }
     
-    // Inject footer before closing body tag
+    const modal = createQuickLoginModal();
+    document.body.appendChild(modal);
+    
     const existingFooter = document.querySelector('footer');
     const newFooter = createFooter();
     
@@ -131,42 +280,92 @@ function injectNavigation() {
     } else {
         document.body.appendChild(newFooter);
     }
+    
+    setupUserMenu();
 }
 
-function updateProfileLink() {
-    const link = document.getElementById('profile-nav-link');
-    if (link) {
-        link.style.display = localStorage.getItem('authToken') ? 'inline' : 'none';
+function setupUserMenu() {
+    const btn = document.getElementById('user-menu-btn');
+    const dropdown = document.getElementById('user-menu-dropdown');
+    const container = document.getElementById('user-menu-container');
+    
+    if (btn && dropdown) {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (container && !container.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
     }
 }
 
-// Auto-inject navigation when script loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        injectNavigation();
-        updateProfileLink();
-    });
-} else {
-    injectNavigation();
-    updateProfileLink();
+function handleLogout() {
+    if (window.Auth) {
+        Auth.logout('/api/user/logout');
+    }
+    window.location.href = '/';
 }
 
-// Listen for auth changes from other tabs/windows
+function refreshNavAuth() {
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+    
+    const loggedIn = isLoggedIn();
+    const loginBtn = document.getElementById('login-btn');
+    const userMenu = document.getElementById('user-menu-container');
+    
+    if (loggedIn && !userMenu) {
+        nav.innerHTML = nav.innerHTML.replace(
+            /<button id="login-btn"[^>]*>[\s\S]*?<\/button>/,
+            `<div class="relative ml-2" id="user-menu-container">
+                <button id="user-menu-btn" class="flex items-center space-x-1 px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition">
+                    <i class="fas fa-user-circle mr-1"></i>
+                    <span id="user-menu-name">${getDisplayName()}</span>
+                    <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                </button>
+                <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-xl z-50">
+                    <a href="/profile" class="block px-4 py-3 text-gray-300 hover:bg-party-dark hover:text-party-accent transition rounded-t-lg">
+                        <i class="fas fa-user mr-2"></i>Profile
+                    </a>
+                    <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-red-400 hover:bg-party-dark hover:text-red-300 transition rounded-b-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>`
+        );
+        setupUserMenu();
+    } else if (!loggedIn && !loginBtn) {
+        nav.innerHTML = nav.innerHTML.replace(
+            /<div class="relative ml-2" id="user-menu-container">[\s\S]*?<\/div>/,
+            `<button id="login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ml-2">
+                <i class="fas fa-sign-in-alt mr-1"></i>Login
+            </button>`
+        );
+    } else if (loggedIn && userMenu) {
+        const nameEl = document.getElementById('user-menu-name');
+        if (nameEl) nameEl.textContent = getDisplayName();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectNavigation);
+} else {
+    injectNavigation();
+}
+
 window.addEventListener('storage', (e) => {
-    if (e.key === 'authToken') updateProfileLink();
+    if (e.key === '_3p_auth' || e.key === 'authToken') refreshNavAuth();
 });
 
-// Visitor tracking
 (function() {
     let sessionId = sessionStorage.getItem('visitor_session');
     if (!sessionId) {
         sessionId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('visitor_session', sessionId);
-    }
-    
-    // Initialize first-visit timestamp for non-logged-in users
-    if (!localStorage.getItem('3dparty_last_login')) {
-        localStorage.setItem('3dparty_last_login', new Date().toISOString());
     }
     
     function updateActiveCount() {

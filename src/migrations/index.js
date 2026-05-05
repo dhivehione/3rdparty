@@ -29,6 +29,14 @@ function runMigrations(deps) {
     db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(2, new Date().toISOString());
     console.log('✓ Migration 2 applied');
   }
+
+  // Migration 3: merit audit indexes
+  if (!applied.has(3)) {
+    const m003 = require('./003_merit_audit');
+    m003.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(3, new Date().toISOString());
+    console.log('✓ Migration 3 applied');
+  }
 }
 
 module.exports = { runMigrations };

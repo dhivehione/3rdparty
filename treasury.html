@@ -24,7 +24,9 @@
       gtag('js', new Date());
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="/js/auth.js"></script>
     <script src="nav.js"></script>
+    <script src="/js/utils.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -171,12 +173,12 @@
                     : '<span class="px-2 py-0.5 bg-red-400/10 text-red-400 rounded text-xs">Expense</span>';
                 const amountClass = isDonation ? 'text-green-400' : 'text-red-400';
                 const amountPrefix = isDonation ? '+' : '-';
-                const donor = tx.donor_nickname ? ` <span class="text-gray-500">by ${escapeHtml(tx.donor_nickname)}</span>` : '';
+                const donor = tx.donor_nickname ? ` <span class="text-gray-500">by ${Utils.escapeHtml(tx.donor_nickname)}</span>` : '';
 
                 return `<tr class="border-b border-gray-800 hover:bg-white/5 transition">
                     <td class="p-3 text-gray-400 whitespace-nowrap">${date}</td>
                     <td class="p-3">${typeBadge}</td>
-                    <td class="p-3">${escapeHtml(tx.description)}${donor}</td>
+                    <td class="p-3">${Utils.escapeHtml(tx.description)}${donor}</td>
                     <td class="p-3 text-right font-mono ${amountClass}">${amountPrefix}${tx.amount.toLocaleString()}</td>
                 </tr>`;
             }).join('');
@@ -198,12 +200,6 @@
             const activeId = activeType ? (activeType === 'donation' ? 'filterDonation' : 'filterExpenditure') : 'filterAll';
             const activeBtn = document.getElementById(activeId);
             activeBtn.className = 'px-3 py-1 rounded-full text-sm border border-party-accent bg-party-accent text-party-dark font-bold';
-        }
-
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str || '';
-            return div.innerHTML;
         }
 
         fetchSummary();

@@ -24,6 +24,8 @@
       gtag('js', new Date());
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
     <script src="nav.js"></script>
     <style>
         .sort-active { color: #FFD700; border-bottom: 2px solid #FFD700; }
@@ -34,6 +36,9 @@
         @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .post-new { animation: slideIn 0.3s ease-out; }
     </style>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -194,34 +199,17 @@
         let currentPage = 1;
         let replyParentId = null;
         let flagPostId = null;
-        let isLoggedIn = false;
+        let userIsLoggedIn = false;
         let loggedInName = '';
         let authToken = null;
 
         // ── Auth detection ──
         function detectAuth() {
-            try {
-                const tokenKey = localStorage.getItem('auth_token');
-                if (!tokenKey) {
-                    const stored = localStorage.getItem('user');
-                    if (stored) {
-                        const user = JSON.parse(stored);
-                        authToken = user.auth_token || user.token || null;
-                        isLoggedIn = !!authToken;
-                        loggedInName = user.name || user.username || '';
-                    }
-                } else {
-                    authToken = tokenKey;
-                    isLoggedIn = true;
-                    const stored = localStorage.getItem('user');
-                    if (stored) {
-                        const user = JSON.parse(stored);
-                        loggedInName = user.name || user.username || '';
-                    }
-                }
-            } catch(e) {}
-
-            if (isLoggedIn) {
+            authToken = Auth.getToken();
+            userIsLoggedIn = !!authToken;
+            if (userIsLoggedIn) {
+                var user = Auth.getUser();
+                loggedInName = (user && (user.name || user.username)) || '';
                 document.getElementById('nicknameField').classList.add('hidden');
                 document.getElementById('userStatusBar').classList.remove('hidden');
                 document.getElementById('loggedInName').textContent = loggedInName || 'Member';
@@ -230,11 +218,7 @@
         }
 
         function getHeaders() {
-            const headers = { 'Content-Type': 'application/json' };
-            if (authToken) {
-                headers['Authorization'] = 'Bearer ' + authToken;
-            }
-            return headers;
+            return Auth.getApiHeaders();
         }
 
         // ── Stats ──
@@ -271,10 +255,10 @@
                         el.className = 'bg-party-dark/50 rounded-lg p-3 border border-green-600/30 text-sm';
                         el.innerHTML = `
                             <div class="flex items-start justify-between mb-1">
-                                <span class="font-bold text-green-400 text-xs">${escapeHtml(post.nickname)}</span>
-                                <span class="text-gray-600 text-xs">${formatTime(post.timestamp)}</span>
+                                <span class="font-bold text-green-400 text-xs">${Utils.escapeHtml(post.nickname)}</span>
+                                <span class="text-gray-600 text-xs">${Utils.formatTime(post.timestamp)}</span>
                             </div>
-                            <p class="text-gray-300 text-xs">${escapeHtml(post.message)}</p>
+                            <p class="text-gray-300 text-xs">${Utils.escapeHtml(post.message)}</p>
                         `;
                         container.appendChild(el);
                     });
@@ -298,7 +282,7 @@
 
             try {
                 const response = await fetch(`/api/wall?sort=${currentSort}&page=${currentPage}`, {
-                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                    headers: getHeaders()
                 });
                 const data = await response.json();
 
@@ -328,7 +312,7 @@
             
             try {
                 const response = await fetch(`/api/wall/replies/${parentId}`, {
-                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                    headers: getHeaders()
                 });
                 const data = await response.json();
                 container.innerHTML = '';
@@ -355,7 +339,7 @@
             const displayName = post.display_name || post.nickname || 'Anonymous';
             const hasMerit = post.user_merit > 0;
             const replyCount = post.reply_count || 0;
-            const isOwnPost = isLoggedIn && post.user_id && post.user_id === getMyUserId();
+            const isOwnPost = userIsLoggedIn && post.user_id && post.user_id === getMyUserId();
 
             card.innerHTML = `
                 <div class="flex gap-3">
@@ -375,13 +359,13 @@
                     <!-- Content column -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
-                            <span class="font-bold text-party-accent text-sm">${escapeHtml(displayName)}</span>
+                            <span class="font-bold text-party-accent text-sm">${Utils.escapeHtml(displayName)}</span>
                             ${hasMerit ? `<span class="text-xs bg-party-accent/20 text-party-accent px-1.5 py-0.5 rounded">★ ${post.user_merit}</span>` : ''}
                             ${post.user_id ? '<span class="text-xs text-green-500"><i class="fas fa-check-circle"></i> Member</span>' : ''}
-                            <span class="text-gray-600 text-xs">· ${formatTime(post.timestamp)}</span>
+                            <span class="text-gray-600 text-xs">· ${Utils.formatTime(post.timestamp)}</span>
                             ${post.is_flagged ? '<span class="text-xs text-yellow-500"><i class="fas fa-flag"></i></span>' : ''}
                         </div>
-                        <div class="text-gray-300 text-sm whitespace-pre-wrap break-words">${escapeHtml(post.message)}</div>
+                        <div class="text-gray-300 text-sm whitespace-pre-wrap break-words">${Utils.escapeHtml(post.message)}</div>
                         <div class="flex items-center gap-4 mt-2 text-xs">
                             <button onclick="toggleReplyForm(${post.id})" class="text-gray-500 hover:text-party-accent flex items-center gap-1">
                                 <i class="fas fa-reply"></i> Reply
@@ -450,7 +434,7 @@
 
             try {
                 const body = { message: text, parent_id: parentId };
-                if (!isLoggedIn) body.nickname = document.getElementById('nickname').value.trim() || 'Anon';
+                if (!userIsLoggedIn) body.nickname = document.getElementById('nickname').value.trim() || 'Anon';
 
                 const response = await fetch('/api/wall', {
                     method: 'POST',
@@ -515,14 +499,8 @@
         }
 
         function getMyUserId() {
-            try {
-                const stored = localStorage.getItem('user');
-                if (stored) {
-                    const user = JSON.parse(stored);
-                    return user.id || null;
-                }
-            } catch(e) {}
-            return null;
+            var user = Auth.getUser();
+            return (user && user.id) || null;
         }
 
         // ── Flag / Report ──
@@ -599,7 +577,7 @@
                 if (replyParentId) {
                     body.parent_id = replyParentId;
                 }
-                if (!isLoggedIn) {
+                if (!userIsLoggedIn) {
                     const nickname = document.getElementById('nickname').value.trim();
                     if (!nickname || nickname.length < 2) {
                         errorEl.textContent = 'Please enter a nickname (at least 2 characters)';
@@ -621,7 +599,7 @@
                     successEl.classList.remove('hidden');
                     document.getElementById('message').value = '';
                     document.getElementById('charCount').textContent = '0';
-                    if (!isLoggedIn) document.getElementById('nickname').value = '';
+                    if (!userIsLoggedIn) document.getElementById('nickname').value = '';
                     cancelReply();
                     loadPosts();
                     loadStats();
@@ -640,7 +618,7 @@
             replyParentId = null;
             document.getElementById('replyContext').classList.add('hidden');
             document.getElementById('submitBtnText').textContent = 'Post to the Wall';
-            document.getElementById('message').placeholder = isLoggedIn ? 'Share an idea. Discuss the movement. Or just say hello.' : 'Say something. Support the movement. Share an idea. Or just say hi.';
+            document.getElementById('message').placeholder = userIsLoggedIn ? 'Share an idea. Discuss the movement. Or just say hello.' : 'Say something. Support the movement. Share an idea. Or just say hi.';
             document.getElementById('messageLabel').textContent = 'Your Message';
             document.getElementById('maxChars').textContent = '500';
             document.getElementById('message').maxLength = 500;
@@ -650,26 +628,6 @@
         document.getElementById('message').addEventListener('input', function() {
             document.getElementById('charCount').textContent = this.value.length;
         });
-
-        // ── Helpers ──
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatTime(timestamp) {
-            if (!timestamp) return '';
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000);
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-            if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-            if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
-            return date.toLocaleDateString();
-        }
 
         // ── Init ──
         detectAuth();

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const BOUNTY_TIER_REWARDS = { 1: 20, 2: 75, 3: 250 };
+function getBountyReward(settings, tier) {
+  const map = {
+    1: settings.bounty_tier1_reward,
+    2: settings.bounty_tier2_reward,
+    3: settings.bounty_tier3_reward
+  };
+  return map[tier] || 0;
+}
 
-module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
+module.exports = function({ db, userAuth, logActivity, getSettings, merit }) {
   // ==================== BOUNTY SYSTEM ====================
   router.post('/api/bounties', userAuth, (req, res) => {
     const { title, description, tier } = req.body;
@@ -19,7 +26,7 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
 
     try {
       const tierNum = parseInt(tier);
-      const rewardPoints = BOUNTY_TIER_REWARDS[tierNum];
+      const rewardPoints = getBountyReward(getSettings(), tierNum);
       const now = new Date().toISOString();
 
       const result = db.prepare(`
@@ -151,10 +158,7 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
         .run('completed', claim.user_id, new Date().toISOString(), id);
 
       const desc = `Completed bounty: ${bounty.title}`;
-      db.prepare(`
-        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-        VALUES (?, 'bounty', ?, ?, 'bounty', ?, ?)
-      `).run(claim.user_id, bounty.reward_points, id, 'bounty_complete', desc, new Date().toISOString());
+      merit.awardMerit(claim.user_id, 'bounty', bounty.reward_points, id, 'bounty', desc);
 
       logActivity('bounty_completed', claim.user_id, id, { bounty_id: id, points: bounty.reward_points }, req);
       res.json({ success: true, message: 'Bounty approved and points awarded' });
@@ -300,14 +304,11 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
       if (completedModules.completed >= allModules.total) {
         const gradExists = db.prepare('SELECT id FROM academy_graduation WHERE user_id = ?').get(userId);
         if (!gradExists) {
-          const graduationMerit = 250;
+          const graduationMerit = getSettings().academy_graduation_merit;
           const gradNow = new Date().toISOString();
           db.prepare('INSERT INTO academy_graduation (user_id, graduated_at, merit_awarded) VALUES (?, ?, ?)').run(userId, gradNow, graduationMerit);
 
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_type, description, created_at)
-            VALUES (?, 'academy_graduation', ?, 'academy', ?, ?)
-          `).run(userId, graduationMerit, 'Leadership Academy graduation (Tier 3 Bounty)', gradNow);
+          merit.awardMerit(userId, 'academy_graduation', graduationMerit, null, 'academy', 'Leadership Academy graduation (Tier 3 Bounty)');
 
           logActivity('academy_graduation', userId, null, { merit: graduationMerit }, req);
           return res.json({ success: true, message: 'Module completed! Congratulations on graduating from the Leadership Academy!', graduated: true });
@@ -423,12 +424,9 @@ module.exports = function({ db, userAuth, logActivity, ROLE_STIPENDS, merit }) {
       db.prepare('UPDATE advisory_reports SET status = ?, reviewed_by_user_id = ?, reviewed_at = ? WHERE id = ?')
         .run('approved', userId, new Date().toISOString(), id);
 
-      db.prepare(`
-        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-        VALUES (?, 'advisory_report', ?, ?, 'advisory_report', ?, ?)
-      `).run(report.user_id, ROLE_STIPENDS.advisory, id, `Advisory report: ${report.report_title}`, new Date().toISOString());
+      merit.awardMerit(report.user_id, 'advisory_report', getSettings().stipend_advisory, id, 'advisory_report', `Advisory report: ${report.report_title}`);
 
-      logActivity('advisory_report_approved', report.user_id, id, { points: ROLE_STIPENDS.advisory }, req);
+      logActivity('advisory_report_approved', report.user_id, id, { points: getSettings().stipend_advisory }, req);
       res.json({ success: true, message: 'Report approved and points awarded' });
     } catch (error) {
       console.error('Approve report error:', error);

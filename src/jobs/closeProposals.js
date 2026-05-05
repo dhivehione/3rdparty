@@ -22,38 +22,26 @@ module.exports = function({ queries, getSettings, merit, maybeEngageReferral }) 
         if (passed && proposal.amendment_of) {
           const original = queries.proposals.getOriginal(proposal.amendment_of);
           if (original && original.created_by_user_id) {
-            queries.merit.insertEvent({
-              user_id: proposal.created_by_user_id, event_type: 'bridge_building', points: 400,
-              reference_id: proposal.id, reference_type: 'proposal',
-              description: 'Bridge-building bonus: Fixed failing proposal', created_at: new Date().toISOString()
-            });
-            queries.signups.updateMerit(proposal.created_by_user_id, 400);
+            const bridgeBonus = settings.bridge_building_bonus;
+            merit.awardMerit(original.created_by_user_id, 'bridge_building', bridgeBonus, proposal.id, 'proposal', 'Bridge-building bonus: Fixed failing proposal');
+            maybeEngageReferral(original.created_by_user_id);
           }
         }
 
         const voters = queries.proposals.getVoters(proposal.id);
         voters.forEach(voter => {
           if (voter.user_id) {
-            const points = passed ? (settings.merit_vote_pass ?? 2.5) : (settings.merit_vote_fail ?? 1.0);
+            const points = passed ? settings.merit_vote_pass : settings.merit_vote_fail;
             const desc = passed ? 'Voted on passing proposal' : 'Voted on failing proposal';
-            queries.merit.insertEvent({
-              user_id: voter.user_id, event_type: 'voting', points,
-              reference_id: proposal.id, reference_type: 'proposal',
-              description: desc, created_at: new Date().toISOString()
-            });
-            queries.signups.updateMerit(voter.user_id, points);
+            merit.awardMerit(voter.user_id, 'voting', points, proposal.id, 'proposal', desc);
             maybeEngageReferral(voter.user_id);
           }
         });
 
         if (proposal.created_by_user_id && passed) {
-          const authorPoints = settings.merit_proposal_author ?? 200;
-          queries.merit.insertEvent({
-            user_id: proposal.created_by_user_id, event_type: 'proposal_author', points: authorPoints,
-            reference_id: proposal.id, reference_type: 'proposal',
-            description: 'Authored passing proposal', created_at: new Date().toISOString()
-          });
-          queries.signups.updateMerit(proposal.created_by_user_id, authorPoints);
+          const authorPoints = settings.merit_proposal_author;
+          merit.awardMerit(proposal.created_by_user_id, 'proposal_author', authorPoints, proposal.id, 'proposal', 'Authored passing proposal');
+          maybeEngageReferral(proposal.created_by_user_id);
         }
 
         merit.processProposalStakes(proposal.id, weighted_yes, weighted_no, total_weight);
