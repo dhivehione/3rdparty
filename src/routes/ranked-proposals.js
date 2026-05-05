@@ -138,6 +138,25 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
         maybeEngageReferral(userId);
       }
 
+      // Post notification to wall
+      try {
+        let creatorName = 'Anonymous';
+        if (userId) {
+          const userRow = db.prepare('SELECT COALESCE(name, username) as display_name FROM signups WHERE id = ?').get(userId);
+          if (userRow) creatorName = userRow.display_name;
+        } else if (nickname) {
+          creatorName = sanitizeHTML(nickname.trim().substring(0, settings.nickname_max_length));
+        }
+        const safeTitle = sanitizeHTML(title.trim().substring(0, settings.proposal_title_max_length));
+        const safeDesc = description ? sanitizeHTML(description.trim()) : 'No description provided.';
+        const truncatedDesc = safeDesc.length > 150 ? safeDesc.substring(0, 150) + '...' : safeDesc;
+        const wallMessage = `🎉 Congratulations to **${creatorName}** for creating the ranked choice election "**${safeTitle}**"!\n\n**Intent:** ${truncatedDesc}\n\nLet's discuss this — what do you think? Share your thoughts and help shape our future! 💬🗳️`;
+        db.prepare('INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
+          .run('3rd Party', wallMessage, null, null, null, 1, createdAt);
+      } catch (e) {
+        console.error('Wall notification error:', e);
+      }
+
       res.status(201).json({ message: 'Ranked choice proposal created!', success: true, id: result.lastInsertRowid });
     } catch (error) {
       console.error('Ranked proposal error:', error);
