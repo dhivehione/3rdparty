@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, lawsDb, getSettings, maybeEngageReferral }) {
+module.exports = function({ db, lawsDb, getSettings, maybeEngageReferral, merit }) {
 
 // ==================== VOTING TABLES ====================
 if (lawsDb) {
@@ -228,10 +228,7 @@ let userId = null;
       `).run(article_id, userId, vote, reasoning || null, votedAt, userIP);
       if (userId) {
         const s = getSettings();
-        db.prepare(`
-          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-          VALUES (?, 'law_vote', ?, ?, 'article', 'Voted on a law article', ?)
-        `).run(userId, s.merit_vote_pass, article_id, votedAt);
+        merit.awardMerit(userId, 'law_vote', s.merit_vote_pass, article_id, 'article', 'Voted on a law article');
         maybeEngageReferral(userId);
       }
     }
@@ -294,10 +291,7 @@ router.post('/api/mvlaws/vote-law', (req, res) => {
         const signupUser = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
         if (signupUser) {
           const s = getSettings();
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'law_vote', ?, ?, 'law', 'Voted on a law', ?)
-          `).run(signupUser.id, s.merit_vote_pass, law_id, votedAt);
+          merit.awardMerit(signupUser.id, 'law_vote', s.merit_vote_pass, law_id, 'law', 'Voted on a law');
           maybeEngageReferral(signupUser.id);
         }
       }

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, logActivity, userAuth, getSettings }) {
+module.exports = function({ db, logActivity, userAuth, getSettings, merit }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -125,10 +125,7 @@ module.exports = function({ db, logActivity, userAuth, getSettings }) {
       if (status === 'resolved' && penalty_tier) {
         const penalty = getViolationPenalty(penalty_tier);
         if (penalty) {
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'violation_penalty', ?, ?, 'violation', ?, ?)
-          `).run(violation.accused_user_id, -penalty.point_penalty, id, `Violation penalty (Tier ${penalty_tier}): ${violation.violation_type}`, now);
+          merit.awardMerit(violation.accused_user_id, 'violation_penalty', -penalty.point_penalty, id, 'violation', `Violation penalty (Tier ${penalty_tier}): ${violation.violation_type}`);
 
           if (penalty.action === 'temporary') {
             const suspensionDays = getSettings().suspension_duration_days;

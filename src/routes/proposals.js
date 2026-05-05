@@ -376,10 +376,7 @@ router.post('/api/proposals/:id/stake', userAuth, (req, res) => {
     db.prepare('INSERT INTO proposal_stakes (proposal_id, user_id, stake_amount, created_at) VALUES (?, ?, ?, ?)')
       .run(id, userId, stakeAmount, now);
 
-    db.prepare(`
-      INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-      VALUES (?, 'stake_locked', ?, ?, 'proposal', ?, ?)
-    `).run(userId, -stakeAmount, id, `Proposal stake locked: ${stakeAmount} pts`, now);
+    merit.awardMerit(userId, 'stake_locked', -stakeAmount, id, 'proposal', `Proposal stake locked: ${stakeAmount} pts`);
 
     res.json({ success: true, message: `Staked ${stakeAmount} points on this proposal` });
   } catch (error) {

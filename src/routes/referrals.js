@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry }) {
+module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit }) {
 
   // POST /api/referral/introduce - Introduce a new member
   router.post('/api/referral/introduce', userAuth, (req, res) => {
@@ -54,17 +54,16 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
         `);
         insertReferral.run(referrerId, existing.id, relation, basePoints, new Date().toISOString(), existing.timestamp);
         
-        // Update referrer's merit score
-        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-          .run(basePoints, referrerId);
-        
+        // Award merit to referrer
+        merit.awardMerit(referrerId, 'referral_base', basePoints, existing.id, 'referral', `Referred existing member (${relation})`);
+
         // Log the activity
         logActivity('referral_created_existing', referrerId, existing.id, {
           relation,
           base_points_awarded: basePoints,
           referrer_invite_count: inviteCount + 1
         }, req);
-        
+
         return res.json({
           success: true,
           message: `Member found! You earned ${basePoints} base points. They need to complete their first action for you to get the engagement bonus.`,
@@ -267,8 +266,7 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
       insertReferral.run(referrerId, result.lastInsertRowid, relation, basePoints, timestamp, timestamp);
 
       // Award points to referrer
-      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-        .run(basePoints, referrerId);
+      merit.awardMerit(referrerId, 'referral_base', basePoints, result.lastInsertRowid, 'referral', `Enrolled family/friend (${relation})`);
 
       // Log the activity
       logActivity('family_friend_enrolled', referrerId, result.lastInsertRowid, {
@@ -379,8 +377,7 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
       // Check if points were already given - if so, reverse them
       if (referral.base_reward_given > 0 || referral.engagement_bonus_given > 0) {
         const pointsToReverse = referral.base_reward_given + referral.engagement_bonus_given;
-        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate - ? WHERE id = ?')
-          .run(pointsToReverse, referral.referrer_id);
+        merit.awardMerit(referral.referrer_id, 'referral_removed', -pointsToReverse, referral.id, 'referral', `Referral removed: ${reason || 'User requested removal'}`);
       }
       
       // Mark as removed

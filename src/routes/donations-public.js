@@ -54,6 +54,17 @@ module.exports = function({ db, dataDir, getSettings, logActivity }) {
       return res.status(400).json({ error: 'Deposit slip is required', success: false });
     }
 
+    // Detect logged-in user so merit can be awarded on verification
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const user = db.prepare('SELECT id FROM signups WHERE auth_token = ? AND is_verified = 1').get(token);
+        if (user) userId = user.id;
+      } catch (e) {}
+    }
+
     try {
       const createdAt = new Date().toISOString();
 
@@ -66,13 +77,13 @@ module.exports = function({ db, dataDir, getSettings, logActivity }) {
       if (colNames.includes('phone')) { insertCols.push('phone'); insertVals.push(phone); }
       if (colNames.includes('nid')) { insertCols.push('nid'); insertVals.push(nid); }
       if (colNames.includes('remarks')) { insertCols.push('remarks'); insertVals.push(remarks); }
-      if (colNames.includes('user_id')) { insertCols.push('user_id'); insertVals.push(null); }
+      if (colNames.includes('user_id')) { insertCols.push('user_id'); insertVals.push(userId); }
 
       const placeholders = insertVals.map(() => '?').join(', ');
       const stmt = db.prepare(`INSERT INTO donations (${insertCols.join(', ')}) VALUES (${placeholders})`);
       const result = stmt.run(...insertVals);
       
-      logActivity('donation_pending', null, null, {
+      logActivity('donation_pending', userId, null, {
         phone: phone ? phone.substring(0, 3) + 'xxxx' : null,
         nid: nid ? nid.substring(0, 2) + 'xxxxx' : null,
         amount: donationAmount,

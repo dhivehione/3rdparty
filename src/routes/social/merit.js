@@ -44,12 +44,13 @@ module.exports = function({ db, userAuth, merit }) {
       db.prepare('INSERT INTO peer_endorsements (endorser_id, endorsed_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(endorserId, endorsed_id, now, expiresAt);
 
       const endorsements = db.prepare('SELECT * FROM peer_endorsements WHERE endorsed_id = ?').all(endorsed_id);
-      const points = merit.calculateEndorsementPoints(endorsements.length);
+      const newCount = endorsements.length;
+      const oldCount = newCount - 1;
+      const delta = merit.calculateEndorsementPoints(newCount) - merit.calculateEndorsementPoints(oldCount);
 
-      db.prepare(`
-        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-        VALUES (?, 'peer_endorsement', ?, ?, 'endorsement', ?, ?)
-      `).run(endorsed_id, points, endorsements.length, 'peer_endorsement', `Peer endorsement #${endorsements.length}`, now);
+      if (delta !== 0) {
+        merit.awardMerit(endorsed_id, 'peer_endorsement', delta, newCount, 'endorsement', `Peer endorsement #${newCount}`);
+      }
 
       res.json({ success: true, message: 'Endorsement recorded' });
     } catch (error) {
@@ -71,12 +72,13 @@ module.exports = function({ db, userAuth, merit }) {
       db.prepare('DELETE FROM peer_endorsements WHERE id = ?').run(id);
 
       const remaining = db.prepare('SELECT COUNT(*) as cnt FROM peer_endorsements WHERE endorsed_id = ?').get(endorsement.endorsed_id);
-      const points = merit.calculateEndorsementPoints(remaining.cnt);
+      const oldCount = remaining.cnt + 1;
+      const newCount = remaining.cnt;
+      const delta = merit.calculateEndorsementPoints(newCount) - merit.calculateEndorsementPoints(oldCount);
 
-      db.prepare(`
-        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-        VALUES (?, 'peer_endorsement_removed', ?, ?, 'endorsement', ?, ?)
-      `).run(endorsement.endorsed_id, points, endorsement.endorsed_id, 'peer_endorsement', `Peer endorsements updated: ${remaining.cnt} remaining`, new Date().toISOString());
+      if (delta !== 0) {
+        merit.awardMerit(endorsement.endorsed_id, 'peer_endorsement_removed', delta, endorsement.endorsed_id, 'endorsement', `Peer endorsements updated: ${remaining.cnt} remaining`);
+      }
 
       res.json({ success: true, message: 'Endorsement removed' });
     } catch (error) {

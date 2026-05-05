@@ -27,8 +27,23 @@ function getPageName() {
     return '';
 }
 
+function isLoggedIn() {
+    return window.Auth && typeof window.Auth.isLoggedIn === 'function' ? window.Auth.isLoggedIn() : !!localStorage.getItem('authToken');
+}
+
+function getDisplayName() {
+    if (!window.Auth || typeof window.Auth.getUser !== 'function') return 'Member';
+    const user = window.Auth.getUser();
+    if (user) {
+        return user.name || user.username || 'Member';
+    }
+    return 'Member';
+}
+
 function createNavigation() {
     const currentPage = getPageName();
+    const loggedIn = isLoggedIn();
+    const displayName = getDisplayName();
     
     const nav = document.createElement('nav');
     nav.className = 'border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur';
@@ -52,11 +67,29 @@ function createNavigation() {
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
-                <a href="/join" class="px-3 py-1 bg-party-accent text-party-dark rounded font-bold hover:bg-party-accent/80 transition ${currentPage === 'join' ? 'ring-2 ring-party-accent/50' : ''}">Join</a>
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
                 <a href="/treasury" class="hover:text-party-accent transition ${currentPage === 'treasury' ? 'text-party-accent font-bold' : 'text-gray-300'}">Treasury</a>
-                <button id="quick-login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ${currentPage === 'profile' ? 'ring-2 ring-party-accent/50' : ''}"><i class="fas fa-sign-in-alt mr-1"></i>Login</button>
-                <a href="/profile" id="profile-nav-link" class="hover:text-party-accent transition ${currentPage === 'profile' ? 'text-party-accent font-bold' : 'text-gray-300'}" style="display:none"><i class="fas fa-user mr-1"></i><span id="profile-nav-name">Profile</span></a>
+                ${loggedIn ? `
+                <div class="relative ml-2" id="user-menu-container">
+                    <button id="user-menu-btn" class="flex items-center space-x-1 px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition">
+                        <i class="fas fa-user-circle mr-1"></i>
+                        <span id="user-menu-name">${displayName}</span>
+                        <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                    </button>
+                    <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-xl z-50">
+                        <a href="/profile" class="block px-4 py-3 text-gray-300 hover:bg-party-dark hover:text-party-accent transition rounded-t-lg">
+                            <i class="fas fa-user mr-2"></i>Profile
+                        </a>
+                        <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-red-400 hover:bg-party-dark hover:text-red-300 transition rounded-b-lg">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </div>
+                </div>
+                ` : `
+                <button id="login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ml-2">
+                    <i class="fas fa-sign-in-alt mr-1"></i>Login
+                </button>
+                `}
                 <span id="active-visitors" class="text-gray-400 text-xs ml-2">
                     <i class="fas fa-users mr-1"></i>—
                 </span>
@@ -128,7 +161,6 @@ async function quickLoginWithPhone() {
             Auth.setUser(data.user);
             Auth.markLogin();
             closeQuickLogin();
-            if (typeof updateProfileLink === 'function') updateProfileLink();
             window.location.reload();
         } else {
             alert(data.error || 'Login failed');
@@ -228,22 +260,18 @@ function createFooter() {
 }
 
 function injectNavigation() {
-    // Find existing nav or create new one
     const existingNav = document.querySelector('nav');
     const newNav = createNavigation();
     
     if (existingNav) {
         existingNav.parentNode.replaceChild(newNav, existingNav);
     } else {
-        // Insert at the beginning of body
         document.body.insertBefore(newNav, document.body.firstChild);
     }
     
-    // Inject quick login modal
     const modal = createQuickLoginModal();
     document.body.appendChild(modal);
     
-    // Inject footer before closing body tag
     const existingFooter = document.querySelector('footer');
     const newFooter = createFooter();
     
@@ -252,74 +280,87 @@ function injectNavigation() {
     } else {
         document.body.appendChild(newFooter);
     }
+    
+    setupUserMenu();
 }
 
-function updateProfileLink() {
-    const loginLink = document.getElementById('login-nav-link');
-    const profileLink = document.getElementById('profile-nav-link');
-    const profileName = document.getElementById('profile-nav-name');
+function setupUserMenu() {
+    const btn = document.getElementById('user-menu-btn');
+    const dropdown = document.getElementById('user-menu-dropdown');
+    const container = document.getElementById('user-menu-container');
     
-    if (loginLink && profileLink) {
-        const token = (window.Auth && typeof window.Auth.getToken === 'function') ? window.Auth.getToken() : localStorage.getItem('authToken');
-        const isLoggedIn = !!token;
+    if (btn && dropdown) {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
         
-        loginLink.style.display = isLoggedIn ? 'none' : 'inline';
-        profileLink.style.display = isLoggedIn ? 'inline' : 'none';
-        
-        if (isLoggedIn && profileName) {
-            const user = (window.Auth && typeof window.Auth.getUser === 'function') ? window.Auth.getUser() : null;
-            if (user && (user.name || user.username)) {
-                profileName.textContent = user.name || user.username;
+        document.addEventListener('click', (e) => {
+            if (container && !container.contains(e.target)) {
+                dropdown.classList.add('hidden');
             }
-        }
-    }
-}
-
-// Verify auth state on page load - call this from any page that needs auth verification
-function initAuthOnLoad() {
-    if (typeof window.Auth === 'undefined') {
-        console.warn('Auth not loaded yet, retrying...');
-        setTimeout(initAuthOnLoad, 100);
-        return;
-    }
-    
-    const token = window.Auth.getToken();
-    if (token) {
-        // Verify token is still valid by making a lightweight request
-        fetch('/api/user/profile', {
-            method: 'HEAD',
-            headers: window.Auth.getApiHeaders()
-        }).then(res => {
-            if (res.status === 401) {
-                // Token is invalid, clear it
-                window.Auth.clearToken();
-                if (typeof updateProfileLink === 'function') updateProfileLink();
-            }
-        }).catch(() => {
-            // Network error, keep token as-is
         });
     }
-    
-    if (typeof updateProfileLink === 'function') updateProfileLink();
 }
 
-// Auto-inject navigation when script loads
+function handleLogout() {
+    if (window.Auth) {
+        Auth.logout('/api/user/logout');
+    }
+    window.location.href = '/';
+}
+
+function refreshNavAuth() {
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+    
+    const loggedIn = isLoggedIn();
+    const loginBtn = document.getElementById('login-btn');
+    const userMenu = document.getElementById('user-menu-container');
+    
+    if (loggedIn && !userMenu) {
+        nav.innerHTML = nav.innerHTML.replace(
+            /<button id="login-btn"[^>]*>[\s\S]*?<\/button>/,
+            `<div class="relative ml-2" id="user-menu-container">
+                <button id="user-menu-btn" class="flex items-center space-x-1 px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition">
+                    <i class="fas fa-user-circle mr-1"></i>
+                    <span id="user-menu-name">${getDisplayName()}</span>
+                    <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                </button>
+                <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-xl z-50">
+                    <a href="/profile" class="block px-4 py-3 text-gray-300 hover:bg-party-dark hover:text-party-accent transition rounded-t-lg">
+                        <i class="fas fa-user mr-2"></i>Profile
+                    </a>
+                    <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-red-400 hover:bg-party-dark hover:text-red-300 transition rounded-b-lg">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>`
+        );
+        setupUserMenu();
+    } else if (!loggedIn && !loginBtn) {
+        nav.innerHTML = nav.innerHTML.replace(
+            /<div class="relative ml-2" id="user-menu-container">[\s\S]*?<\/div>/,
+            `<button id="login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ml-2">
+                <i class="fas fa-sign-in-alt mr-1"></i>Login
+            </button>`
+        );
+    } else if (loggedIn && userMenu) {
+        const nameEl = document.getElementById('user-menu-name');
+        if (nameEl) nameEl.textContent = getDisplayName();
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        injectNavigation();
-        updateProfileLink();
-    });
+    document.addEventListener('DOMContentLoaded', injectNavigation);
 } else {
     injectNavigation();
-    updateProfileLink();
 }
 
-// Listen for auth changes from other tabs/windows
 window.addEventListener('storage', (e) => {
-    if (e.key === '_3p_auth' || e.key === 'authToken' || e.key === 'user') updateProfileLink();
+    if (e.key === '_3p_auth' || e.key === 'authToken') refreshNavAuth();
 });
 
-// Visitor tracking
 (function() {
     let sessionId = sessionStorage.getItem('visitor_session');
     if (!sessionId) {

@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 
-module.exports = function({ db, userAuth, getSettings }) {
+module.exports = function({ db, userAuth, getSettings, merit }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -85,10 +85,7 @@ module.exports = function({ db, userAuth, getSettings }) {
         db.prepare('UPDATE amplification_links SET click_count = click_count + 1 WHERE id = ?').run(link.id);
 
         if (link.creator_user_id) {
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'amplification', ?, ?, 'amplify', ?, ?)
-          `).run(link.creator_user_id, link.reward_points, link.id, `Amplification click: ${link.content_title || link.content_type}`, new Date().toISOString());
+          merit.awardMerit(link.creator_user_id, 'amplification', link.reward_points, link.id, 'amplify', `Amplification click: ${link.content_title || link.content_type}`);
         }
       }
 

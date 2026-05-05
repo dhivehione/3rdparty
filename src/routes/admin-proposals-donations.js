@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngageReferral, addTreasuryEntry }) {
+module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngageReferral, addTreasuryEntry, merit }) {
   router.post('/api/admin/proposals/:id/status', adminAuth, (req, res) => {
     const { status, feedback } = req.body;
     const proposalId = parseInt(req.params.id);
@@ -127,13 +127,7 @@ module.exports = function({ db, adminAuth, logActivity, getSettings, maybeEngage
           donationMerit = Math.round(s.donation_log_multiplier * Math.log(amountUsd + 1) / Math.log(5));
         }
         if (donationMerit > 0) {
-          const now = new Date().toISOString();
-          db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'donation_verified', ?, ?, 'donation', ?, ?)
-          `).run(verifiedUserId, donationMerit, donationId, 'Donation verified: ' + donation.amount + ' MVR', now);
-          db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-            .run(donationMerit, verifiedUserId);
+          merit.awardMerit(verifiedUserId, 'donation_verified', donationMerit, donationId, 'donation', 'Donation verified: ' + donation.amount + ' MVR');
           maybeEngageReferral(verifiedUserId);
         }
       }

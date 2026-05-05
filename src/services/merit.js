@@ -98,10 +98,7 @@ function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
           this.db.prepare("UPDATE proposal_stakes SET status = 'refunded', resolved_at = ? WHERE id = ?")
             .run(new Date().toISOString(), stake.id);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_refund', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, stake.stake_amount, proposalId, 'Proposal stake refunded', new Date().toISOString());
+          awardMerit.call(this, stake.user_id, 'stake_refund', stake.stake_amount, proposalId, 'proposal', 'Proposal stake refunded');
         }
       });
     } else if (supportPct < 10 && supportPct > 0) {
@@ -122,10 +119,7 @@ function processProposalStakes(proposalId, yesVotes, noVotes, totalVotes) {
           this.db.prepare("UPDATE proposal_stakes SET status = 'forfeited', resolved_at = ? WHERE id = ?")
             .run(new Date().toISOString(), stake.id);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'stake_penalty', ?, ?, 'proposal', ?, ?)
-          `).run(stake.user_id, -penalty, proposalId, `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`, new Date().toISOString());
+          awardMerit.call(this, stake.user_id, 'stake_penalty', -penalty, proposalId, 'proposal', `Frivolous proposal penalty (${Math.round(qualityRatio * 100)}% of stake)`);
         }
       });
     }
@@ -144,6 +138,22 @@ function getRoleStipend(role) {
     advisory: settings.stipend_advisory
   };
   return map[role] || 0;
+}
+
+function awardMerit(userId, eventType, points, referenceId, referenceType, description) {
+  if (!userId || points === undefined || points === null) return;
+  const now = new Date().toISOString();
+  const safeRefId = referenceId || null;
+  const safeRefType = referenceType || null;
+  const safeDesc = description || '';
+
+  this.db.prepare(`
+    INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(userId, eventType, points, safeRefId, safeRefType, safeDesc, now);
+
+  this.db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
+    .run(points, userId);
 }
 
 function processMonthlyStipends() {
@@ -176,10 +186,7 @@ function processMonthlyStipends() {
             VALUES (?, ?, ?, ?, ?, ?)
           `).run(term.user_id, term.position_id, year, month, stipendAmount, awardedAt);
 
-          this.db.prepare(`
-            INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-            VALUES (?, 'leadership_stipend', ?, ?, 'stipend', ?, ?)
-          `).run(term.user_id, stipendAmount, term.position_id, `${term.position_title} stipend (${month}/${year})`, awardedAt);
+          awardMerit.call(this, term.user_id, 'leadership_stipend', stipendAmount, term.position_id, 'stipend', `${term.position_title} stipend (${month}/${year})`);
 
           this.logActivity('stipend_awarded', term.user_id, term.position_id, { amount: stipendAmount, period: `${month}/${year}` }, {});
         }
@@ -207,5 +214,6 @@ module.exports = function({ db, getSettings, logActivity }) {
     calculateStakeAmount: calculateStakeAmount.bind(ctx),
     processProposalStakes: processProposalStakes.bind(ctx),
     processMonthlyStipends: processMonthlyStipends.bind(ctx),
+    awardMerit: awardMerit.bind(ctx),
   };
 };

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 
-module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance }) {
+module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit }) {
   const { sendSMS } = require('../../services/sms');
 
   // POST /api/verify-otp — Verify OTP code to activate account
@@ -66,8 +66,7 @@ module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generate
             const basePoints = getReferralPoints(inviteCount + 1, false);
             db.prepare(`UPDATE referrals SET referred_id = ?, status = 'joined', base_reward_given = ?, referred_joined_at = ? WHERE id = ?`)
               .run(user.id, basePoints, now, pendingReferral.id);
-            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-              .run(basePoints, pendingReferral.referrer_id);
+            merit.awardMerit(pendingReferral.referrer_id, 'referral_base', basePoints, user.id, 'referral', `Referred member verified (${details.relation || 'member'})`);
           }
         } catch (e) {}
       }
