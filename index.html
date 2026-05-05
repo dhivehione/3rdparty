@@ -36,6 +36,7 @@
       gtag('config', 'G-0PED1M435Y');
     </script>
     <script src="nav.js"></script>
+    <script src="/js/utils.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -399,9 +400,9 @@
                         <div class="bg-party-card/50 rounded-lg p-3">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="font-bold text-party-accent text-sm">${p.nickname}</span>
-                                <span class="text-gray-500 text-xs">${formatTime(p.timestamp)}</span>
+                                <span class="text-gray-500 text-xs">${Utils.formatTime(p.timestamp)}</span>
                             </div>
-                            <p class="text-gray-300 text-sm">${escapeHtml(p.message).substring(0, 100)}${p.message.length > 100 ? '...' : ''}</p>
+                            <p class="text-gray-300 text-sm">${Utils.escapeHtml(p.message).substring(0, 100)}${p.message.length > 100 ? '...' : ''}</p>
                         </div>
                     `).join('');
                 } else {
@@ -419,9 +420,9 @@
                         <div class="bg-party-card/50 rounded-lg p-3">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="font-bold text-party-accent text-sm">Article ${v.article_number}</span>
-                                <span class="text-gray-500 text-xs">${formatTime(v.voted_at)}</span>
+                                <span class="text-gray-500 text-xs">${Utils.formatTime(v.voted_at)}</span>
                             </div>
-                            <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${escapeHtml(v.article_title || '')}</p>
+                            <p class="text-gray-300 text-sm">${v.vote === 'support' ? '<span class="text-green-400">Supported</span>' : v.vote === 'oppose' ? '<span class="text-red-400">Opposed</span>' : '<span class="text-gray-400">Abstained</span>'} ${Utils.escapeHtml(v.article_title || '')}</p>
                         </div>
                     `).join('');
                 } else {
@@ -430,23 +431,6 @@
             } catch (e) {
                 document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Could not load votes</div>';
             }
-        }
-        
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            const now = new Date();
-            const diff = now - date;
-            if (diff < 60000) return 'Just now';
-            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-            return Math.floor(diff / 86400000) + 'd ago';
-        }
-        
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
         
         loadRecentActivity();

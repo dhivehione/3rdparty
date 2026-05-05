@@ -34,6 +34,9 @@
         @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .post-new { animation: slideIn 0.3s ease-out; }
     </style>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -200,28 +203,11 @@
 
         // ── Auth detection ──
         function detectAuth() {
-            try {
-                const tokenKey = localStorage.getItem('auth_token');
-                if (!tokenKey) {
-                    const stored = localStorage.getItem('user');
-                    if (stored) {
-                        const user = JSON.parse(stored);
-                        authToken = user.auth_token || user.token || null;
-                        isLoggedIn = !!authToken;
-                        loggedInName = user.name || user.username || '';
-                    }
-                } else {
-                    authToken = tokenKey;
-                    isLoggedIn = true;
-                    const stored = localStorage.getItem('user');
-                    if (stored) {
-                        const user = JSON.parse(stored);
-                        loggedInName = user.name || user.username || '';
-                    }
-                }
-            } catch(e) {}
-
+            authToken = Auth.getToken();
+            isLoggedIn = !!authToken;
             if (isLoggedIn) {
+                var user = Auth.getUser();
+                loggedInName = (user && (user.name || user.username)) || '';
                 document.getElementById('nicknameField').classList.add('hidden');
                 document.getElementById('userStatusBar').classList.remove('hidden');
                 document.getElementById('loggedInName').textContent = loggedInName || 'Member';
@@ -230,11 +216,7 @@
         }
 
         function getHeaders() {
-            const headers = { 'Content-Type': 'application/json' };
-            if (authToken) {
-                headers['Authorization'] = 'Bearer ' + authToken;
-            }
-            return headers;
+            return Auth.getApiHeaders();
         }
 
         // ── Stats ──
@@ -271,10 +253,10 @@
                         el.className = 'bg-party-dark/50 rounded-lg p-3 border border-green-600/30 text-sm';
                         el.innerHTML = `
                             <div class="flex items-start justify-between mb-1">
-                                <span class="font-bold text-green-400 text-xs">${escapeHtml(post.nickname)}</span>
-                                <span class="text-gray-600 text-xs">${formatTime(post.timestamp)}</span>
+                                <span class="font-bold text-green-400 text-xs">${Utils.escapeHtml(post.nickname)}</span>
+                                <span class="text-gray-600 text-xs">${Utils.formatTime(post.timestamp)}</span>
                             </div>
-                            <p class="text-gray-300 text-xs">${escapeHtml(post.message)}</p>
+                            <p class="text-gray-300 text-xs">${Utils.escapeHtml(post.message)}</p>
                         `;
                         container.appendChild(el);
                     });
@@ -375,13 +357,13 @@
                     <!-- Content column -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
-                            <span class="font-bold text-party-accent text-sm">${escapeHtml(displayName)}</span>
+                            <span class="font-bold text-party-accent text-sm">${Utils.escapeHtml(displayName)}</span>
                             ${hasMerit ? `<span class="text-xs bg-party-accent/20 text-party-accent px-1.5 py-0.5 rounded">★ ${post.user_merit}</span>` : ''}
                             ${post.user_id ? '<span class="text-xs text-green-500"><i class="fas fa-check-circle"></i> Member</span>' : ''}
-                            <span class="text-gray-600 text-xs">· ${formatTime(post.timestamp)}</span>
+                            <span class="text-gray-600 text-xs">· ${Utils.formatTime(post.timestamp)}</span>
                             ${post.is_flagged ? '<span class="text-xs text-yellow-500"><i class="fas fa-flag"></i></span>' : ''}
                         </div>
-                        <div class="text-gray-300 text-sm whitespace-pre-wrap break-words">${escapeHtml(post.message)}</div>
+                        <div class="text-gray-300 text-sm whitespace-pre-wrap break-words">${Utils.escapeHtml(post.message)}</div>
                         <div class="flex items-center gap-4 mt-2 text-xs">
                             <button onclick="toggleReplyForm(${post.id})" class="text-gray-500 hover:text-party-accent flex items-center gap-1">
                                 <i class="fas fa-reply"></i> Reply
@@ -515,14 +497,8 @@
         }
 
         function getMyUserId() {
-            try {
-                const stored = localStorage.getItem('user');
-                if (stored) {
-                    const user = JSON.parse(stored);
-                    return user.id || null;
-                }
-            } catch(e) {}
-            return null;
+            var user = Auth.getUser();
+            return (user && user.id) || null;
         }
 
         // ── Flag / Report ──
@@ -650,26 +626,6 @@
         document.getElementById('message').addEventListener('input', function() {
             document.getElementById('charCount').textContent = this.value.length;
         });
-
-        // ── Helpers ──
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatTime(timestamp) {
-            if (!timestamp) return '';
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000);
-            if (diff < 60) return 'just now';
-            if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-            if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-            if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
-            return date.toLocaleDateString();
-        }
 
         // ── Init ──
         detectAuth();

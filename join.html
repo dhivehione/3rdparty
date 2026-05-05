@@ -35,6 +35,9 @@
       gtag('config', 'G-0PED1M435Y');
     </script>
     <script src="nav.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -471,8 +474,8 @@
                 if (result.success) {
                     // Auto-login: save token and user data
                     if (result.token) {
-                        localStorage.setItem('token', result.token);
-                        localStorage.setItem('user', JSON.stringify(result.user));
+                        Auth.setToken(result.token);
+                        Auth.setUser(result.user);
                         window.location.href = '/join-success';
                         return;
                     }
@@ -547,16 +550,16 @@
 
                 if (result.success) {
                     if (result.token) {
-                        localStorage.setItem('token', result.token);
+                        Auth.setToken(result.token);
                         // Get user data from profile
                         try {
                             const profileRes = await fetch('/api/user/profile', {
-                                headers: { 'Authorization': 'Bearer ' + result.token }
+                                headers: Auth.getApiHeaders()
                             });
                             if (profileRes.ok) {
                                 const profileData = await profileRes.json();
                                 if (profileData.user) {
-                                    localStorage.setItem('user', JSON.stringify(profileData.user));
+                                    Auth.setUser(profileData.user);
                                 }
                             }
                         } catch(e) {}

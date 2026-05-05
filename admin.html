@@ -33,6 +33,9 @@
 
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
     
@@ -232,12 +235,20 @@
                             <i class="fas fa-gavel text-yellow-400 mr-3"></i>
                             Wall Moderation
                         </h2>
-                        <button onclick="loadFlaggedPosts()" class="text-party-accent hover:underline text-sm">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <span id="postCount" class="text-gray-500 text-sm"></span>
+                            <button onclick="loadAllPosts()" class="text-party-accent hover:underline text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
                     </div>
-                    <div id="flaggedPostsList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">Loading flagged posts...</div>
+                    <div id="allPostsList" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">Loading all posts...</div>
+                    </div>
+                    <div id="loadMoreContainer" class="text-center mt-4 hidden">
+                        <button onclick="loadMorePosts()" class="bg-party-card border border-gray-600 text-gray-300 px-6 py-2 rounded-xl hover:bg-gray-700 text-sm">
+                            <i class="fas fa-chevron-down mr-1"></i>Load More
+                        </button>
                     </div>
                 </div>
 
@@ -618,7 +629,7 @@
     </div>
 
     <script>
-        let authToken = localStorage.getItem('3dparty_admin_token');
+        let authToken = Auth.getToken();
         let allSignups = [];
         let currentPage = 1;
         let totalPages = 1;
@@ -643,7 +654,7 @@
                 
                 if (result.success) {
                     authToken = result.token;
-                    localStorage.setItem('3dparty_admin_token', authToken);
+                    Auth.setToken(authToken);
                     showDashboard();
                 } else {
                     document.getElementById('loginError').classList.remove('hidden');
@@ -666,7 +677,7 @@
         }
 
         function logout() {
-            localStorage.removeItem('3dparty_admin_token');
+            Auth.clearToken();
             authToken = null;
             document.getElementById('dashboard').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
@@ -676,7 +687,7 @@
         async function refreshData() {
             try {
                 const response = await fetch(`/api/signups?page=${currentPage}&limit=${PAGE_SIZE}`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
                 
                 if (!response.ok) {
@@ -805,7 +816,7 @@
         async function exportToCSV() {
             try {
                 const response = await fetch('/api/signups?limit=999999', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
                 const result = await response.json();
                 if (!result.success) {
@@ -851,10 +862,7 @@
             try {
                 const response = await fetch('/api/unregister', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ user_id: userId, justification: justification.trim() })
                 });
                 
@@ -887,10 +895,7 @@
             try {
                 const response = await fetch('/api/reregister', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ user_id: userId })
                 });
                 
@@ -1000,11 +1005,11 @@
         async function loadLeadershipData() {
             try {
                 const [settingsRes, posRes, appRes, termsRes, sopsRes] = await Promise.all([
-                    fetch('/api/leadership/settings', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/positions', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/applications', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/terms', { headers: { 'Authorization': `Bearer ${authToken}` } }),
-                    fetch('/api/leadership/sops', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                    fetch('/api/leadership/settings', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/leadership/positions', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/leadership/applications', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/leadership/terms', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/leadership/sops', { headers: Auth.getApiHeaders() })
                 ]);
                 
                 const settings = await settingsRes.json();
@@ -1224,7 +1229,7 @@
             try {
                 const res = await fetch('/api/leadership/settings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
@@ -1245,7 +1250,7 @@
             try {
                 const res = await fetch('/api/leadership/applications/' + id + '/status', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ status })
                 });
                 const result = await res.json();
@@ -1266,7 +1271,7 @@
             try {
                 const res = await fetch('/api/leadership/terms/' + id + '/end', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ reason: 'Ended by admin' })
                 });
                 const result = await res.json();
@@ -1341,7 +1346,7 @@
 
             try {
                 const res = await fetch('/api/admin/proposals', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
 
@@ -1350,12 +1355,12 @@
                         <div class="bg-party-card border border-gray-700 p-4 rounded-xl">
                             <div class="flex justify-between items-start mb-2">
                                 <div>
-                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${escapeHtml(p.title)}</h3>
-                                    <span class="text-xs text-gray-400">${escapeHtml(p.category)} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
+                                    <h3 class="font-bold ${p.status === 'approved' ? 'text-green-400' : p.status === 'rejected' ? 'text-red-400' : 'text-white'}">${Utils.escapeHtml(p.title)}</h3>
+                                    <span class="text-xs text-gray-400">${Utils.escapeHtml(p.category)} | ${p.status} | ${new Date(p.created_at).toLocaleDateString()}</span>
                                 </div>
                                 <span class="text-xs px-2 py-1 rounded ${getStatusColor(p.status)}">${p.status}</span>
                             </div>
-                            <p class="text-gray-400 text-sm mb-3">${escapeHtml(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</p>
+                            <p class="text-gray-400 text-sm mb-3">${Utils.escapeHtml(p.description.substring(0, 150))}${p.description.length > 150 ? '...' : ''}</p>
                             <div class="flex flex-wrap gap-2">
                                 <button onclick="openEditProposal(${p.id}, '${encodeURIComponent(p.title)}', '${encodeURIComponent(p.description)}', '${encodeURIComponent(p.category)}')" class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded text-sm hover:bg-blue-500/30">
                                     <i class="fas fa-edit mr-1"></i>Edit
@@ -1395,22 +1400,13 @@
             }
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         async function updateProposalStatus(proposalId, status) {
             const feedback = status === 'rejected' ? prompt('Reason for rejection:') : '';
 
             try {
                 const res = await fetch(`/api/admin/proposals/${proposalId}/status`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ status, feedback })
                 });
                 const data = await res.json();
@@ -1462,10 +1458,7 @@
             try {
                 const res = await fetch(`/api/admin/proposals/${id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ title, description, category })
                 });
                 const data = await res.json();
@@ -1490,7 +1483,7 @@
             
             try {
                 const res = await fetch('/api/admin/donations/pending', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
                 
@@ -1532,7 +1525,7 @@
             try {
                 const res = await fetch(`/api/admin/donations/${donationId}/verify`, {
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
                 
@@ -1555,10 +1548,7 @@
             try {
                 const res = await fetch(`/api/admin/donations/${donationId}/reject`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ reason })
                 });
                 const data = await res.json();
@@ -1578,7 +1568,7 @@
             tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-500"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
             try {
                 const [ledgerRes, summaryRes] = await Promise.all([
-                    fetch('/api/admin/treasury/ledger', { headers: { 'Authorization': 'Bearer ' + authToken } }),
+                    fetch('/api/admin/treasury/ledger', { headers: Auth.getApiHeaders() }),
                     fetch('/api/treasury/summary')
                 ]);
                 const ledgerData = await ledgerRes.json();
@@ -1599,12 +1589,12 @@
                             : '<span class="px-2 py-0.5 bg-red-400/10 text-red-400 rounded text-xs">Expense</span>';
                         const amountClass = isDonation ? 'text-green-400' : 'text-red-400';
                         const amountPrefix = isDonation ? '+' : '-';
-                        const source = tx.donor_nickname ? escapeHtml(tx.donor_nickname) : (tx.verified_by || tx.source_ref_type || '—');
+                        const source = tx.donor_nickname ? Utils.escapeHtml(tx.donor_nickname) : (tx.verified_by || tx.source_ref_type || '—');
 
                         return '<tr class="border-b border-gray-800 hover:bg-white/5 transition">' +
                             '<td class="p-3 text-gray-400 whitespace-nowrap">' + date + '</td>' +
                             '<td class="p-3">' + typeBadge + '</td>' +
-                            '<td class="p-3">' + escapeHtml(tx.description) + '</td>' +
+                            '<td class="p-3">' + Utils.escapeHtml(tx.description) + '</td>' +
                             '<td class="p-3 text-right font-mono ' + amountClass + '">' + amountPrefix + tx.amount.toLocaleString() + '</td>' +
                             '<td class="p-3 text-gray-500 text-xs">' + source + '</td>' +
                             '</tr>';
@@ -1639,10 +1629,7 @@
             try {
                 const res = await fetch('/api/admin/treasury/expenditure', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ amount, description, category })
                 });
                 const data = await res.json();
@@ -1666,7 +1653,7 @@
 
             try {
                 const res = await fetch('/api/admin/events', {
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
 
@@ -1742,10 +1729,7 @@
             try {
                 const res = await fetch(url, {
                     method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ title, description, event_date: eventDate, location })
                 });
                 const data = await res.json();
@@ -1767,7 +1751,7 @@
             try {
                 const res = await fetch(`/api/admin/events/${id}`, {
                     method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + authToken }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
 
@@ -1787,7 +1771,7 @@ let systemSettings = {};
 async function loadSystemSettings() {
     try {
         const res = await fetch('/api/system-settings', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
+            headers: Auth.getApiHeaders()
         });
         const data = await res.json();
         if (data.success) {
@@ -2188,6 +2172,17 @@ function renderSystemSettings() {
                 </div>
             </div>
 
+            <!-- AI Law Draft Prompt -->
+            <div class="bg-party-card p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-bold mb-4 text-party-accent"><i class="fas fa-robot mr-2"></i>AI Law Draft Prompt</h3>
+                <div>
+                    <label class="block text-sm font-medium mb-2">System Prompt</label>
+                    <textarea id="ss_ai_law_draft_prompt" rows="12"
+                              class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent font-mono text-sm">${(systemSettings.ai_law_draft_prompt || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                    <p class="text-xs text-gray-500 mt-1">This prompt is sent to the AI model when generating law drafts. Changes take effect immediately.</p>
+                </div>
+            </div>
+
             <div class="flex gap-4">
                 <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition">
                     <i class="fas fa-save mr-2"></i>Save All Settings
@@ -2260,13 +2255,14 @@ async function saveSystemSettings(e) {
         sms_otp_length: parseInt(document.getElementById('ss_sms_otp_length').value),
         sms_otp_expiry_minutes: parseInt(document.getElementById('ss_sms_otp_expiry_minutes').value),
         sms_twilio_phone_number: document.getElementById('ss_sms_twilio_phone_number').value,
-        sms_webhook_url: document.getElementById('ss_sms_webhook_url').value
+        sms_webhook_url: document.getElementById('ss_sms_webhook_url').value,
+        ai_law_draft_prompt: document.getElementById('ss_ai_law_draft_prompt').value
     };
     
     try {
         const res = await fetch('/api/system-settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            headers: Auth.getApiHeaders(),
             body: JSON.stringify(data)
         });
         const result = await res.json();
@@ -2331,13 +2327,14 @@ async function resetSystemSettings() {
         sms_otp_length: 6,
         sms_otp_expiry_minutes: 10,
         sms_twilio_phone_number: '',
-        sms_webhook_url: ''
+        sms_webhook_url: '',
+        ai_law_draft_prompt: `You are a legal drafting assistant for the Maldives. Given a seed idea, produce a well-structured draft using proper legal formatting.\n\nIMPORTANT — First, determine the appropriate scope:\n- "law" - Broad, multi-section legislation that establishes a new regulatory framework\n- "regulation" - Specific rules under an existing law, narrower in scope\n- "clause" - A single provision or amendment to an existing law\n\nThe FIRST LINE of your response MUST be: **Draft Type:** law (or regulation, or clause)\n\nThen structure your response with these sections (each required section MUST start with ## ):\n\n## Executive Summary\nA concise, plain-language summary of the proposal in 3-5 bullet points, written for citizens who won't read the full legal text. Summarize: (1) What problem this solves, (2) What the law proposes to do, (3) Who is affected, (4) Key obligations/rights created, (5) How it will be enforced. Use simple language — no legal jargon.\n\n## Title\nA clear, concise title for the proposal.\n\n## Preamble\nA brief statement of purpose and rationale (2-3 sentences).\n\n## Definitions\nKey terms defined precisely (if applicable).\n\n## Provisions\nNumbered sections. Each section should have:\n- A clear heading\n- Specific requirements, prohibitions, or permissions\n- Enforcement mechanisms where appropriate\n\n## Penalties / Enforcement\nConsequences for non-compliance (if applicable).\n\n## Commencement\nWhen the law takes effect.\n\nDraft in a formal legal style. Use "shall" for obligations, "may" for permissions. Be specific and enforceable. Keep the draft proportional to the scope — a clause should be a few paragraphs, a law can be several pages. Do NOT include placeholder text or markdown formatting instructions in the output.`
     };
     
     try {
         const res = await fetch('/api/system-settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            headers: Auth.getApiHeaders(),
             body: JSON.stringify(defaults)
         });
         const result = await res.json();
@@ -2352,53 +2349,130 @@ async function resetSystemSettings() {
 }
 
 // ── Wall Moderation ──
-async function loadFlaggedPosts() {
-    const container = document.getElementById('flaggedPostsList');
+let allPostsOffset = 0;
+const ALL_POSTS_LIMIT = 50;
+
+async function loadAllPosts() {
+    allPostsOffset = 0;
+    const container = document.getElementById('allPostsList');
+    const loadMoreBtn = document.getElementById('loadMoreContainer');
+    container.innerHTML = '<div class="text-center py-8 text-gray-500">Loading all posts...</div>';
+    loadMoreBtn.classList.add('hidden');
     try {
-        const res = await fetch('/api/admin/wall/flagged', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
+        const res = await fetch(`/api/admin/wall/all?limit=${ALL_POSTS_LIMIT}&offset=0`, {
+            headers: Auth.getApiHeaders()
         });
         const data = await res.json();
-        if (data.success && data.posts && data.posts.length > 0) {
-            container.innerHTML = data.posts.map(p => `
-                <div class="bg-party-card rounded-xl p-5 border ${p.is_hidden ? 'border-red-600/50' : 'border-yellow-600/50'}">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-party-accent">${escapeHtml(p.display_name || p.nickname)}</span>
-                            ${p.user_id ? '<span class="text-xs text-green-400">Member</span>' : '<span class="text-xs text-gray-500">Guest</span>'}
-                            ${p.is_hidden ? '<span class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded">Hidden</span>' : ''}
-                            <span class="text-xs text-yellow-500"><i class="fas fa-flag mr-1"></i>${p.flag_count} flags</span>
-                        </div>
-                        <span class="text-gray-600 text-xs">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
-                    </div>
-                    <p class="text-gray-300 text-sm mb-3 whitespace-pre-wrap">${escapeHtml(p.message || '')}</p>
-                    ${p.latest_flag_reason ? `<p class="text-yellow-400/70 text-xs mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>${escapeHtml(p.latest_flag_reason)}</p>` : ''}
-                    <div class="flex gap-2 text-xs">
-                        ${!p.is_hidden ? `<button onclick="hideWallPost(${p.id})" class="bg-red-600/80 text-white px-3 py-1.5 rounded hover:bg-red-700">Hide</button>` : ''}
-                        ${p.is_flagged || p.is_hidden ? `<button onclick="approveWallPost(${p.id})" class="bg-green-600/80 text-white px-3 py-1.5 rounded hover:bg-green-700">Approve</button>` : ''}
-                        <button onclick="deleteWallPost(${p.id})" class="bg-gray-600/80 text-white px-3 py-1.5 rounded hover:bg-gray-700">Delete</button>
-                    </div>
-                </div>
-            `).join('');
+        if (data.success) {
+            renderAllPosts(data.posts, container);
+            allPostsOffset = data.posts.length;
+            document.getElementById('postCount').textContent = `${data.total} total posts`;
+            if (allPostsOffset < data.total) {
+                loadMoreBtn.classList.remove('hidden');
+            }
         } else {
-            container.innerHTML = '<div class="text-center py-8 text-gray-500 bg-party-card rounded-xl border border-gray-700"><div class="text-3xl mb-3">✅</div><p>No flagged posts to review.</p></div>';
+            container.innerHTML = '<div class="text-center py-8 text-gray-500">No posts found.</div>';
         }
     } catch (err) {
-        container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading flagged posts.</div>';
+        container.innerHTML = '<div class="text-center py-8 text-red-400">Error loading posts.</div>';
+    }
+}
+
+async function loadMorePosts() {
+    const container = document.getElementById('allPostsList');
+    const loadMoreBtn = document.getElementById('loadMoreContainer');
+    try {
+        const res = await fetch(`/api/admin/wall/all?limit=${ALL_POSTS_LIMIT}&offset=${allPostsOffset}`, {
+            headers: Auth.getApiHeaders()
+        });
+        const data = await res.json();
+        if (data.success && data.posts.length > 0) {
+            renderAllPosts(data.posts, container, true);
+            allPostsOffset += data.posts.length;
+            if (allPostsOffset >= data.total) {
+                loadMoreBtn.classList.add('hidden');
+            }
+        } else {
+            loadMoreBtn.classList.add('hidden');
+        }
+    } catch (err) {
+        alert('Error loading more posts');
+    }
+}
+
+function renderAllPosts(posts, container, append = false) {
+    const html = posts.map(p => {
+        const statusBadges = [];
+        if (p.is_hidden) statusBadges.push('<span class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded">Hidden</span>');
+        if (p.is_flagged) statusBadges.push(`<span class="text-xs bg-yellow-600/30 text-yellow-400 px-2 py-0.5 rounded"><i class="fas fa-flag mr-1"></i>Flagged</span>`);
+        if (!p.is_flagged && !p.is_hidden) statusBadges.push('<span class="text-xs bg-green-600/30 text-green-400 px-2 py-0.5 rounded">Published</span>');
+
+        const actions = [];
+        if (!p.is_hidden) {
+            actions.push(`<button onclick="hideWallPost(${p.id})" class="bg-red-600/80 text-white px-3 py-1.5 rounded hover:bg-red-700">Unpublish</button>`);
+        } else {
+            actions.push(`<button onclick="unhideWallPost(${p.id})" class="bg-green-600/80 text-white px-3 py-1.5 rounded hover:bg-green-700">Publish</button>`);
+        }
+        if (p.is_flagged) {
+            actions.push(`<button onclick="approveWallPost(${p.id})" class="bg-blue-600/80 text-white px-3 py-1.5 rounded hover:bg-blue-700">Dismiss Flag</button>`);
+        }
+        actions.push(`<button onclick="deleteWallPost(${p.id})" class="bg-gray-600/80 text-white px-3 py-1.5 rounded hover:bg-gray-700">Delete</button>`);
+
+        return `
+            <div class="bg-party-card rounded-xl p-5 border border-gray-700">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-party-accent">${Utils.escapeHtml(p.display_name || p.nickname)}</span>
+                        ${p.user_id ? '<span class="text-xs text-green-400">Member</span>' : '<span class="text-xs text-gray-500">Guest</span>'}
+                        ${statusBadges.join(' ')}
+                        ${p.flag_count > 0 ? `<span class="text-xs text-yellow-500"><i class="fas fa-flag mr-1"></i>${p.flag_count} flags</span>` : ''}
+                    </div>
+                    <span class="text-gray-600 text-xs whitespace-nowrap ml-2">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
+                </div>
+                <p class="text-gray-300 text-sm mb-3 whitespace-pre-wrap">${Utils.escapeHtml(p.message || '')}</p>
+                ${p.latest_flag_reason ? `<p class="text-yellow-400/70 text-xs mb-3"><i class="fas fa-exclamation-triangle mr-1"></i>${Utils.escapeHtml(p.latest_flag_reason)}</p>` : ''}
+                <div class="flex gap-2 text-xs flex-wrap">
+                    ${actions.join(' ')}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (append) {
+        container.insertAdjacentHTML('beforeend', html);
+    } else {
+        container.innerHTML = html;
     }
 }
 
 async function hideWallPost(id) {
-    if (!confirm('Hide this post? It will no longer be visible on the wall.')) return;
+    if (!confirm('Unpublish this post? It will no longer be visible on the wall.')) return;
     try {
         const res = await fetch(`/api/admin/wall/${id}/hide`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+            headers: Auth.getApiHeaders()
         });
         const data = await res.json();
         if (data.success) {
             alert(data.message);
-            loadFlaggedPosts();
+            loadAllPosts();
+        } else {
+            alert(data.error);
+        }
+    } catch (err) { alert('Error'); }
+}
+
+async function unhideWallPost(id) {
+    if (!confirm('Publish this post? It will become visible on the wall.')) return;
+    try {
+        const res = await fetch(`/api/admin/wall/${id}/unhide`, {
+            method: 'POST',
+            headers: Auth.getApiHeaders()
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            loadAllPosts();
         } else {
             alert(data.error);
         }
@@ -2406,16 +2480,16 @@ async function hideWallPost(id) {
 }
 
 async function approveWallPost(id) {
-    if (!confirm('Approve this post? It will be un-flagged and visible again.')) return;
+    if (!confirm('Dismiss flag on this post? It will remain visible on the wall.')) return;
     try {
         const res = await fetch(`/api/admin/wall/${id}/approve`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+            headers: Auth.getApiHeaders()
         });
         const data = await res.json();
         if (data.success) {
             alert(data.message);
-            loadFlaggedPosts();
+            loadAllPosts();
         } else {
             alert(data.error);
         }
@@ -2427,12 +2501,12 @@ async function deleteWallPost(id) {
     try {
         const res = await fetch(`/api/admin/wall/${id}/delete`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+            headers: Auth.getApiHeaders()
         });
         const data = await res.json();
         if (data.success) {
             alert(data.message);
-            loadFlaggedPosts();
+            loadAllPosts();
         } else {
             alert(data.error);
         }
@@ -2444,7 +2518,7 @@ async function deleteWallPost(id) {
             loadProposalsAdmin();
             loadPendingDonations();
             loadTreasuryLedger();
-            loadFlaggedPosts();
+            loadAllPosts();
             loadAdminEvents();
         }, 1000);
     </script>

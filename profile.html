@@ -52,14 +52,14 @@
                 });
                 const data = await res.json();
                 if (data.success && data.token) {
-                    localStorage.setItem('authToken', data.token);
+                    Auth.setToken(data.token);
                     window.location.reload();
                 } else { alert(data.error || 'Login failed'); }
             } catch (e) { alert('Error logging in'); }
         }
 
         function logout() {
-            localStorage.removeItem('authToken');
+            Auth.clearToken();
             window.location.reload();
         }
     </script>
@@ -73,6 +73,9 @@
       gtag('config', 'G-0PED1M435Y');
     </script>
     <script src="nav.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
 </head>
 <body class="bg-party-dark text-white min-h-screen">
 
@@ -485,14 +488,8 @@
     </div>
 
     <script>
-        let authToken = localStorage.getItem('authToken');
+        let authToken = Auth.getToken();
         
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
         // Toggle donation amount field
         document.addEventListener('DOMContentLoaded', function() {
             const donationCheckbox = document.getElementById('enrollTypeDonation');
@@ -529,9 +526,9 @@
                 const data = await res.json();
                 if (data.success) {
                     authToken = data.token;
-                    localStorage.setItem('authToken', authToken);
-                    localStorage.setItem('userPhone', data.user.phone);
-                    localStorage.setItem('3dparty_last_login', new Date().toISOString());
+                    Auth.setToken(authToken);
+                    Auth.setPhone(data.user.phone);
+                    Auth.markLogin();
                     if (typeof updateProfileLink === 'function') updateProfileLink();
                     showProfile();
                 } else {
@@ -543,18 +540,8 @@
         }
         
         async function logout() {
-            const phone = localStorage.getItem('userPhone');
-            if (phone) {
-                await fetch('/api/user/logout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone })
-                });
-            }
+            Auth.logout('/api/user/logout');
             authToken = null;
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userPhone');
-            localStorage.setItem('3dparty_last_login', new Date().toISOString());
             if (typeof updateProfileLink === 'function') updateProfileLink();
             document.getElementById('loginSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
@@ -578,7 +565,7 @@
             
             try {
                 const res = await fetch('/api/user/profile', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
                 
                 const data = await res.json();
@@ -647,8 +634,8 @@
                     return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
                             <div>
-                                <span class="font-bold">${escapeHtml(v.law_name)}</span>
-                                <span class="text-gray-500 text-sm ml-2">${escapeHtml(v.category_name || '')}</span>
+                                <span class="font-bold">${Utils.escapeHtml(v.law_name)}</span>
+                                <span class="text-gray-500 text-sm ml-2">${Utils.escapeHtml(v.category_name || '')}</span>
                             </div>
                             <span class="px-2 py-1 rounded text-sm font-bold ${voteClass}">${v.vote}</span>
                         </div>
@@ -669,9 +656,9 @@
                     return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
                             <div>
-                                <span class="text-party-accent text-sm">${escapeHtml(v.law_name)}</span>
+                                <span class="text-party-accent text-sm">${Utils.escapeHtml(v.law_name)}</span>
                                 <span class="text-gray-400 text-sm">Article ${v.article_number}</span>
-                                <span class="text-gray-500 text-sm">${escapeHtml(v.clause_label)}</span>
+                                <span class="text-gray-500 text-sm">${Utils.escapeHtml(v.clause_label)}</span>
                             </div>
                             <span class="px-2 py-1 rounded text-sm font-bold ${voteClass}">${v.vote}</span>
                         </div>
@@ -721,10 +708,7 @@
             try {
                 const res = await fetch('/api/user/profile', {
                     method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ username, name, email, island })
                 });
                 
@@ -766,7 +750,7 @@
             try {
                 const res = await fetch('/api/user/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ current_password: current, new_password: newPass })
                 });
                 const data = await res.json();
@@ -794,7 +778,7 @@
             if (!authToken) return;
             try {
                 const res = await fetch('/api/user/proposals', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
                 const container = document.getElementById('myProposalsContainer');
@@ -819,9 +803,9 @@
                     return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
                             <div>
-                                <span class="font-bold text-sm">${escapeHtml(p.title)}</span>
+                                <span class="font-bold text-sm">${Utils.escapeHtml(p.title)}</span>
                                 <span class="text-gray-500 text-xs ml-2">[${type}]</span>
-                                <span class="text-gray-500 text-xs ml-2">${escapeHtml(p.category || 'general')}</span>
+                                <span class="text-gray-500 text-xs ml-2">${Utils.escapeHtml(p.category || 'general')}</span>
                             </div>
                             <span class="px-2 py-1 rounded text-xs font-bold ${statusColor}">${p.status}</span>
                         </div>
@@ -839,7 +823,7 @@
             if (!authToken) return;
             try {
                 const res = await fetch('/api/user/activity-log', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
                 const data = await res.json();
                 const container = document.getElementById('activityLogContainer');
@@ -890,7 +874,7 @@
             try {
                 const [statusRes, profileRes] = await Promise.all([
                     fetch('/api/leadership/status'),
-                    fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                    fetch('/api/user/profile', { headers: Auth.getApiHeaders() })
                 ]);
                 
                 const status = await statusRes.json();
@@ -960,10 +944,7 @@
             try {
                 const res = await fetch('/api/leadership/apply', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({
                         position_id: parseInt(positionId),
                         application_text: applicationText
@@ -1022,10 +1003,7 @@
             try {
                 const res = await fetch('/api/enroll-family-friend', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -1061,7 +1039,7 @@
 
             try {
                 const res = await fetch('/api/referrals', {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
+                    headers: Auth.getApiHeaders()
                 });
 
                 const data = await res.json();
@@ -1142,10 +1120,7 @@
             try {
                 const res = await fetch('/api/enroll/lookup', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 
@@ -1173,7 +1148,7 @@
                         <label class="flex items-start space-x-3 cursor-pointer bg-party-card border border-gray-600 rounded-lg p-3 hover:border-party-accent transition directory-result-label" data-idx="${idx}">
                             <input type="checkbox" class="directory-checkbox mt-1 w-4 h-4 text-party-accent bg-gray-700 border-gray-600 rounded focus:ring-party-accent" data-idx="${idx}">
                             <div class="flex-1">
-                                <div class="font-bold text-sm">${escapeHtml(parts.join(', '))}</div>
+                                <div class="font-bold text-sm">${Utils.escapeHtml(parts.join(', '))}</div>
                             </div>
                         </label>
                     `;
@@ -1234,16 +1209,16 @@
                 console.log('[Render] displayParts:', displayParts, 'for entry:', e);
                 return `
                 <div class="bg-party-card border border-gray-600 rounded-lg p-4" id="pending-entry-${e.id}">
-                    <div class="font-bold text-white text-sm mb-3 pb-2 border-b border-gray-700">${escapeHtml(displayParts.join(', '))}</div>
+                    <div class="font-bold text-white text-sm mb-3 pb-2 border-b border-gray-700">${Utils.escapeHtml(displayParts.join(', '))}</div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Name</label>
-                            <input type="text" id="pend-name-${e.id}" value="${escapeHtml(e.name)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <input type="text" id="pend-name-${e.id}" value="${Utils.escapeHtml(e.name)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Phone</label>
                             ${e.phone ? `
-                            <input type="hidden" id="pend-phone-${e.id}" value="${escapeHtml(e.phone)}">
+                            <input type="hidden" id="pend-phone-${e.id}" value="${Utils.escapeHtml(e.phone)}">
                             <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
                             ` : `
                             <input type="tel" id="pend-phone-${e.id}" placeholder="7-digit (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
@@ -1251,14 +1226,14 @@
                         </div>
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">Island</label>
-                            <input type="text" id="pend-island-${e.id}" value="${escapeHtml(e.island)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <input type="text" id="pend-island-${e.id}" value="${Utils.escapeHtml(e.island)}" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         <div>
                             <label class="block text-gray-400 text-xs mb-1">NID</label>
                             ${e.nid ? `
-                            <input type="hidden" id="pend-nid-${e.id}" value="${escapeHtml(e.nid)}">
+                            <input type="hidden" id="pend-nid-${e.id}" value="${Utils.escapeHtml(e.nid)}">
                             <div class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-gray-500 text-sm italic">from directory records</div>
                             ` : `
                             <input type="text" id="pend-nid-${e.id}" placeholder="A123456 (optional)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
@@ -1365,10 +1340,7 @@
             try {
                 const res = await fetch('/api/enroll-family-friend', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify(payload)
                 });
 
