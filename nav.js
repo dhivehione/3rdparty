@@ -136,7 +136,8 @@ function injectNavigation() {
 function updateProfileLink() {
     const link = document.getElementById('profile-nav-link');
     if (link) {
-        link.style.display = localStorage.getItem('authToken') ? 'inline' : 'none';
+        const token = (window.Auth && typeof window.Auth.getToken === 'function') ? window.Auth.getToken() : localStorage.getItem('authToken');
+        link.style.display = token ? 'inline' : 'none';
     }
 }
 
@@ -153,7 +154,7 @@ if (document.readyState === 'loading') {
 
 // Listen for auth changes from other tabs/windows
 window.addEventListener('storage', (e) => {
-    if (e.key === 'authToken') updateProfileLink();
+    if (e.key === '_3p_auth' || e.key === 'authToken') updateProfileLink();
 });
 
 // Visitor tracking
@@ -162,11 +163,6 @@ window.addEventListener('storage', (e) => {
     if (!sessionId) {
         sessionId = 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('visitor_session', sessionId);
-    }
-    
-    // Initialize first-visit timestamp for non-logged-in users
-    if (!localStorage.getItem('3dparty_last_login')) {
-        localStorage.setItem('3dparty_last_login', new Date().toISOString());
     }
     
     function updateActiveCount() {

@@ -637,7 +637,7 @@
             try {
                 const resp = await fetch(`/api/proposals/${proposalId}`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: Auth.getApiHeaders(),
                     body: JSON.stringify({ description })
                 });
                 const data = await resp.json();

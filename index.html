@@ -166,7 +166,7 @@
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 <!-- Skills Card -->
-                <div onclick="selectContribution('skills')" 
+                <div onclick="selectContribution('skills', event)" 
                      class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-brain"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Skills & Expertise</h3>
@@ -174,7 +174,7 @@
                 </div>
                 
                 <!-- Action Card -->
-                <div onclick="selectContribution('action')" 
+                <div onclick="selectContribution('action', event)" 
                      class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-running"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">On-the-Ground Action</h3>
@@ -182,7 +182,7 @@
                 </div>
                 
                 <!-- Ideas Card -->
-                <div onclick="selectContribution('ideas')" 
+                <div onclick="selectContribution('ideas', event)" 
                      class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-lightbulb"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Ideas & Proposals</h3>
@@ -190,7 +190,7 @@
                 </div>
                 
                 <!-- Donation Card -->
-                <div onclick="selectContribution('donation')" 
+                <div onclick="selectContribution('donation', event)" 
                      class="contribution-card bg-party-card p-6 rounded-xl border-2 border-gray-700 hover:border-party-accent cursor-pointer transition-all group">
                     <div class="text-4xl mb-4 text-party-accent"><i class="fas fa-hand-holding-usd"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-party-accent transition">Support & Donations</h3>
@@ -361,14 +361,15 @@
             'donation': 100
         };
         
-        function selectContribution(type) {
+        function selectContribution(type, evt) {
             // Remove previous selections
             document.querySelectorAll('.contribution-card').forEach(card => {
                 card.classList.remove('border-party-accent', 'bg-party-accent/5');
             });
             
             // Highlight selected
-            event.currentTarget.classList.add('border-party-accent', 'bg-party-accent/5');
+            const target = evt ? evt.currentTarget : (event ? event.currentTarget : null);
+            if (target) target.classList.add('border-party-accent', 'bg-party-accent/5');
             
             // Set contribution type
             selectedContribution = type;

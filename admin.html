@@ -33,6 +33,7 @@
 
       gtag('config', 'G-0PED1M435Y');
     </script>
+    <script src="nav.js"></script>
     <script src="/js/utils.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/api.js"></script>
@@ -474,42 +475,42 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Require OTP for Signup</label>
                         <select id="ss_sms_otp_required" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                            <option value="0" ${systemSettings.sms_otp_required ? '' : 'selected'}>No (optional)</option>
-                            <option value="1" ${systemSettings.sms_otp_required ? 'selected' : ''}>Yes (required)</option>
+                            <option value="0">No (optional)</option>
+                            <option value="1">Yes (required)</option>
                         </select>
                         <p class="text-xs text-gray-500 mt-1">When OFF, signup works without phone verification</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">SMS Provider</label>
                         <select id="ss_sms_provider" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
-                            <option value="" ${!systemSettings.sms_provider ? 'selected' : ''}>None (dev mode)</option>
-                            <option value="twilio" ${systemSettings.sms_provider === 'twilio' ? 'selected' : ''}>Twilio</option>
-                            <option value="webhook" ${systemSettings.sms_provider === 'webhook' ? 'selected' : ''}>HTTP Webhook</option>
+                            <option value="">None (dev mode)</option>
+                            <option value="twilio">Twilio</option>
+                            <option value="webhook">HTTP Webhook</option>
                         </select>
                         <p class="text-xs text-gray-500 mt-1">Twilio, custom webhook, or none (dev)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">OTP Code Length</label>
-                        <input type="number" id="ss_sms_otp_length" value="${systemSettings.sms_otp_length || 6}" min="4" max="8"
+                        <input type="number" id="ss_sms_otp_length" value="6" min="4" max="8"
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
                         <p class="text-xs text-gray-500 mt-1">Digits (default: 6)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">OTP Expiry (minutes)</label>
-                        <input type="number" id="ss_sms_otp_expiry_minutes" value="${systemSettings.sms_otp_expiry_minutes || 10}" min="1" max="60"
+                        <input type="number" id="ss_sms_otp_expiry_minutes" value="10" min="1" max="60"
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent">
                         <p class="text-xs text-gray-500 mt-1">How long before code expires (default: 10)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Twilio Phone Number</label>
-                        <input type="text" id="ss_sms_twilio_phone_number" value="${systemSettings.sms_twilio_phone_number || ''}"
+                        <input type="text" id="ss_sms_twilio_phone_number" value=""
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
                                placeholder="+9601234567">
                         <p class="text-xs text-gray-500 mt-1">Twilio sender number (or set TWILIO_PHONE_NUMBER env)</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Webhook URL</label>
-                        <input type="text" id="ss_sms_webhook_url" value="${systemSettings.sms_webhook_url || ''}"
+                        <input type="text" id="ss_sms_webhook_url" value=""
                                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-party-accent"
                                placeholder="https://your-gateway.com/sms">
                         <p class="text-xs text-gray-500 mt-1">POST {phone, message} for custom SMS gateways</p>
@@ -1777,10 +1778,23 @@ async function loadSystemSettings() {
         if (data.success) {
             systemSettings = data.settings;
             renderSystemSettings();
+            renderSmsOtpSettings();
         }
     } catch (err) {
         console.error('Error loading system settings:', err);
     }
+}
+
+function renderSmsOtpSettings() {
+    if (!systemSettings) return;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val != null ? val : ''; };
+    const setSelect = (id, val) => { const el = document.getElementById(id); if (el) el.value = val != null ? String(val) : ''; };
+    setSelect('ss_sms_otp_required', systemSettings.sms_otp_required ? '1' : '0');
+    setSelect('ss_sms_provider', systemSettings.sms_provider || '');
+    setVal('ss_sms_otp_length', systemSettings.sms_otp_length != null ? systemSettings.sms_otp_length : 6);
+    setVal('ss_sms_otp_expiry_minutes', systemSettings.sms_otp_expiry_minutes != null ? systemSettings.sms_otp_expiry_minutes : 10);
+    setVal('ss_sms_twilio_phone_number', systemSettings.sms_twilio_phone_number || '');
+    setVal('ss_sms_webhook_url', systemSettings.sms_webhook_url || '');
 }
 
 function renderSystemSettings() {

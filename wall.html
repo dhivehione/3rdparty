@@ -280,7 +280,7 @@
 
             try {
                 const response = await fetch(`/api/wall?sort=${currentSort}&page=${currentPage}`, {
-                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                    headers: getHeaders()
                 });
                 const data = await response.json();
 
@@ -310,7 +310,7 @@
             
             try {
                 const response = await fetch(`/api/wall/replies/${parentId}`, {
-                    headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+                    headers: getHeaders()
                 });
                 const data = await response.json();
                 container.innerHTML = '';
