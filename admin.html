@@ -665,11 +665,11 @@
         async function goToPage(page) { if (page < 1 || page > totalPages) return; currentPage = page; await refreshData(); }
 
         // ── Leadership ──
-        let leadershipData = { settings: {}, positions: [], applications: [], terms: [], sops: [] };
+        let leadershipData = { settings: {}, positions: [], applications: [], terms: [], sops: [], appraisals: [] };
 
         async function loadLeadershipData() {
-            const [settingsRes, posRes, appRes, termsRes, sopsRes] = await Promise.all([
-                api.get('/api/leadership/settings'), api.get('/api/leadership/positions'), api.get('/api/leadership/applications'), api.get('/api/leadership/terms'), api.get('/api/leadership/sops')
+            const [settingsRes, posRes, appRes, termsRes, sopsRes, appraisalsRes] = await Promise.all([
+                api.get('/api/leadership/settings'), api.get('/api/leadership/positions'), api.get('/api/leadership/applications'), api.get('/api/leadership/terms'), api.get('/api/leadership/sops'), api.get('/api/leadership/appraisals')
             ]);
             if (settingsRes.data?.success) {
                 const s = settingsRes.data;
@@ -688,10 +688,20 @@
                 if (appRes.data?.success) leadershipData.applications = appRes.data.applications;
                 if (termsRes.data?.success) leadershipData.terms = termsRes.data.terms;
                 if (sopsRes.data?.success) leadershipData.sops = sopsRes.data.sops;
+                if (appraisalsRes.data?.success) leadershipData.appraisals = appraisalsRes.data.appraisals;
                 document.getElementById('openPositions').textContent = leadershipData.positions.filter(p => p.is_active).length;
                 document.getElementById('pendingApps').textContent = leadershipData.applications.filter(a => a.status === 'pending').length;
                 document.getElementById('activeLeaders').textContent = leadershipData.terms.length;
                 document.getElementById('activeSOPs').textContent = leadershipData.sops.length;
+                const appraisalFreq = s.settings.appraisal_frequency_days || 365;
+                const now = new Date();
+                const pendingCount = leadershipData.terms.filter(t => {
+                    const lastAppraisal = leadershipData.appraisals.filter(a => a.term_id === t.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                    if (!lastAppraisal) return true;
+                    const daysSince = (now - new Date(lastAppraisal.created_at)) / (1000 * 60 * 60 * 24);
+                    return daysSince > appraisalFreq;
+                }).length;
+                document.getElementById('pendingAppraisals').textContent = pendingCount;
             }
         }
 
@@ -737,7 +747,10 @@
                             <span class="ml-2">Current: ${p.current_holders || 0}</span>
                         </div>
                     </div>
-                    <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}"><i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i></button>
+                    <div class="flex gap-2">
+                        <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}"><i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i></button>
+                        <button onclick="deletePosition(${p.id})" class="text-sm text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -820,7 +833,28 @@
         }
 
         function renderAppraisals() {
-            document.getElementById('appraisalsList').innerHTML = '<p class="text-gray-400">Use the "Appraise" button on current leaders to record yearly performance reviews.</p>';
+            const container = document.getElementById('appraisalsList');
+            if (!leadershipData.appraisals.length) {
+                container.innerHTML = '<p class="text-gray-400">No appraisals recorded yet. Use the "Appraise" button on current leaders to record yearly performance reviews.</p>';
+                return;
+            }
+            container.innerHTML = leadershipData.appraisals.map(a => `
+                <div class="p-4 bg-gray-800/50 rounded-lg mb-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-white">${Utils.escapeHtml(a.leader_name || 'Leader #' + a.term_id)}</div>
+                            <div class="text-sm text-party-accent">${Utils.escapeHtml(a.position_title)}</div>
+                            <div class="text-xs text-gray-500">Term ${a.term_number} | Period: ${Utils.escapeHtml(a.appraisal_period)} | ${Utils.formatDate(a.created_at)}</div>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-lg font-bold ${a.rating >= 4 ? 'text-green-400' : a.rating >= 3 ? 'text-yellow-400' : 'text-red-400'}">${a.rating}/5</span>
+                        </div>
+                    </div>
+                    ${a.strengths ? `<div class="mt-2 text-sm text-gray-300"><span class="text-green-400 font-medium">Strengths:</span> ${Utils.escapeHtml(a.strengths)}</div>` : ''}
+                    ${a.areas_for_improvement ? `<div class="mt-1 text-sm text-gray-300"><span class="text-yellow-400 font-medium">Areas for Improvement:</span> ${Utils.escapeHtml(a.areas_for_improvement)}</div>` : ''}
+                    ${a.overall_feedback ? `<div class="mt-1 text-sm text-gray-300"><span class="text-blue-400 font-medium">Feedback:</span> ${Utils.escapeHtml(a.overall_feedback)}</div>` : ''}
+                </div>
+            `).join('');
         }
 
         async function saveLeadershipSettings() {
@@ -846,30 +880,66 @@
             if (ok && data?.success) { alert('Term ended'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
-        function togglePosition() { alert('Position toggle - reload to see changes'); }
+        async function deletePosition(id) {
+            if (!confirm('Delete this position? This cannot be undone.')) return;
+            const { ok, data } = await api.del(`/api/leadership/positions/${id}`);
+            if (ok && data?.success) { alert('Position deleted'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+        }
 
-        function showAddPositionForm() {
+        async function togglePosition(id, isActive) {
+            const { ok, data } = await api.post(`/api/leadership/positions/${id}/toggle`, { is_active: !isActive });
+            if (ok && data?.success) { loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+        }
+
+        async function showAddPositionForm() {
             const title = prompt('Position Title:');
             if (!title) return;
-            alert('Position creation endpoint ready');
+            const description = prompt('Position Description (optional):') || '';
+            const positionType = prompt('Position Type (council/committee/general):', 'general');
+            if (!['council', 'committee', 'general'].includes(positionType)) { alert('Invalid position type'); return; }
+            const minMerit = parseInt(prompt('Minimum Merit Required:', '0')) || 0;
+            const { ok, data } = await api.post('/api/leadership/positions', { title, description, position_type: positionType, min_merit_required: minMerit });
+            if (ok && data?.success) { alert('Position created!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
-        function showAddSOPForm() {
+        async function showAddSOPForm() {
             const title = prompt('SOP Title:');
             if (!title) return;
-            alert('SOP creation endpoint ready');
+            const category = prompt('Category (e.g., general, operations, governance):', 'general');
+            const content = prompt('SOP Content:');
+            if (!content) return;
+            const { ok, data } = await api.post('/api/leadership/sops', { title, content, category });
+            if (ok && data?.success) { alert('SOP created!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
-        function editSOP(id) {
+        async function editSOP(id) {
             const sop = leadershipData.sops.find(s => s.id === id);
             if (!sop) return;
-            alert('SOP update endpoint ready');
+            const title = prompt('SOP Title:', sop.title);
+            if (!title) return;
+            const category = prompt('Category:', sop.category);
+            const content = prompt('SOP Content:', sop.content);
+            if (!content) return;
+            const { ok, data } = await api.post('/api/leadership/sops', { id, title, content, category });
+            if (ok && data?.success) { alert('SOP updated!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
-        function showAppraisalForm(termId, name, position) {
+        async function showAppraisalForm(termId, name, position) {
             const rating = prompt('Rating (1-5) for ' + name + ' (' + position + '):');
-            if (!rating) return;
-            alert('Appraisal saved for ' + name);
+            if (!rating || rating < 1 || rating > 5) { alert('Invalid rating. Must be 1-5.'); return; }
+            const strengths = prompt('Strengths (optional):') || '';
+            const areasForImprovement = prompt('Areas for Improvement (optional):') || '';
+            const overallFeedback = prompt('Overall Feedback (optional):') || '';
+            const appraisalPeriod = prompt('Appraisal Period (e.g., 2024-2025):', new Date().getFullYear().toString());
+            const { ok, data } = await api.post('/api/leadership/appraisals', {
+                term_id: termId,
+                appraisal_period: appraisalPeriod,
+                rating: parseInt(rating),
+                strengths,
+                areas_for_improvement: areasForImprovement,
+                overall_feedback: overallFeedback
+            });
+            if (ok && data?.success) { alert('Appraisal recorded for ' + name); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
         }
 
         // ── Proposals ──

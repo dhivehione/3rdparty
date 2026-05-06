@@ -103,6 +103,33 @@ module.exports = function({ db, adminAuth, userAuth, getSettings, updateSettings
     }
   });
 
+  router.post('/api/leadership/positions/:id/toggle', adminAuth, (req, res) => {
+    const positionId = parseInt(req.params.id);
+    const { is_active } = req.body;
+
+    try {
+      db.prepare('UPDATE leadership_positions SET is_active = ? WHERE id = ?').run(is_active ? 1 : 0, positionId);
+      res.json({ success: true, message: 'Position toggled' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Could not toggle position' });
+    }
+  });
+
+  router.delete('/api/leadership/positions/:id', adminAuth, (req, res) => {
+    const positionId = parseInt(req.params.id);
+
+    try {
+      const holders = db.prepare('SELECT COUNT(*) as count FROM leadership_terms WHERE position_id = ? AND ended_at IS NULL').get(positionId);
+      if (holders.count > 0) {
+        return res.status(400).json({ success: false, error: 'Cannot delete position with active leaders. End their terms first.' });
+      }
+      db.prepare('DELETE FROM leadership_positions WHERE id = ?').run(positionId);
+      res.json({ success: true, message: 'Position deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Could not delete position' });
+    }
+  });
+
   router.get('/api/leadership/applications', adminAuth, (req, res) => {
     try {
       const applications = db.prepare(`
@@ -218,6 +245,22 @@ module.exports = function({ db, adminAuth, userAuth, getSettings, updateSettings
       res.json({ success: true, message: 'Appraisal recorded', id: result.lastInsertRowid });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Could not save appraisal' });
+    }
+  });
+
+  router.get('/api/leadership/appraisals', adminAuth, (req, res) => {
+    try {
+      const appraisals = db.prepare(`
+        SELECT la.*, lt.term_number, s.name as leader_name, lp.title as position_title
+        FROM leadership_appraisals la
+        JOIN leadership_terms lt ON la.term_id = lt.id
+        JOIN signups s ON lt.user_id = s.id
+        JOIN leadership_positions lp ON lt.position_id = lp.id
+        ORDER BY la.created_at DESC
+      `).all();
+      res.json({ success: true, appraisals });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Could not fetch appraisals' });
     }
   });
 

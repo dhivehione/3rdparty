@@ -4,6 +4,22 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Fix Leadership Subtabs Functionality
+
+### Make all leadership subtabs fully functional
+- **What:** Fixed all stub/placeholder functions in the Leadership tab subtabs (Settings, Positions, Applications, Current Leaders, SOPs, Appraisals). Added missing API endpoints and updated frontend to properly interact with the backend.
+- **Why:** The leadership subtabs had alert() stubs instead of actual API calls, making them non-functional. Users could not create/edit positions, SOPs, or record appraisals.
+- **Who:** Developer
+
+#### Changes made:
+- **Positions tab:** `togglePosition()` now calls `POST /api/leadership/positions/:id/toggle`. `showAddPositionForm()` now creates positions via `POST /api/leadership/positions`. Added `deletePosition()` with `DELETE /api/leadership/positions/:id` endpoint.
+- **SOPs tab:** `showAddSOPForm()` now creates SOPs via `POST /api/leadership/sops`. `editSOP()` now updates SOPs via the same endpoint.
+- **Appraisals tab:** `showAppraisalForm()` now submits full appraisal data (rating, strengths, areas for improvement, feedback) via `POST /api/leadership/appraisals`. Added `GET /api/leadership/appraisals` endpoint to list existing appraisals. Updated `renderAppraisals()` to display appraisal history.
+- **Dashboard stats:** Added `pendingAppraisals` stat calculation based on appraisal frequency settings and last appraisal dates per leader.
+- **State management:** Added `appraisals: []` to `leadershipData` state object. Updated `loadLeadershipData()` to fetch appraisals in parallel with other data.
+
+---
+
 ## 2026-05-06 — Consolidated Laws and Craft a Law Pages
 
 ### Merge laws.html and generate-law.html into single page
