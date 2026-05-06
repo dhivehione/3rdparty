@@ -314,6 +314,14 @@
                     headers: Auth.getApiHeaders()
                 });
 
+                if (res.status === 401) {
+                    authToken = null;
+                    Auth.clearToken();
+                    document.getElementById('loginRequired').classList.remove('hidden');
+                    document.getElementById('enrollSection').classList.add('hidden');
+                    return;
+                }
+
                 const data = await res.json();
 
                 if (data.success) {
