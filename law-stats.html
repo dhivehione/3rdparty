@@ -36,32 +36,48 @@
         <!-- Header -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
             <h1 class="text-2xl font-bold text-party-accent mb-2">Law Voting Statistics</h1>
-            <p class="text-gray-400">Track which articles and clauses have been voted on by members.</p>
+            <p class="text-gray-400">Track votes across laws, articles, clauses, and community proposals.</p>
         </div>
 
         <!-- Overall Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
                 <div class="text-3xl font-bold text-party-accent" id="totalVotes">—</div>
                 <div class="text-gray-500 text-sm">Total Votes</div>
             </div>
             <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
-                <div class="text-3xl font-bold text-green-400" id="supportVotes">—</div>
-                <div class="text-gray-500 text-sm">Support</div>
+                <div class="text-3xl font-bold text-purple-400" id="lawVotes">—</div>
+                <div class="text-gray-500 text-sm">Law Votes</div>
             </div>
             <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
-                <div class="text-3xl font-bold text-red-400" id="opposeVotes">—</div>
-                <div class="text-gray-500 text-sm">Oppose</div>
+                <div class="text-3xl font-bold text-green-400" id="proposalVotes">—</div>
+                <div class="text-gray-500 text-sm">Proposal Votes</div>
             </div>
             <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
-                <div class="text-3xl font-bold text-blue-400" id="articlesVoted">—</div>
+                <div class="text-3xl font-bold text-blue-400" id="rankedVotes">—</div>
+                <div class="text-gray-500 text-sm">Ranked Votes</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-3xl font-bold text-yellow-400" id="articlesVoted">—</div>
                 <div class="text-gray-500 text-sm">Articles Voted</div>
             </div>
         </div>
 
-        <!-- Top Voted Articles -->
+        <!-- Active Proposals -->
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-party-secondary" id="activeProposals">—</div>
+                <div class="text-gray-500 text-sm">Active Proposals</div>
+            </div>
+            <div class="bg-party-card rounded-xl p-4 border border-gray-700 text-center">
+                <div class="text-2xl font-bold text-orange-400" id="activeRanked">—</div>
+                <div class="text-gray-500 text-sm">Active Ranked</div>
+            </div>
+        </div>
+
+        <!-- Top Voted -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
-            <h2 class="text-xl font-bold mb-4"><i class="fas fa-fire text-party-accent mr-2"></i>Most Voted Articles</h2>
+            <h2 class="text-xl font-bold mb-4"><i class="fas fa-fire text-party-accent mr-2"></i>Most Voted</h2>
             <div id="topArticles" class="space-y-3">
                 <div class="text-center py-4 text-gray-500">
                     <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
@@ -89,17 +105,12 @@
                 
                 if (data.success) {
                     document.getElementById('totalVotes').textContent = data.totalVotes;
+                    document.getElementById('lawVotes').textContent = data.lawVotes;
+                    document.getElementById('proposalVotes').textContent = data.proposalVotes;
+                    document.getElementById('rankedVotes').textContent = data.rankedVotes;
                     document.getElementById('articlesVoted').textContent = data.articlesVoted;
-                    
-                    let support = 0, oppose = 0, abstain = 0;
-                    data.breakdown.forEach(b => {
-                        if (b.vote === 'support') support = b.count;
-                        if (b.vote === 'oppose') oppose = b.count;
-                        if (b.vote === 'abstain') abstain = b.count;
-                    });
-                    
-                    document.getElementById('supportVotes').textContent = support;
-                    document.getElementById('opposeVotes').textContent = oppose;
+                    document.getElementById('activeProposals').textContent = data.activeProposals;
+                    document.getElementById('activeRanked').textContent = data.activeRanked;
                 }
             } catch (e) {
                 console.error(e);
@@ -112,20 +123,26 @@
                 const data = await res.json();
                 
                 if (data.success && data.articles.length > 0) {
-                    document.getElementById('topArticles').innerHTML = data.articles.map(a => `
+                    document.getElementById('topArticles').innerHTML = data.articles.map(a => {
+                        const isProposal = a.vote_source === 'proposal';
+                        const sourceBadge = isProposal 
+                            ? '<span class="text-xs bg-green-900/40 text-green-300 px-2 py-0.5 rounded">Proposal</span>'
+                            : `<span class="text-xs bg-purple-900/40 text-purple-300 px-2 py-0.5 rounded">Article ${a.article_number || ''}</span>`;
+                        
+                        return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
                             <div>
                                 <div class="font-bold text-party-accent">${escapeHtml(a.law_name || 'Unknown')}</div>
-                                <div class="text-gray-400 text-sm">Article ${a.article_number}: ${escapeHtml(a.article_title || '')}</div>
+                                <div class="text-gray-400 text-sm">${sourceBadge} ${escapeHtml(a.article_title || '')}</div>
                             </div>
                             <div class="text-right">
-                                <div class="text-green-400 text-sm">+${a.support}</div>
-                                <div class="text-red-400 text-sm">-${a.oppose}</div>
+                                <div class="text-green-400 text-sm">+${a.support || 0}</div>
+                                <div class="text-red-400 text-sm">-${a.oppose || 0}</div>
                             </div>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
                 } else {
-                    document.getElementById('topArticles').innerHTML = '<div class="text-gray-500 text-center py-4">No articles voted on yet</div>';
+                    document.getElementById('topArticles').innerHTML = '<div class="text-gray-500 text-center py-4">No votes yet</div>';
                 }
             } catch (e) {
                 document.getElementById('topArticles').innerHTML = '<div class="text-gray-500 text-center py-4">Could not load data</div>';
@@ -138,20 +155,34 @@
                 const data = await res.json();
                 
                 if (data.success && data.votes.length > 0) {
-                    document.getElementById('recentVotes').innerHTML = data.votes.map(v => `
+                    document.getElementById('recentVotes').innerHTML = data.votes.map(v => {
+                        const sourceBadge = v.vote_source === 'proposal'
+                            ? '<span class="text-xs bg-green-900/40 text-green-300 px-2 py-0.5 rounded">Proposal</span>'
+                            : v.vote_source === 'ranked'
+                            ? '<span class="text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded">Ranked</span>'
+                            : `<span class="text-xs bg-purple-900/40 text-purple-300 px-2 py-0.5 rounded">Art. ${v.article_number || ''}</span>`;
+                        
+                        const voteLabel = v.vote === 'support' || v.vote === 'yes' ? 'Support' 
+                            : v.vote === 'oppose' || v.vote === 'no' ? 'Oppose' 
+                            : v.vote === 'ranked' ? 'Ranked'
+                            : 'Abstain';
+                        const voteClass = v.vote === 'support' || v.vote === 'yes' ? 'text-green-400' 
+                            : v.vote === 'oppose' || v.vote === 'no' ? 'text-red-400' 
+                            : v.vote === 'ranked' ? 'text-orange-400'
+                            : 'text-gray-400';
+                        
+                        return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg p-3">
                             <div>
-                                <div class="font-bold text-party-accent">Article ${v.article_number}</div>
-                                <div class="text-gray-400 text-sm">${escapeHtml(v.article_title || '')}</div>
+                                <div class="font-bold text-party-accent">${escapeHtml(v.law_name || 'Unknown')}</div>
+                                <div class="text-gray-400 text-sm">${sourceBadge} ${escapeHtml(v.article_title || '')}</div>
                             </div>
                             <div class="text-right">
-                                <div class="${v.vote === 'support' ? 'text-green-400' : v.vote === 'oppose' ? 'text-red-400' : 'text-gray-400'} font-bold">
-                                    ${v.vote === 'support' ? 'Support' : v.vote === 'oppose' ? 'Oppose' : 'Abstain'}
-                                </div>
+                                <div class="${voteClass} font-bold">${voteLabel}</div>
                                 <div class="text-gray-500 text-xs">${formatTime(v.voted_at)}</div>
                             </div>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
                 } else {
                     document.getElementById('recentVotes').innerHTML = '<div class="text-gray-500 text-center py-4">No votes yet. Be the first to vote!</div>';
                 }

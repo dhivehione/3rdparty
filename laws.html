@@ -36,6 +36,28 @@
 
     <div class="max-w-4xl mx-auto px-4 py-8">
 
+        <!-- Sub-navigation bar -->
+        <div class="bg-party-card rounded-xl p-4 mb-6 border border-party-accent/40 shadow-lg shadow-party-accent/5">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-6">
+                    <a href="/laws" class="text-party-accent font-bold text-lg flex items-center gap-2">
+                        <i class="fas fa-gavel"></i> Laws
+                    </a>
+                    <a href="/law-stats" class="text-gray-300 hover:text-party-accent transition font-medium flex items-center gap-2">
+                        <i class="fas fa-chart-bar"></i> Voting Stats
+                    </a>
+                    <a href="/proposals" class="text-gray-300 hover:text-party-accent transition font-medium flex items-center gap-2">
+                        <i class="fas fa-lightbulb"></i> Proposals
+                    </a>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <span class="text-gray-400"><i class="fas fa-file-alt mr-1"></i><span id="lawCount">—</span> laws</span>
+                    <span class="text-green-400"><i class="fas fa-check-circle mr-1"></i><span id="voteCount">—</span> votes</span>
+                    <span class="text-blue-400"><i class="fas fa-list-ol mr-1"></i><span id="articlesVoted">—</span> articles</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Context for cold visitors -->
         <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
             <p class="text-gray-400 mb-3">
@@ -50,29 +72,6 @@
             <h1 class="text-2xl font-bold text-party-accent mb-2">Laws & Voting</h1>
             <p class="text-gray-300 mb-4">Browse and vote on the laws that govern 3d Party. Each law contains multiple articles. Members can support, oppose, or abstain from voting on any article. Your votes shape our collective voice.</p>
             <p class="text-gray-500 text-sm">Click any law to view its articles, then cast your vote on each one.</p>
-        </div>
-
-        <!-- Stats -->
-        <div class="bg-party-card rounded-xl p-6 mb-8 border border-gray-700">
-            <div class="flex flex-wrap justify-center gap-8 text-center">
-                <div>
-                    <div class="text-3xl font-bold text-party-accent" id="lawCount">—</div>
-                    <div class="text-gray-500 text-sm">Total Laws</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-green-400" id="voteCount">—</div>
-                    <div class="text-gray-500 text-sm">Votes Cast</div>
-                </div>
-                <div>
-                    <div class="text-3xl font-bold text-blue-400" id="articlesVoted">—</div>
-                    <div class="text-gray-500 text-sm">Articles Voted</div>
-                </div>
-            </div>
-            <div class="text-center mt-4">
-                <a href="/law-stats" class="text-party-accent hover:underline text-sm">
-                    <i class="fas fa-chart-bar mr-1"></i> View Voting Stats →
-                </a>
-            </div>
         </div>
 
         <!-- ==================== CRAFT A LAW SECTION ==================== -->

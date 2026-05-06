@@ -54,14 +54,14 @@ if (lawsDb) {
   }
 }
 
-// GET /api/mvlaws/recent-votes - Get recent votes (must be before /:id route)
+// GET /api/mvlaws/recent-votes - Get recent votes from all sources (must be before /:id route)
 router.get('/api/mvlaws/recent-votes', (req, res) => {
   if (!lawsDb) {
     return res.status(503).json({ error: 'Laws database not available', success: false });
   }
   
   try {
-    const votes = lawsDb.prepare(`
+    const lawVotes = lawsDb.prepare(`
       SELECT 
         v.vote,
         v.voted_at,
@@ -69,22 +69,63 @@ router.get('/api/mvlaws/recent-votes', (req, res) => {
         a.id as article_id,
         a.article_number,
         a.article_title,
-        l.law_name
+        l.law_name,
+        'law' as vote_source
       FROM votes v
       JOIN articles a ON v.article_id = a.id
       JOIN laws l ON a.law_id = l.id
       ORDER BY v.voted_at DESC
-      LIMIT 50
+      LIMIT 25
     `).all();
     
-    res.json({ votes, success: true });
+    let proposalVotes = [];
+    try {
+      proposalVotes = db.prepare(`
+        SELECT 
+          v.choice as vote,
+          v.voted_at,
+          p.title as law_name,
+          p.category as article_title,
+          NULL as article_number,
+          NULL as article_id,
+          'proposal' as vote_source
+        FROM votes v
+        JOIN proposals p ON v.proposal_id = p.id
+        ORDER BY v.voted_at DESC
+        LIMIT 25
+      `).all();
+    } catch (e) {}
+    
+    let rankedVotes = [];
+    try {
+      rankedVotes = db.prepare(`
+        SELECT 
+          'ranked' as vote,
+          rv.voted_at,
+          rp.title as law_name,
+          rp.category as article_title,
+          NULL as article_number,
+          NULL as article_id,
+          'ranked' as vote_source
+        FROM ranked_votes rv
+        JOIN ranked_proposals rp ON rv.proposal_id = rp.id
+        ORDER BY rv.voted_at DESC
+        LIMIT 25
+      `).all();
+    } catch (e) {}
+    
+    const allVotes = [...lawVotes, ...proposalVotes, ...rankedVotes]
+      .sort((a, b) => new Date(b.voted_at) - new Date(a.voted_at))
+      .slice(0, 50);
+    
+    res.json({ votes: allVotes, success: true });
   } catch (error) {
     console.error('Recent votes error:', error);
     res.status(500).json({ error: 'Could not fetch recent votes', success: false });
   }
 });
 
-// GET /api/mvlaws/top-voted - Get most voted articles (must be before /:id route)
+// GET /api/mvlaws/top-voted - Get most voted articles and proposals (must be before /:id route)
 router.get('/api/mvlaws/top-voted', (req, res) => {
   if (!lawsDb) {
     return res.status(503).json({ error: 'Laws database not available', success: false });
@@ -101,16 +142,42 @@ router.get('/api/mvlaws/top-voted', (req, res) => {
         SUM(CASE WHEN v.vote = 'support' THEN 1 ELSE 0 END) as support,
         SUM(CASE WHEN v.vote = 'oppose' THEN 1 ELSE 0 END) as oppose,
         SUM(CASE WHEN v.vote = 'abstain' THEN 1 ELSE 0 END) as abstain,
-        COUNT(v.id) as total_votes
+        COUNT(v.id) as total_votes,
+        'law' as vote_source
       FROM votes v
       JOIN articles a ON v.article_id = a.id
       JOIN laws l ON a.law_id = l.id
       GROUP BY a.id
       ORDER BY total_votes DESC
-      LIMIT 20
+      LIMIT 10
     `).all();
     
-    res.json({ articles, success: true });
+    let proposals = [];
+    try {
+      proposals = db.prepare(`
+        SELECT 
+          p.id as article_id,
+          NULL as article_number,
+          p.title as article_title,
+          p.id as law_id,
+          p.title as law_name,
+          p.yes_votes as support,
+          p.no_votes as oppose,
+          COALESCE(p.abstain_votes, 0) as abstain,
+          (SELECT COUNT(*) FROM votes WHERE proposal_id = p.id) as total_votes,
+          'proposal' as vote_source
+        FROM proposals p
+        WHERE p.status = 'active'
+        ORDER BY total_votes DESC
+        LIMIT 10
+      `).all();
+    } catch (e) {}
+    
+    const allItems = [...articles, ...proposals]
+      .sort((a, b) => b.total_votes - a.total_votes)
+      .slice(0, 20);
+    
+    res.json({ articles: allItems, success: true });
   } catch (error) {
     console.error('Top voted error:', error);
     res.status(500).json({ error: 'Could not fetch top voted articles', success: false });

@@ -215,24 +215,94 @@ router.get('/api/mvlaws/search', (req, res) => {
   }
 });
 
-// GET /api/mvlaws/stats - Get voting stats
+// GET /api/mvlaws/stats - Get voting stats (all sources: laws, proposals, ranked)
 router.get('/api/mvlaws/stats', (req, res) => {
   if (!lawsDb) {
     return res.status(503).json({ error: 'Laws database not available. Set LAWS_DB_PATH environment variable.', success: false });
   }
   
   try {
-    let totalVotes = { total: 0 };
+    // === MALDIVIAN LAWS VOTES ===
+    let articleVotes = { total: 0 };
     let articlesVoted = { total: 0 };
-    let voteBreakdown = [];
+    let articleBreakdown = [];
+    let lawLevelVotes = { total: 0 };
+    let lawBreakdown = [];
+    let subArticleVotes = { total: 0 };
+    let subArticleBreakdown = [];
     
     try {
-      totalVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM votes').get();
+      articleVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM votes').get();
       articlesVoted = lawsDb.prepare('SELECT COUNT(DISTINCT article_id) as total FROM votes').get();
-      voteBreakdown = lawsDb.prepare('SELECT vote, COUNT(*) as count FROM votes GROUP BY vote').all();
+      articleBreakdown = lawsDb.prepare('SELECT vote, COUNT(*) as count FROM votes GROUP BY vote').all();
     } catch (e) {}
     
-    res.json({ totalVotes: totalVotes.total, articlesVoted: articlesVoted.total, breakdown: voteBreakdown, success: true });
+    try {
+      lawLevelVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM law_level_votes').get();
+      lawBreakdown = lawsDb.prepare('SELECT vote, COUNT(*) as count FROM law_level_votes GROUP BY vote').all();
+    } catch (e) {}
+    
+    try {
+      subArticleVotes = lawsDb.prepare('SELECT COUNT(*) as total FROM sub_article_votes').get();
+      subArticleBreakdown = lawsDb.prepare('SELECT vote, COUNT(*) as count FROM sub_article_votes GROUP BY vote').all();
+    } catch (e) {}
+    
+    const lawTotal = articleVotes.total + lawLevelVotes.total + subArticleVotes.total;
+    
+    // === PROPOSAL VOTES (main db) ===
+    let proposalVotes = { total: 0 };
+    let proposalBreakdown = [];
+    let activeProposals = { total: 0 };
+    let rankedVotes = { total: 0 };
+    let activeRanked = { total: 0 };
+    
+    try {
+      proposalVotes = db.prepare('SELECT COUNT(*) as total FROM votes WHERE proposal_id IS NOT NULL').get();
+      proposalBreakdown = db.prepare("SELECT choice as vote, COUNT(*) as count FROM votes WHERE proposal_id IS NOT NULL GROUP BY choice").all();
+      activeProposals = db.prepare("SELECT COUNT(*) as total FROM proposals WHERE status = 'active'").get();
+    } catch (e) {}
+    
+    try {
+      rankedVotes = db.prepare('SELECT COUNT(*) as total FROM ranked_votes').get();
+      activeRanked = db.prepare("SELECT COUNT(*) as total FROM ranked_proposals WHERE status = 'active'").get();
+    } catch (e) {}
+    
+    const grandTotal = lawTotal + proposalVotes.total + rankedVotes.total;
+    
+    // Combine law breakdowns
+    const lawCombinedBreakdown = {};
+    [...articleBreakdown, ...lawBreakdown, ...subArticleBreakdown].forEach(b => {
+      lawCombinedBreakdown[b.vote] = (lawCombinedBreakdown[b.vote] || 0) + b.count;
+    });
+    
+    // Map proposal choices to consistent vote names
+    const allBreakdown = [];
+    Object.entries(lawCombinedBreakdown).forEach(([vote, count]) => {
+      allBreakdown.push({ source: 'law', vote, count });
+    });
+    proposalBreakdown.forEach(b => {
+      allBreakdown.push({ source: 'proposal', vote: b.vote, count: b.count });
+    });
+    if (rankedVotes.total > 0) {
+      allBreakdown.push({ source: 'ranked', vote: 'ranked', count: rankedVotes.total });
+    }
+    
+    res.json({ 
+      totalVotes: grandTotal,
+      lawVotes: lawTotal,
+      articleVotes: articleVotes.total,
+      lawLevelVotes: lawLevelVotes.total,
+      subArticleVotes: subArticleVotes.total,
+      lawBreakdown: Object.entries(lawCombinedBreakdown).map(([vote, count]) => ({ vote, count })),
+      proposalVotes: proposalVotes.total,
+      proposalBreakdown,
+      rankedVotes: rankedVotes.total,
+      activeProposals: activeProposals.total,
+      activeRanked: activeRanked.total,
+      articlesVoted: articlesVoted.total,
+      breakdown: allBreakdown,
+      success: true 
+    });
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch stats: ' + error.message, success: false });
   }
