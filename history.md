@@ -4,6 +4,15 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Remove dedicated members page
+
+### Remove members page
+- **What:** Deleted `members.html`; removed "Members" from top nav, footer, and page detection in `nav.js`; removed `/members` cross-links from `profile.html`.
+- **Why:** The members page was a dedicated directory for discovering and endorsing members. Users can now endorse those they've enrolled (via profile page) and search for members via the enroll page's directory search. A standalone members page is unnecessary at this stage.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Fix CSP Blocking Google Analytics + Replace Tailwind CDN with Build Step
 
 ### Fix CSP connect-src to allow Google Analytics

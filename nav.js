@@ -20,7 +20,7 @@ function getPageName() {
     if (path.includes('events')) return 'events';
     if (path.includes('profile')) return 'profile';
     if (path.includes('leadership')) return 'leadership';
-    if (path.includes('members')) return 'members';
+
     if (path.includes('faq')) return 'faq';
     if (path.includes('policies')) return 'policies';
     if (path.includes('admin')) return 'admin';
@@ -64,7 +64,6 @@ function createNavigation() {
                 <a href="/laws" class="hover:text-party-accent transition ${currentPage === 'laws' ? 'text-party-accent font-bold' : 'text-gray-300'}">Laws</a>
                 <a href="/proposals" class="hover:text-party-accent transition ${currentPage === 'proposals' ? 'text-party-accent font-bold' : 'text-gray-300'}">Proposals</a>
                 <a href="/enroll" class="hover:text-party-accent transition ${currentPage === 'enroll' ? 'text-party-accent font-bold' : 'text-gray-300'}">Enroll</a>
-                <a href="/members" class="hover:text-party-accent transition ${currentPage === 'members' ? 'text-party-accent font-bold' : 'text-gray-300'}">Members</a>
                 <a href="/wall" class="hover:text-party-accent transition ${currentPage === 'wall' ? 'text-party-accent font-bold' : 'text-gray-300'}">Wall</a>
                 <a href="/events" class="hover:text-party-accent transition ${currentPage === 'events' ? 'text-party-accent font-bold' : 'text-gray-300'}">Events</a>
                 <a href="/faq" class="hover:text-party-accent transition ${currentPage === 'faq' ? 'text-party-accent font-bold' : 'text-gray-300'}">FAQ</a>
@@ -236,7 +235,6 @@ function createFooter() {
                     <a href="/laws" class="text-gray-400 hover:text-party-accent">Laws</a>
                     <a href="/proposals" class="text-gray-400 hover:text-party-accent">Proposals</a>
                     <a href="/enroll" class="text-gray-400 hover:text-party-accent">Enroll</a>
-                    <a href="/members" class="text-gray-400 hover:text-party-accent">Members</a>
                     <a href="/wall" class="text-gray-400 hover:text-party-accent">Wall</a>
                     <a href="/events" class="text-gray-400 hover:text-party-accent">Events</a>
                     <a href="/faq" class="text-gray-400 hover:text-party-accent">FAQ</a>
