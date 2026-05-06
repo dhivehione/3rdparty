@@ -37,6 +37,14 @@ function runMigrations(deps) {
     db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(3, new Date().toISOString());
     console.log('✓ Migration 3 applied');
   }
+
+  // Migration 4: notification queue
+  if (!applied.has(4)) {
+    const m004 = require('./004_notification_queue');
+    m004.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(4, new Date().toISOString());
+    console.log('✓ Migration 4 applied');
+  }
 }
 
 module.exports = { runMigrations };

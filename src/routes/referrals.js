@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit }) {
+module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit, notificationQueue }) {
 
   // POST /api/referral/introduce - Introduce a new member
   router.post('/api/referral/introduce', userAuth, (req, res) => {
@@ -275,6 +275,23 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
         referrer_invite_count: inviteCount + 1,
         enrolled_name: name || 'N/A'
       }, req);
+
+      // Queue welcome notification for enrolled user
+      const enrolledName = sanitizeHTML(name || username || 'A new member');
+      const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
+      const targetMembers = getSettings().target_members;
+      const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
+      try {
+        if (notificationQueue) {
+          notificationQueue.queueNotification({
+            type: 'member_welcome',
+            userId: result.lastInsertRowid,
+            message: `🌴 ${enrolledName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`
+          });
+        }
+      } catch (e) {
+        console.log('Could not queue welcome notification:', e.message);
+      }
 
        res.status(201).json({
          success: true,

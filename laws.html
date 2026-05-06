@@ -1286,6 +1286,7 @@
                 const data = await res.json();
                 if (data.success) {
                     loadLawVotes(currentLawId);
+                    loadStats();
                 } else if (res.status === 429) {
                     alert('Please wait an hour before voting on this law again.');
                 } else {
@@ -1388,6 +1389,7 @@
                 const data = await res.json();
                 if (data.success) {
                     viewArticle(currentArticleId);
+                    loadStats();
                 } else if (res.status === 429) {
                     alert('Please wait an hour before voting again.');
                 } else {

@@ -46,16 +46,16 @@ function createNavigation() {
     const displayName = getDisplayName();
     
     const nav = document.createElement('nav');
-    nav.className = 'border-b border-gray-800 bg-party-dark/95 sticky top-0 z-50 backdrop-blur';
+    nav.className = 'border-b border-party-accent/30 bg-party-dark/98 sticky top-0 z-50 backdrop-blur-md shadow-lg shadow-party-accent/5';
     nav.innerHTML = `
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
                 <a href="/" class="flex items-center space-x-2">
-                    <span class="text-2xl font-bold text-party-accent">3d</span>
-                    <span class="text-sm text-gray-400">Party</span>
+                    <span class="text-3xl font-bold text-party-accent">3d</span>
+                    <span class="text-base text-gray-300 font-medium">Party</span>
                 </a>
             </div>
-            <div class="flex items-center space-x-4 text-sm">
+            <div class="flex items-center space-x-6 text-base">
                 <a href="/" class="hover:text-party-accent transition ${currentPage === 'home' ? 'text-party-accent font-bold' : 'text-gray-300'}">Home</a>
                 <a href="/intro" class="hover:text-party-accent transition ${currentPage === 'intro' ? 'text-party-accent font-bold' : 'text-gray-300'}">Our Story</a>
                 <a href="/how-it-works" class="hover:text-party-accent transition ${currentPage === 'how-it-works' ? 'text-party-accent font-bold' : 'text-gray-300'}">How</a>
@@ -69,11 +69,11 @@ function createNavigation() {
                 <a href="/donate" class="hover:text-party-accent transition ${currentPage === 'donate' ? 'text-party-accent font-bold' : 'text-gray-300'}">Donate</a>
                 <a href="/treasury" class="hover:text-party-accent transition ${currentPage === 'treasury' ? 'text-party-accent font-bold' : 'text-gray-300'}">Treasury</a>
                 ${loggedIn ? `
-                <div class="relative ml-2" id="user-menu-container">
-                    <button id="user-menu-btn" class="flex items-center space-x-1 px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition">
-                        <i class="fas fa-user-circle mr-1"></i>
+                <div class="relative ml-4" id="user-menu-container">
+                    <button id="user-menu-btn" class="flex items-center space-x-2 px-4 py-2 border-2 border-party-accent text-party-accent rounded-lg font-bold hover:bg-party-accent/10 transition">
+                        <i class="fas fa-user-circle"></i>
                         <span id="user-menu-name">${displayName}</span>
-                        <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        <i class="fas fa-chevron-down text-xs"></i>
                     </button>
                     <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-party-card border border-gray-700 rounded-lg shadow-xl z-50">
                         <a href="/profile" class="block px-4 py-3 text-gray-300 hover:bg-party-dark hover:text-party-accent transition rounded-t-lg">
@@ -85,14 +85,14 @@ function createNavigation() {
                     </div>
                 </div>
                 ` : `
-                <button id="login-btn" onclick="openQuickLogin()" class="px-3 py-1 border border-party-accent text-party-accent rounded font-bold hover:bg-party-accent/10 transition ml-2">
+                <button id="login-btn" onclick="openQuickLogin()" class="px-4 py-2 border-2 border-party-accent text-party-accent rounded-lg font-bold hover:bg-party-accent/10 transition ml-4">
                     <i class="fas fa-sign-in-alt mr-1"></i>Login
                 </button>
                 `}
-                <span id="active-visitors" class="text-gray-400 text-xs ml-2">
+                <span id="active-visitors" class="text-gray-400 text-sm ml-3">
                     <i class="fas fa-users mr-1"></i>—
                 </span>
-                <span id="new-joins-notification" class="text-green-400 text-xs ml-2 hidden">
+                <span id="new-joins-notification" class="text-green-400 text-sm ml-3 hidden">
                     <i class="fas fa-user-plus mr-1"></i><span></span>
                 </span>
             </div>

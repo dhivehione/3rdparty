@@ -35,8 +35,11 @@ const queries = require('./src/db/queries')({ db, lawsDb });
 const analyticsModule = require('./src/routes/analytics')({ getSettings });
 const { activeVisitors, getClientIp } = analyticsModule;
 
+// ==================== NOTIFICATION QUEUE ====================
+const notificationQueue = require('./src/services/notification-queue')({ db, getSettings });
+
 // ==================== BACKGROUND JOBS ====================
-const jobs = require('./src/jobs')({ queries, db, getSettings, merit, maybeEngageReferral, activeVisitors });
+const jobs = require('./src/jobs')({ queries, db, getSettings, merit, maybeEngageReferral, activeVisitors, notificationQueue });
 jobs.start();
 
 // ==================== MIDDLEWARE ====================
@@ -57,17 +60,17 @@ app.use(analyticsModule.router);
 const { moderateWallContent } = require('./src/services/wall-moderation');
 app.use(require('./src/routes/wall')({ db, queries, getSettings, logActivity, merit, maybeEngageReferral, moderateWallContent, sanitizeHTML, getTreasuryBalance }));
 
-app.use(require('./src/routes/proposals')({ db, queries, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, userAuth }));
-app.use(require('./src/routes/ranked-proposals')({ db, queries, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML }));
+app.use(require('./src/routes/proposals')({ db, queries, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, userAuth, notificationQueue }));
+app.use(require('./src/routes/ranked-proposals')({ db, queries, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, notificationQueue }));
 app.use(require('./src/routes/legislation/browse')({ db, lawsDb, getSettings }));
-app.use(require('./src/routes/legislation/voting')({ db, lawsDb, getSettings, maybeEngageReferral, merit }));
+app.use(require('./src/routes/legislation/voting')({ db, lawsDb, getSettings, logActivity, maybeEngageReferral, merit }));
 app.use(require('./src/routes/legislation/ai-draft')({ db, lawsDb, getSettings }));
 app.use(require('./src/routes/treasury')({ db, queries, adminAuth, logActivity, addTreasuryEntry, getTreasuryBalance, getSettings }));
-app.use(require('./src/routes/auth/register')({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit }));
+app.use(require('./src/routes/auth/register')({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit, notificationQueue }));
 app.use(require('./src/routes/auth/login')({ db, logActivity, adminSessions, ADMIN_PASSWORD }));
 app.use(require('./src/routes/auth/admin')({ db, adminAuth, getTreasuryBalance }));
 app.use(require('./src/routes/auth/stats')({ db }));
-app.use(require('./src/routes/referrals')({ db, queries, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit }));
+app.use(require('./src/routes/referrals')({ db, queries, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit, notificationQueue }));
 app.use(require('./src/routes/bounty-academy')({ db, queries, getSettings, userAuth, logActivity, merit }));
 app.use(require('./src/routes/social/merit')({ db, userAuth, merit }));
 app.use(require('./src/routes/social/interactions')({ db, logActivity, adminAuth, userAuth, getSettings }));

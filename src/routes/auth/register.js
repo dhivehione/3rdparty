@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 
-module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit }) {
+module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit, notificationQueue }) {
   const { sendSMS } = require('../../services/sms');
 
   // POST /api/verify-otp — Verify OTP code to activate account
@@ -43,15 +43,20 @@ module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generate
         'UPDATE signups SET is_verified = 1, otp_verified = 1, auth_token = ?, otp_code = NULL, otp_expires_at = NULL, last_login = ? WHERE id = ?'
       ).run(authToken, now, user.id);
 
-      // Auto-post welcome
+      // Queue welcome notification
       const verifiedUser = db.prepare('SELECT name, username FROM signups WHERE id = ?').get(user.id);
       const displayName = sanitizeHTML(verifiedUser.name || verifiedUser.username || 'A new member');
       const memberCount = db.prepare('SELECT COUNT(*) as total FROM signups').get().total;
         const targetMembers = getSettings().target_members;
       const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
       try {
-        db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
-          .run('admin', `🌴 ${displayName} verified and joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`, now, 'new_members_welcome');
+        if (notificationQueue) {
+          notificationQueue.queueNotification({
+            type: 'member_welcome',
+            userId: user.id,
+            message: `🌴 ${displayName} verified and joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`
+          });
+        }
       } catch (e) {}
 
       // Handle referral completion
@@ -368,14 +373,19 @@ module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generate
       const targetMembers = getSettings().target_members;
         const percentComplete = ((memberCount / targetMembers) * 100).toFixed(2);
         
-        // Auto-post to welcome thread
+        // Queue welcome notification
         const displayName = sanitizeHTML(name || username || 'A new member');
         const welcomeMsg = `🌴 ${displayName} just joined! We're ${memberCount.toLocaleString()} strong — ${percentComplete}% of our 13,000 member goal!`;
         try {
-          db.prepare('INSERT INTO wall_posts (nickname, message, timestamp, thread_id) VALUES (?, ?, ?, ?)')
-            .run('admin', welcomeMsg, timestamp, 'new_members_welcome');
+          if (notificationQueue) {
+            notificationQueue.queueNotification({
+              type: 'member_welcome',
+              userId: result.lastInsertRowid,
+              message: welcomeMsg
+            });
+          }
         } catch (e) {
-          console.log('Could not post welcome to wall:', e.message);
+          console.log('Could not queue welcome notification:', e.message);
         }
       }
       

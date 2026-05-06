@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, lawsDb, getSettings, maybeEngageReferral, merit }) {
+module.exports = function({ db, lawsDb, getSettings, logActivity, maybeEngageReferral, merit }) {
 
 // ==================== VOTING TABLES ====================
 if (lawsDb) {
@@ -229,6 +229,7 @@ let userId = null;
       if (userId) {
         const s = getSettings();
         merit.awardMerit(userId, 'law_vote', s.merit_vote_pass, article_id, 'article', 'Voted on a law article');
+        logActivity('law_vote', userId, article_id, { vote, type: 'article' }, req);
         maybeEngageReferral(userId);
       }
     }
@@ -292,6 +293,7 @@ router.post('/api/mvlaws/vote-law', (req, res) => {
         if (signupUser) {
           const s = getSettings();
           merit.awardMerit(signupUser.id, 'law_vote', s.merit_vote_pass, law_id, 'law', 'Voted on a law');
+          logActivity('law_vote', signupUser.id, law_id, { vote, type: 'law' }, req);
           maybeEngageReferral(signupUser.id);
         }
       }

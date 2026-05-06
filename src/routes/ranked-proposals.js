@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML }) {
+module.exports = function({ db, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, notificationQueue }) {
   // GET /api/ranked-proposals - Get all ranked choice proposals
   router.get('/api/ranked-proposals', (req, res) => {
     try {
@@ -138,7 +138,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
         maybeEngageReferral(userId);
       }
 
-      // Post notification to wall
+      // Queue notification
       try {
         let creatorName = 'Anonymous';
         if (userId) {
@@ -151,8 +151,14 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
         const safeDesc = description ? sanitizeHTML(description.trim()) : 'No description provided.';
         const truncatedDesc = safeDesc.length > 150 ? safeDesc.substring(0, 150) + '...' : safeDesc;
         const wallMessage = `🎉 Congratulations to **${creatorName}** for creating the ranked choice election "**${safeTitle}**"!\n\n**Intent:** ${truncatedDesc}\n\nLet's discuss this — what do you think? Share your thoughts and help shape our future! 💬🗳️`;
-        db.prepare('INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
-          .run('3rd Party', wallMessage, null, null, null, 1, createdAt);
+        if (notificationQueue) {
+          notificationQueue.queueNotification({
+            type: 'ranked_proposal',
+            userId,
+            referenceId: result.lastInsertRowid,
+            message: wallMessage
+          });
+        }
       } catch (e) {
         console.error('Wall notification error:', e);
       }

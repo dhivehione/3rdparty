@@ -4,6 +4,31 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Notification Queue System
+
+### Space out wall notifications for continuous feedback
+- **What:** Replaced instant wall post notifications with a batched notification queue. Created `notification_queue` table, `src/services/notification-queue.js` service, and `src/jobs/processNotifications.js` background job. Updated `proposals.js`, `ranked-proposals.js`, and `register.js` to queue notifications instead of posting directly to `wall_posts`. Added admin settings `notification_enabled`, `notification_batch_interval_ms`, and `notification_max_per_batch`.
+- **Why:** When users enrolled many people or created many proposals, notifications flooded the wall instantly. Spacing notifications creates a steady stream of feedback over time rather than bursts, keeping the wall active and engaging continuously.
+- **Who:** Developer
+
+#### Changes made:
+- **Database:** Migration `004_notification_queue.js` creates `notification_queue` table with indexes.
+- **Service:** `notification-queue.js` provides `queueNotification()`, `processQueue()`, and `getQueueStatus()`.
+- **Background job:** `processNotifications` runs every `notification_batch_interval_ms` (default 5min), posting up to `notification_max_per_batch` (default 3) notifications per cycle.
+- **Routes:** Replaced direct `wall_posts` INSERTs in proposal creation, ranked proposal creation, and signup/verification welcome messages with queued notifications.
+- **Admin panel:** Added "Notification Queue" section in Settings tab with controls for enabled state, batch interval, and max per batch.
+
+---
+
+## 2026-05-06 — Consolidate Settings Tab into Single Textarea
+
+### Replace individual settings fields with unified config editor
+- **What:** Replaced ~50 individual input fields across 9 category cards in the Settings tab with a single large monospace textarea showing all settings as `key = value` pairs with inline comments. Added `buildSettingsText()` to render settings, `parseSettingsText()` to parse edits back into key-value objects, and a Copy button for easy backup.
+- **Why:** The previous UI had too many scattered text fields across multiple cards, making it hard to scan, search, or bulk-edit settings. A single config-style textarea is faster to navigate, supports Ctrl+F, and is easier to copy/paste for backups.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Fix Leadership Subtabs Functionality
 
 ### Make all leadership subtabs fully functional

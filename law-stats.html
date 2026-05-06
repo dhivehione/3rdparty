@@ -181,6 +181,12 @@
         loadStats();
         loadTopArticles();
         loadRecentVotes();
+        
+        setInterval(() => {
+            loadStats();
+            loadTopArticles();
+            loadRecentVotes();
+        }, 30000);
     </script>
 </body>
 </html>

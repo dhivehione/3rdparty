@@ -86,6 +86,9 @@ const DEFAULT_SETTINGS = {
   sms_otp_length: 6,
   sms_otp_expiry_minutes: 10,
   sms_otp_required: 0,
+  notification_enabled: 1,
+  notification_batch_interval_ms: 5 * 60 * 1000,
+  notification_max_per_batch: 3,
   ai_law_draft_prompt: `You are a legal drafting assistant for the Maldives. Given a seed idea, produce a well-structured draft using proper legal formatting.
 
 IMPORTANT — First, determine the appropriate scope:

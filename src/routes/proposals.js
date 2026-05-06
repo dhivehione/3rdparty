@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-module.exports = function({ db, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, userAuth }) {
+module.exports = function({ db, getSettings, logActivity, merit, maybeEngageReferral, sanitizeHTML, userAuth, notificationQueue }) {
 
 // ==================== PROPOSAL STAKES & REPUTATION (Whitepaper sec II.C.10) ====================
 // Stake: max(10, MS * 0.005), Refund if >=20% support, Forfeit if <10% support
@@ -171,7 +171,7 @@ router.post('/api/proposals', (req, res) => {
       logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
     }
 
-    // Post notification to wall
+    // Queue notification
     try {
       let creatorName = 'Anonymous';
       if (userId) {
@@ -184,8 +184,14 @@ router.post('/api/proposals', (req, res) => {
       const safeDesc = sanitizeHTML(description.trim());
       const truncatedDesc = safeDesc.length > 150 ? safeDesc.substring(0, 150) + '...' : safeDesc;
       const wallMessage = `🎉 Congratulations to **${creatorName}** for proposing "**${safeTitle}**"!\n\n**Intent:** ${truncatedDesc}\n\nLet's discuss this — what do you think? Share your thoughts and help shape our future! 💬🗳️`;
-      db.prepare('INSERT INTO wall_posts (nickname, message, parent_id, user_id, user_name, is_approved, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run('3rd Party', wallMessage, null, null, null, 1, createdAt);
+      if (notificationQueue) {
+        notificationQueue.queueNotification({
+          type: 'proposal',
+          userId,
+          referenceId: result.lastInsertRowid,
+          message: wallMessage
+        });
+      }
     } catch (e) {
       console.error('Wall notification error:', e);
     }
