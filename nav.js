@@ -396,8 +396,14 @@ window.addEventListener('storage', (e) => {
     
     function checkNewJoins() {
         const lastLogin = localStorage.getItem('3dparty_last_login');
-        if (!lastLogin) return;
-        
+        const now = new Date().toISOString();
+
+        // First visit — seed timestamp so next visit has a baseline
+        if (!lastLogin) {
+            localStorage.setItem('3dparty_last_login', now);
+            return;
+        }
+
         fetch(`/api/stats/new-joins?last_login=${encodeURIComponent(lastLogin)}`)
             .then(r => r.json())
             .then(d => {
@@ -410,7 +416,12 @@ window.addEventListener('storage', (e) => {
                     }
                 }
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => {
+                // Always bump the baseline so the next page-load only counts
+                // members who joined AFTER this visit.
+                localStorage.setItem('3dparty_last_login', now);
+            });
     }
     
     heartbeat();

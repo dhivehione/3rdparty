@@ -4,6 +4,15 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Fix "New Joins Since Last Visit" Notification
+
+### Make nav notification work consistently for all visitors
+- **What:** Fixed `checkNewJoins()` in `nav.js` so it seeds `3dparty_last_login` on first visit and always bumps the timestamp after checking. Also wired `notificationQueue` into `src/routes/referrals.js` so family/friend enrollments queue welcome notifications like direct signups.
+- **Why:** The notification was invisible because `3dparty_last_login` was only set on login/logout, leaving first-time and returning visitors without a baseline. Even when set, `markLogin()` overwrote it to "now" before `checkNewJoins` could run after a reload, so the count was always zero. Enrolled users via `/api/enroll-family-friend` also never triggered welcome wall posts.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Notification Queue System
 
 ### Space out wall notifications for continuous feedback
