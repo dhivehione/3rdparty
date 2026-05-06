@@ -5,25 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3d Party Admin</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/tailwind.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        party: {
-                            dark: '#0f0f1a',
-                            card: '#1a1a2e',
-                            accent: '#FFD700',
-                            secondary: '#4A90E2'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
     <script>
@@ -316,6 +300,10 @@
             <!-- Tab: Leadership -->
             <div id="tab-leadership" class="dash-content hidden">
                 <div class="grid md:grid-cols-5 gap-4 mb-4">
+                    <div onclick="showLeadershipTab('settings')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
+                        <div class="text-gray-400 text-sm">Settings</div>
+                        <div class="text-2xl font-bold text-gray-400"><i class="fas fa-cog"></i></div>
+                    </div>
                     <div onclick="showLeadershipTab('positions')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
                         <div class="text-gray-400 text-sm">Open Positions</div>
                         <div class="text-2xl font-bold text-party-accent" id="openPositions">0</div>
@@ -332,6 +320,9 @@
                         <div class="text-gray-400 text-sm">SOPs Active</div>
                         <div class="text-2xl font-bold text-blue-400" id="activeSOPs">0</div>
                     </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
                     <div onclick="showLeadershipTab('appraisals')" class="bg-party-card p-4 rounded-xl border border-gray-700 cursor-pointer hover:border-party-accent transition">
                         <div class="text-gray-400 text-sm">Appraisals Due</div>
                         <div class="text-2xl font-bold text-yellow-400" id="pendingAppraisals">0</div>
@@ -482,6 +473,116 @@
         </div>
     </div>
 
+    <div id="positionModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+        <div class="bg-party-card p-6 rounded-xl border border-gray-700 max-w-lg w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-party-accent" id="positionModalTitle">Add Position</h3>
+                <button onclick="closePositionModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="positionForm" class="space-y-4">
+                <input type="hidden" id="editPositionId">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Title</label>
+                    <input type="text" id="positionTitle" required maxlength="200" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <textarea id="positionDescription" rows="3" maxlength="1000" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Position Type</label>
+                    <select id="positionType" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                        <option value="general">General</option>
+                        <option value="council">Council</option>
+                        <option value="committee">Committee</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Minimum Merit Required</label>
+                    <input type="number" id="positionMinMerit" value="0" min="0" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition"><i class="fas fa-save mr-2"></i>Save</button>
+                    <button type="button" onclick="closePositionModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="sopModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+        <div class="bg-party-card p-6 rounded-xl border border-gray-700 max-w-2xl w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-party-accent" id="sopModalTitle">Add SOP</h3>
+                <button onclick="closeSOPModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="sopForm" class="space-y-4">
+                <input type="hidden" id="editSOPId">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Title</label>
+                    <input type="text" id="sopTitle" required maxlength="200" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Category</label>
+                    <input type="text" id="sopCategory" required maxlength="100" placeholder="e.g., general, operations, governance" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Content</label>
+                    <textarea id="sopContent" required rows="8" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white font-mono text-sm"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition"><i class="fas fa-save mr-2"></i>Save</button>
+                    <button type="button" onclick="closeSOPModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="appraisalModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+        <div class="bg-party-card p-6 rounded-xl border border-gray-700 max-w-lg w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-party-accent" id="appraisalModalTitle">Appraise Leader</h3>
+                <button onclick="closeAppraisalModal()" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="appraisalForm" class="space-y-4">
+                <input type="hidden" id="appraisalTermId">
+                <div class="p-3 bg-gray-800/50 rounded-lg">
+                    <div class="font-bold text-white" id="appraisalLeaderName"></div>
+                    <div class="text-sm text-party-accent" id="appraisalLeaderPosition"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Rating (1-5)</label>
+                    <select id="appraisalRating" required class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                        <option value="5">5 - Excellent</option>
+                        <option value="4">4 - Good</option>
+                        <option value="3" selected>3 - Satisfactory</option>
+                        <option value="2">2 - Needs Improvement</option>
+                        <option value="1">1 - Unsatisfactory</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Appraisal Period</label>
+                    <input type="text" id="appraisalPeriod" required placeholder="e.g., 2024-2025" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Strengths</label>
+                    <textarea id="appraisalStrengths" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Areas for Improvement</label>
+                    <textarea id="appraisalAreas" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Overall Feedback</label>
+                    <textarea id="appraisalFeedback" rows="3" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-party-accent text-white"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-party-accent text-party-dark px-6 py-2 rounded-lg font-bold hover:scale-105 transform transition"><i class="fas fa-save mr-2"></i>Save Appraisal</button>
+                    <button type="button" onclick="closeAppraisalModal()" class="text-gray-400 px-6 py-2 hover:text-white transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         let allSignups = [];
         let currentPage = 1;
@@ -520,6 +621,10 @@
         // ── Tab Navigation ──
         document.querySelectorAll('#mainTabs .dash-tab').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        document.querySelectorAll('#leadershipTabs .leadership-tab').forEach(btn => {
+            btn.addEventListener('click', () => switchLeadershipTab(btn.dataset.tab));
         });
 
         function switchTab(tab) {
@@ -749,6 +854,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button onclick="togglePosition(${p.id}, ${p.is_active})" class="text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}"><i class="fas fa-${p.is_active ? 'toggle-on' : 'toggle-off'}"></i></button>
+                        <button onclick="showEditPositionForm(${p.id})" class="text-sm text-blue-400 hover:text-blue-300"><i class="fas fa-edit"></i></button>
                         <button onclick="deletePosition(${p.id})" class="text-sm text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
@@ -892,55 +998,139 @@
         }
 
         async function showAddPositionForm() {
-            const title = prompt('Position Title:');
-            if (!title) return;
-            const description = prompt('Position Description (optional):') || '';
-            const positionType = prompt('Position Type (council/committee/general):', 'general');
-            if (!['council', 'committee', 'general'].includes(positionType)) { alert('Invalid position type'); return; }
-            const minMerit = parseInt(prompt('Minimum Merit Required:', '0')) || 0;
-            const { ok, data } = await api.post('/api/leadership/positions', { title, description, position_type: positionType, min_merit_required: minMerit });
-            if (ok && data?.success) { alert('Position created!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+            document.getElementById('positionModalTitle').textContent = 'Add Position';
+            document.getElementById('editPositionId').value = '';
+            document.getElementById('positionTitle').value = '';
+            document.getElementById('positionDescription').value = '';
+            document.getElementById('positionType').value = 'general';
+            document.getElementById('positionMinMerit').value = '0';
+            document.getElementById('positionModal').classList.remove('hidden');
         }
+
+        function showEditPositionForm(id) {
+            const pos = leadershipData.positions.find(p => p.id === id);
+            if (!pos) return;
+            document.getElementById('positionModalTitle').textContent = 'Edit Position';
+            document.getElementById('editPositionId').value = id;
+            document.getElementById('positionTitle').value = pos.title;
+            document.getElementById('positionDescription').value = pos.description || '';
+            document.getElementById('positionType').value = pos.position_type;
+            document.getElementById('positionMinMerit').value = pos.min_merit_required;
+            document.getElementById('positionModal').classList.remove('hidden');
+        }
+
+        function closePositionModal() {
+            document.getElementById('positionModal').classList.add('hidden');
+        }
+
+        document.getElementById('positionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editPositionId').value;
+            const data = {
+                title: document.getElementById('positionTitle').value,
+                description: document.getElementById('positionDescription').value,
+                position_type: document.getElementById('positionType').value,
+                min_merit_required: parseInt(document.getElementById('positionMinMerit').value) || 0
+            };
+            let result;
+            if (id) {
+                result = await api.post('/api/leadership/positions', { id, ...data });
+            } else {
+                result = await api.post('/api/leadership/positions', data);
+            }
+            if (result.ok && result.data?.success) {
+                alert(id ? 'Position updated!' : 'Position created!');
+                closePositionModal();
+                loadLeadershipData();
+            } else {
+                alert('Error: ' + (result.data?.error || 'Unknown'));
+            }
+        });
 
         async function showAddSOPForm() {
-            const title = prompt('SOP Title:');
-            if (!title) return;
-            const category = prompt('Category (e.g., general, operations, governance):', 'general');
-            const content = prompt('SOP Content:');
-            if (!content) return;
-            const { ok, data } = await api.post('/api/leadership/sops', { title, content, category });
-            if (ok && data?.success) { alert('SOP created!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+            document.getElementById('sopModalTitle').textContent = 'Add SOP';
+            document.getElementById('editSOPId').value = '';
+            document.getElementById('sopTitle').value = '';
+            document.getElementById('sopCategory').value = 'general';
+            document.getElementById('sopContent').value = '';
+            document.getElementById('sopModal').classList.remove('hidden');
         }
 
-        async function editSOP(id) {
+        function editSOP(id) {
             const sop = leadershipData.sops.find(s => s.id === id);
             if (!sop) return;
-            const title = prompt('SOP Title:', sop.title);
-            if (!title) return;
-            const category = prompt('Category:', sop.category);
-            const content = prompt('SOP Content:', sop.content);
-            if (!content) return;
-            const { ok, data } = await api.post('/api/leadership/sops', { id, title, content, category });
-            if (ok && data?.success) { alert('SOP updated!'); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+            document.getElementById('sopModalTitle').textContent = 'Edit SOP';
+            document.getElementById('editSOPId').value = id;
+            document.getElementById('sopTitle').value = sop.title;
+            document.getElementById('sopCategory').value = sop.category;
+            document.getElementById('sopContent').value = sop.content;
+            document.getElementById('sopModal').classList.remove('hidden');
         }
 
-        async function showAppraisalForm(termId, name, position) {
-            const rating = prompt('Rating (1-5) for ' + name + ' (' + position + '):');
-            if (!rating || rating < 1 || rating > 5) { alert('Invalid rating. Must be 1-5.'); return; }
-            const strengths = prompt('Strengths (optional):') || '';
-            const areasForImprovement = prompt('Areas for Improvement (optional):') || '';
-            const overallFeedback = prompt('Overall Feedback (optional):') || '';
-            const appraisalPeriod = prompt('Appraisal Period (e.g., 2024-2025):', new Date().getFullYear().toString());
-            const { ok, data } = await api.post('/api/leadership/appraisals', {
-                term_id: termId,
-                appraisal_period: appraisalPeriod,
-                rating: parseInt(rating),
-                strengths,
-                areas_for_improvement: areasForImprovement,
-                overall_feedback: overallFeedback
-            });
-            if (ok && data?.success) { alert('Appraisal recorded for ' + name); loadLeadershipData(); } else { alert('Error: ' + (data?.error || 'Unknown')); }
+        function closeSOPModal() {
+            document.getElementById('sopModal').classList.add('hidden');
         }
+
+        document.getElementById('sopForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editSOPId').value;
+            const data = {
+                title: document.getElementById('sopTitle').value,
+                category: document.getElementById('sopCategory').value,
+                content: document.getElementById('sopContent').value
+            };
+            let result;
+            if (id) {
+                result = await api.post('/api/leadership/sops', { id, ...data });
+            } else {
+                result = await api.post('/api/leadership/sops', data);
+            }
+            if (result.ok && result.data?.success) {
+                alert(id ? 'SOP updated!' : 'SOP created!');
+                closeSOPModal();
+                loadLeadershipData();
+            } else {
+                alert('Error: ' + (result.data?.error || 'Unknown'));
+            }
+        });
+
+        function showAppraisalForm(termId, name, position) {
+            document.getElementById('appraisalModalTitle').textContent = 'Appraise: ' + name;
+            document.getElementById('appraisalTermId').value = termId;
+            document.getElementById('appraisalLeaderName').textContent = name;
+            document.getElementById('appraisalLeaderPosition').textContent = position;
+            document.getElementById('appraisalRating').value = '3';
+            document.getElementById('appraisalPeriod').value = new Date().getFullYear().toString();
+            document.getElementById('appraisalStrengths').value = '';
+            document.getElementById('appraisalAreas').value = '';
+            document.getElementById('appraisalFeedback').value = '';
+            document.getElementById('appraisalModal').classList.remove('hidden');
+        }
+
+        function closeAppraisalModal() {
+            document.getElementById('appraisalModal').classList.add('hidden');
+        }
+
+        document.getElementById('appraisalForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const termId = document.getElementById('appraisalTermId').value;
+            const data = {
+                term_id: parseInt(termId),
+                appraisal_period: document.getElementById('appraisalPeriod').value,
+                rating: parseInt(document.getElementById('appraisalRating').value),
+                strengths: document.getElementById('appraisalStrengths').value,
+                areas_for_improvement: document.getElementById('appraisalAreas').value,
+                overall_feedback: document.getElementById('appraisalFeedback').value
+            };
+            const result = await api.post('/api/leadership/appraisals', data);
+            if (result.ok && result.data?.success) {
+                alert('Appraisal recorded!');
+                closeAppraisalModal();
+                loadLeadershipData();
+            } else {
+                alert('Error: ' + (result.data?.error || 'Unknown'));
+            }
+        });
 
         // ── Proposals ──
         async function loadProposalsAdmin() {

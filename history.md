@@ -4,6 +4,20 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Fix CSP Blocking Google Analytics + Replace Tailwind CDN with Build Step
+
+### Fix CSP connect-src to allow Google Analytics
+- **What:** Added `https://www.google-analytics.com` and `https://www.google.com` to `connect-src` in the CSP header (`src/middleware/cors.js`) and HTML meta tags (`members.html`, `profile.html`). Also removed stale `https://cdn.tailwindcss.com` from `script-src` since Tailwind is now built locally.
+- **Why:** The CSP `connect-src 'self'` directive was blocking Google Analytics from sending pageview data to `www.google-analytics.com/g/collect` and `www.google.com/g/collect`. GA's gtag.js script loaded fine via `script-src`, but the POST to collect data was blocked.
+- **Who:** Developer
+
+### Replace Tailwind CSS CDN with local PostCSS build
+- **What:** Installed `tailwindcss@3` as a devDependency. Created `tailwind.config.js` with the custom `party` color palette, `styles/tailwind.css` as input, and `tailwind.css` as the minified output. Added `build:css` npm script. Replaced `<script src="https://cdn.tailwindcss.com">` + inline `tailwind.config` blocks with `<link rel="stylesheet" href="/tailwind.css">` in all 21 HTML files.
+- **Why:** The Tailwind Play CDN (`cdn.tailwindcss.com`) warns against production use. It forces the browser to download the compiler and scan the DOM at runtime, which is slow and wasteful. Pre-building the CSS at build time is the recommended production approach.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Tie Endorsements to Leadership Applications
 
 ### Endorsements only work for active applications; one person, one position

@@ -5,11 +5,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build:css": "tailwindcss -i ./styles/tailwind.css -o ./tailwind.css --minify"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
     "express": "^4.18.2",
     "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
   }
 }
