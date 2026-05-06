@@ -4,6 +4,32 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Tie Endorsements to Leadership Applications
+
+### Endorsements only work for active applications; one person, one position
+- **What:** Changed peer endorsements from a free social feature to application-scoped endorsements. Added `application_id` column to `peer_endorsements` table. POST `/api/endorsements` now requires `application_id` and validates that the target has an active (`pending` or `interview`) application. Updated `/api/members` to include application status and position title. Updated `/api/endorsements/received` and `/api/endorsements/given` to include position context. Updated `POST /api/leadership/apply` to enforce one active application per user. Updated `members.html` to only show endorse buttons for active applicants (with position badge). Updated `profile.html` to show position title in endorsement lists.
+- **Why:** Without this, a member could enroll many friends, have them all endorse each other, and artificially inflate merit scores without contributing anything meaningful. Tying endorsements to active applications makes them meaningful — you're endorsing someone for a specific role, not giving a generic thumbs-up.
+- **Who:** Developer
+
+#### Changes made:
+- **Database (Migration 005):** Added `application_id` column to `peer_endorsements` with foreign key to `leadership_applications`.
+- **Backend (`src/routes/social/merit.js`):** `POST /api/endorsements` now requires `application_id`, validates application exists and is active. `GET /api/endorsements/received` and `/given` JOIN with applications and positions to return `position_title`.
+- **Backend (`src/routes/profile.js`):** `GET /api/members` and `/api/members/:id` LEFT JOIN with `leadership_applications` to include `application_id`, `application_status`, `position_title`.
+- **Backend (`src/routes/leadership.js`):** `POST /api/leadership/apply` now checks for ANY active application (pending/interview) for any position, not just the same position. Error: "One person, one position."
+- **Frontend (`members.html`):** Endorse button only appears for members with active applications. Position badge shown (e.g., "Treasurer"). `endorseMember()` now passes `application_id`.
+- **Frontend (`profile.html`):** Endorsement lists now show position title next to each endorsement.
+
+---
+
+## 2026-05-06 — Fix Content-Security-Policy Blocking Page Resources
+
+### Add proper CSP headers to override restrictive hosting defaults
+- **What:** Added a `Content-Security-Policy` response header in `src/middleware/cors.js` and `<meta http-equiv="Content-Security-Policy">` tags to `members.html` and `profile.html` to allow loading of external CDNs (Tailwind, Font Awesome), inline scripts/styles, images, and API calls.
+- **Why:** The hosting platform (or an upstream proxy like Cloudflare) was injecting `default-src 'none'`, which blocks all scripts, styles, images, fonts, and fetch requests. This completely breaks every page, including the new endorsement UI.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Member Endorsement Frontend
 
 ### Make peer endorsements usable by members

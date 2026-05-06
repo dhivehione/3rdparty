@@ -5,11 +5,14 @@ module.exports = function({ db, userAuth, merit }) {
 
   // ==================== ENDORSEMENTS ====================
   router.post('/api/endorsements', userAuth, (req, res) => {
-    const { endorsed_id } = req.body;
+    const { endorsed_id, application_id } = req.body;
     const endorserId = req.user.id;
 
     if (!endorsed_id) {
       return res.status(400).json({ error: 'endorsed_id required', success: false });
+    }
+    if (!application_id) {
+      return res.status(400).json({ error: 'application_id required — endorsements are only for active applications', success: false });
     }
 
     if (parseInt(endorsed_id) === endorserId) {
@@ -20,6 +23,20 @@ module.exports = function({ db, userAuth, merit }) {
       const target = db.prepare('SELECT id FROM signups WHERE id = ? AND is_verified = 1').get(endorsed_id);
       if (!target) {
         return res.status(404).json({ error: 'User not found', success: false });
+      }
+
+      const application = db.prepare(`
+        SELECT la.id, la.status, lp.title as position_title
+        FROM leadership_applications la
+        JOIN leadership_positions lp ON la.position_id = lp.id
+        WHERE la.id = ? AND la.user_id = ?
+      `).get(application_id, endorsed_id);
+
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found', success: false });
+      }
+      if (!['pending', 'interview'].includes(application.status)) {
+        return res.status(400).json({ error: `Endorsements only allowed for active applications. This application is "${application.status}"`, success: false });
       }
 
       const settings = merit.getSettings();
@@ -34,14 +51,13 @@ module.exports = function({ db, userAuth, merit }) {
         return res.status(429).json({ error: `Max ${settings.endorsement_max_per_period} endorsements per ${settings.endorsement_period_days}-day period`, success: false });
       }
 
-      const existing = db.prepare('SELECT id FROM peer_endorsements WHERE endorser_id = ? AND endorsed_id = ?').get(endorserId, endorsed_id);
+      const existing = db.prepare('SELECT id FROM peer_endorsements WHERE endorser_id = ? AND endorsed_id = ? AND application_id = ?').get(endorserId, endorsed_id, application_id);
       if (existing) {
-        return res.status(409).json({ error: 'Already endorsed this user', success: false });
+        return res.status(409).json({ error: 'Already endorsed this application', success: false });
       }
 
       const now = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      db.prepare('INSERT INTO peer_endorsements (endorser_id, endorsed_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(endorserId, endorsed_id, now, expiresAt);
+      db.prepare('INSERT INTO peer_endorsements (endorser_id, endorsed_id, application_id, created_at) VALUES (?, ?, ?, ?)').run(endorserId, endorsed_id, application_id, now);
 
       const endorsements = db.prepare('SELECT * FROM peer_endorsements WHERE endorsed_id = ?').all(endorsed_id);
       const newCount = endorsements.length;
@@ -49,10 +65,10 @@ module.exports = function({ db, userAuth, merit }) {
       const delta = merit.calculateEndorsementPoints(newCount) - merit.calculateEndorsementPoints(oldCount);
 
       if (delta !== 0) {
-        merit.awardMerit(endorsed_id, 'peer_endorsement', delta, newCount, 'endorsement', `Peer endorsement #${newCount}`);
+        merit.awardMerit(endorsed_id, 'peer_endorsement', delta, newCount, 'endorsement', `Peer endorsement #${newCount} for ${application.position_title}`);
       }
 
-      res.json({ success: true, message: 'Endorsement recorded' });
+      res.json({ success: true, message: `Endorsement recorded for ${application.position_title}` });
     } catch (error) {
       console.error('Endorsement error:', error);
       res.status(500).json({ error: 'Could not record endorsement', success: false });
@@ -92,9 +108,12 @@ module.exports = function({ db, userAuth, merit }) {
 
     try {
       const endorsements = db.prepare(`
-        SELECT pe.*, s.name as endorser_name, s.username as endorser_username
+        SELECT pe.*, s.name as endorser_name, s.username as endorser_username,
+               lp.title as position_title, la.status as application_status
         FROM peer_endorsements pe
         JOIN signups s ON pe.endorser_id = s.id
+        LEFT JOIN leadership_applications la ON pe.application_id = la.id
+        LEFT JOIN leadership_positions lp ON la.position_id = lp.id
         WHERE pe.endorsed_id = ?
         ORDER BY pe.created_at DESC
       `).all(userId);
@@ -113,9 +132,12 @@ module.exports = function({ db, userAuth, merit }) {
 
     try {
       const endorsements = db.prepare(`
-        SELECT pe.*, s.name as endorsed_name, s.username as endorsed_username
+        SELECT pe.*, s.name as endorsed_name, s.username as endorsed_username,
+               lp.title as position_title, la.status as application_status
         FROM peer_endorsements pe
         JOIN signups s ON pe.endorsed_id = s.id
+        LEFT JOIN leadership_applications la ON pe.application_id = la.id
+        LEFT JOIN leadership_positions lp ON la.position_id = lp.id
         WHERE pe.endorser_id = ?
         ORDER BY pe.created_at DESC
       `).all(userId);

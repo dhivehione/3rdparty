@@ -314,9 +314,9 @@ module.exports = function({ db, adminAuth, userAuth, getSettings, updateSettings
         return res.status(400).json({ success: false, error: `This position requires ${position.min_merit_required} merit. Your score: ${req.user.initial_merit_estimate}` });
       }
 
-      const existingApp = db.prepare('SELECT id FROM leadership_applications WHERE user_id = ? AND position_id = ? AND status != ?').get(req.user.id, position_id, 'rejected');
+      const existingApp = db.prepare('SELECT id, position_id FROM leadership_applications WHERE user_id = ? AND status IN (?, ?)').get(req.user.id, 'pending', 'interview');
       if (existingApp) {
-        return res.status(400).json({ success: false, error: 'You already have a pending application for this position' });
+        return res.status(400).json({ success: false, error: 'You already have an active application. One person, one position.' });
       }
 
       const now = new Date().toISOString();

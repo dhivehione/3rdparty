@@ -45,6 +45,14 @@ function runMigrations(deps) {
     db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(4, new Date().toISOString());
     console.log('✓ Migration 4 applied');
   }
+
+  // Migration 5: endorsement-application binding
+  if (!applied.has(5)) {
+    const m005 = require('./005_endorsement_application');
+    m005.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(5, new Date().toISOString());
+    console.log('✓ Migration 5 applied');
+  }
 }
 
 module.exports = { runMigrations };

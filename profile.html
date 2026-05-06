@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile — 3d Party</title>
     <meta name="description" content="View your 3d Party profile, merit score, voting history, proposals, and enroll family and friends.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self'; frame-src 'none';">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
@@ -1010,13 +1011,17 @@
                 noData.classList.add('hidden');
                 container.innerHTML = data.endorsements.map(e => {
                     const name = e.endorser_name || e.endorser_username || `Member #${e.endorser_id}`;
+                    const positionBadge = e.position_title ? `<span class="text-party-secondary text-xs ml-2"><i class="fas fa-user-tie mr-1"></i>${Utils.escapeHtml(e.position_title)}</span>` : '';
                     return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg px-4 py-2">
                             <div class="flex items-center space-x-3">
                                 <div class="w-8 h-8 rounded-full bg-party-secondary/20 flex items-center justify-center text-party-secondary font-bold text-sm">
                                     ${(name[0] || '?').toUpperCase()}
                                 </div>
-                                <span class="text-sm text-gray-300">${Utils.escapeHtml(name)}</span>
+                                <div>
+                                    <span class="text-sm text-gray-300">${Utils.escapeHtml(name)}</span>
+                                    ${positionBadge}
+                                </div>
                             </div>
                             <span class="text-gray-500 text-xs">${new Date(e.created_at).toLocaleDateString()}</span>
                         </div>
@@ -1047,13 +1052,17 @@
                 noData.classList.add('hidden');
                 container.innerHTML = data.endorsements.map(e => {
                     const name = e.endorsed_name || e.endorsed_username || `Member #${e.endorsed_id}`;
+                    const positionBadge = e.position_title ? `<span class="text-party-secondary text-xs"><i class="fas fa-user-tie mr-1"></i>${Utils.escapeHtml(e.position_title)}</span>` : '';
                     return `
                         <div class="flex justify-between items-center bg-gray-800/50 rounded-lg px-4 py-2">
                             <div class="flex items-center space-x-3">
                                 <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">
                                     ${(name[0] || '?').toUpperCase()}
                                 </div>
-                                <span class="text-sm text-gray-300">${Utils.escapeHtml(name)}</span>
+                                <div>
+                                    <span class="text-sm text-gray-300">${Utils.escapeHtml(name)}</span>
+                                    ${positionBadge}
+                                </div>
                             </div>
                             <div class="flex items-center space-x-3">
                                 <span class="text-gray-500 text-xs">${new Date(e.created_at).toLocaleDateString()}</span>

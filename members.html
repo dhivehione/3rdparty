@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Members — 3d Party</title>
     <meta name="description" content="Browse and endorse verified members of the 3d Party movement.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self'; frame-src 'none';">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
@@ -39,7 +40,7 @@
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-party-accent mb-2">Member Directory</h1>
             <p class="text-gray-400 max-w-xl mx-auto">
-                Find verified members and endorse the ones you believe in. Endorsements expire after 30 days and earn merit points.
+                Find verified members. You can endorse members who have active applications for leadership positions.
             </p>
         </div>
 
@@ -57,7 +58,7 @@
                 </button>
             </div>
             <p class="text-gray-500 text-xs mt-2">
-                <i class="fas fa-info-circle mr-1"></i>Only verified members are shown. You can endorse up to 20 members per 30-day period.
+                <i class="fas fa-info-circle mr-1"></i>Endorsements are only available for members with active applications. You can endorse up to 20 members per 30-day period.
             </p>
         </div>
 
@@ -216,25 +217,35 @@
 
         function renderMembers(members) {
             const list = document.getElementById('membersList');
-            const givenMap = new Map(givenEndorsements.map(e => [e.endorsed_id, e.id]));
+            const givenMap = new Map(givenEndorsements.map(e => [e.endorsed_id, e]));
 
             list.innerHTML = members.map(m => {
                 const displayName = m.name || m.username || `Member #${m.id}`;
                 const isSelf = currentUserId === m.id;
-                const alreadyEndorsed = givenMap.has(m.id);
+                const hasActiveApplication = m.application_id && ['pending', 'interview'].includes(m.application_status);
+                const existingEndorsement = givenMap.get(m.id);
                 const islandText = m.island ? `<span class="text-gray-500 text-xs ml-2"><i class="fas fa-map-marker-alt mr-1"></i>${Utils.escapeHtml(m.island)}</span>` : '';
+
+                let positionBadge = '';
+                if (hasActiveApplication && m.position_title) {
+                    positionBadge = `<span class="bg-party-secondary/20 text-party-secondary text-xs px-2 py-0.5 rounded-full border border-party-secondary/30 ml-2"><i class="fas fa-user-tie mr-1"></i>${Utils.escapeHtml(m.position_title)}</span>`;
+                }
 
                 let actionBtn;
                 if (isSelf) {
                     actionBtn = `<span class="text-gray-500 text-xs italic">You</span>`;
-                } else if (alreadyEndorsed) {
-                    actionBtn = `<button onclick="removeEndorsement(${givenMap.get(m.id)}, this)" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg hover:bg-red-500/30 text-sm font-medium transition">
-                        <i class="fas fa-times mr-1"></i>Remove
-                    </button>`;
+                } else if (hasActiveApplication) {
+                    if (existingEndorsement) {
+                        actionBtn = `<button onclick="removeEndorsement(${existingEndorsement.id}, this)" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg hover:bg-red-500/30 text-sm font-medium transition">
+                            <i class="fas fa-times mr-1"></i>Remove
+                        </button>`;
+                    } else {
+                        actionBtn = `<button onclick="endorseMember(${m.id}, ${m.application_id}, this)" class="bg-party-accent/20 text-party-accent border border-party-accent/30 px-3 py-1 rounded-lg hover:bg-party-accent/30 text-sm font-medium transition">
+                            <i class="fas fa-thumbs-up mr-1"></i>Endorse
+                        </button>`;
+                    }
                 } else {
-                    actionBtn = `<button onclick="endorseMember(${m.id}, this)" class="bg-party-accent/20 text-party-accent border border-party-accent/30 px-3 py-1 rounded-lg hover:bg-party-accent/30 text-sm font-medium transition">
-                        <i class="fas fa-thumbs-up mr-1"></i>Endorse
-                    </button>`;
+                    actionBtn = `<span class="text-gray-600 text-xs italic">No active application</span>`;
                 }
 
                 return `
@@ -244,7 +255,7 @@
                                 ${(displayName[0] || '?').toUpperCase()}
                             </div>
                             <div>
-                                <div class="font-bold text-white">${Utils.escapeHtml(displayName)}</div>
+                                <div class="font-bold text-white">${Utils.escapeHtml(displayName)}${positionBadge}</div>
                                 <div class="flex items-center">
                                     ${m.username ? `<span class="text-party-secondary text-xs">@${Utils.escapeHtml(m.username)}</span>` : ''}
                                     ${islandText}
@@ -289,7 +300,7 @@
             }
         }
 
-        async function endorseMember(id, btn) {
+        async function endorseMember(id, applicationId, btn) {
             if (!authToken) {
                 openQuickLogin();
                 return;
@@ -302,12 +313,11 @@
                 const res = await fetch('/api/endorsements', {
                     method: 'POST',
                     headers: Auth.getApiHeaders(),
-                    body: JSON.stringify({ endorsed_id: id })
+                    body: JSON.stringify({ endorsed_id: id, application_id: applicationId })
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    // Refresh to update state
                     await loadMyEndorsements();
                 } else {
                     alert(data.error || 'Failed to endorse');

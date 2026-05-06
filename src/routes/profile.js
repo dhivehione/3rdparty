@@ -252,11 +252,14 @@ module.exports = function({ db, lawsDb, getSettings, logActivity, userAuth, meri
       if (search) {
         const pattern = `%${search}%`;
         members = db.prepare(`
-          SELECT id, name, username, island, initial_merit_estimate, timestamp
-          FROM signups
-          WHERE is_verified = 1 AND unregistered_at IS NULL
-            AND (LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(island) LIKE ?)
-          ORDER BY name ASC
+          SELECT s.id, s.name, s.username, s.island, s.initial_merit_estimate, s.timestamp,
+                 la.id as application_id, la.status as application_status, lp.title as position_title
+          FROM signups s
+          LEFT JOIN leadership_applications la ON s.id = la.user_id AND la.status IN ('pending', 'interview')
+          LEFT JOIN leadership_positions lp ON la.position_id = lp.id
+          WHERE s.is_verified = 1 AND s.unregistered_at IS NULL
+            AND (LOWER(s.name) LIKE ? OR LOWER(s.username) LIKE ? OR LOWER(s.island) LIKE ?)
+          ORDER BY s.name ASC
           LIMIT ? OFFSET ?
         `).all(pattern, pattern, pattern, limit, offset);
         count = db.prepare(`
@@ -266,10 +269,13 @@ module.exports = function({ db, lawsDb, getSettings, logActivity, userAuth, meri
         `).get(pattern, pattern, pattern);
       } else {
         members = db.prepare(`
-          SELECT id, name, username, island, initial_merit_estimate, timestamp
-          FROM signups
-          WHERE is_verified = 1 AND unregistered_at IS NULL
-          ORDER BY name ASC
+          SELECT s.id, s.name, s.username, s.island, s.initial_merit_estimate, s.timestamp,
+                 la.id as application_id, la.status as application_status, lp.title as position_title
+          FROM signups s
+          LEFT JOIN leadership_applications la ON s.id = la.user_id AND la.status IN ('pending', 'interview')
+          LEFT JOIN leadership_positions lp ON la.position_id = lp.id
+          WHERE s.is_verified = 1 AND s.unregistered_at IS NULL
+          ORDER BY s.name ASC
           LIMIT ? OFFSET ?
         `).all(limit, offset);
         count = db.prepare(`
@@ -303,9 +309,12 @@ module.exports = function({ db, lawsDb, getSettings, logActivity, userAuth, meri
     try {
       const id = parseInt(req.params.id);
       const member = db.prepare(`
-        SELECT id, name, username, island, initial_merit_estimate, timestamp
-        FROM signups
-        WHERE id = ? AND is_verified = 1 AND unregistered_at IS NULL
+        SELECT s.id, s.name, s.username, s.island, s.initial_merit_estimate, s.timestamp,
+               la.id as application_id, la.status as application_status, lp.title as position_title
+        FROM signups s
+        LEFT JOIN leadership_applications la ON s.id = la.user_id AND la.status IN ('pending', 'interview')
+        LEFT JOIN leadership_positions lp ON la.position_id = lp.id
+        WHERE s.id = ? AND s.is_verified = 1 AND s.unregistered_at IS NULL
       `).get(id);
 
       if (!member) {
