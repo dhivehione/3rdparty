@@ -489,13 +489,13 @@
         const PAGE_SIZE = 50;
         let currentTab = 'members';
 
-        if (Auth.getToken()) showDashboard();
+        if (Auth.isAdmin()) showDashboard();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const { ok, data } = await api.post('/api/login', { password: document.getElementById('password').value });
             if (ok && data.success) {
-                Auth.setToken(data.token);
+                Auth.setAdminToken(data.token);
                 showDashboard();
             } else {
                 const errEl = document.getElementById('loginError');

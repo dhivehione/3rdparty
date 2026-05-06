@@ -237,5 +237,98 @@ module.exports = function({ db, lawsDb, getSettings, logActivity, userAuth, meri
     }
   });
 
+  // ==================== PUBLIC MEMBER DIRECTORY ====================
+
+  // GET /api/members - List verified members (public)
+  router.get('/api/members', (req, res) => {
+    try {
+      const search = (req.query.search || '').trim().toLowerCase();
+      const limit = Math.max(1, Math.min(200, parseInt(req.query.limit) || 50));
+      const offset = Math.max(0, parseInt(req.query.offset) || 0);
+
+      let members;
+      let count;
+
+      if (search) {
+        const pattern = `%${search}%`;
+        members = db.prepare(`
+          SELECT id, name, username, island, initial_merit_estimate, timestamp
+          FROM signups
+          WHERE is_verified = 1 AND unregistered_at IS NULL
+            AND (LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(island) LIKE ?)
+          ORDER BY name ASC
+          LIMIT ? OFFSET ?
+        `).all(pattern, pattern, pattern, limit, offset);
+        count = db.prepare(`
+          SELECT COUNT(*) as total FROM signups
+          WHERE is_verified = 1 AND unregistered_at IS NULL
+            AND (LOWER(name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(island) LIKE ?)
+        `).get(pattern, pattern, pattern);
+      } else {
+        members = db.prepare(`
+          SELECT id, name, username, island, initial_merit_estimate, timestamp
+          FROM signups
+          WHERE is_verified = 1 AND unregistered_at IS NULL
+          ORDER BY name ASC
+          LIMIT ? OFFSET ?
+        `).all(limit, offset);
+        count = db.prepare(`
+          SELECT COUNT(*) as total FROM signups
+          WHERE is_verified = 1 AND unregistered_at IS NULL
+        `).get();
+      }
+
+      // Get endorsement counts for each member
+      const endorsementCounts = db.prepare(`
+        SELECT endorsed_id, COUNT(*) as cnt FROM peer_endorsements
+        GROUP BY endorsed_id
+      `).all();
+      const countMap = new Map(endorsementCounts.map(e => [e.endorsed_id, e.cnt]));
+
+      const enriched = members.map(m => ({
+        ...m,
+        endorsement_count: countMap.get(m.id) || 0,
+        dynamic_score: (() => { try { return merit.calculateDecayedScore(m.id, m.timestamp); } catch(e) { return m.initial_merit_estimate; } })()
+      }));
+
+      res.json({ success: true, members: enriched, total: count.total });
+    } catch (error) {
+      console.error('Members list error:', error);
+      res.status(500).json({ error: 'Could not fetch members', success: false });
+    }
+  });
+
+  // GET /api/members/:id - Public profile for a specific member
+  router.get('/api/members/:id', (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const member = db.prepare(`
+        SELECT id, name, username, island, initial_merit_estimate, timestamp
+        FROM signups
+        WHERE id = ? AND is_verified = 1 AND unregistered_at IS NULL
+      `).get(id);
+
+      if (!member) {
+        return res.status(404).json({ error: 'Member not found', success: false });
+      }
+
+      const endorsementCount = db.prepare(`
+        SELECT COUNT(*) as cnt FROM peer_endorsements WHERE endorsed_id = ?
+      `).get(id);
+
+      res.json({
+        success: true,
+        member: {
+          ...member,
+          endorsement_count: endorsementCount.cnt,
+          dynamic_score: (() => { try { return merit.calculateDecayedScore(member.id, member.timestamp); } catch(e) { return member.initial_merit_estimate; } })()
+        }
+      });
+    } catch (error) {
+      console.error('Member profile error:', error);
+      res.status(500).json({ error: 'Could not fetch member', success: false });
+    }
+  });
+
   return router;
 };

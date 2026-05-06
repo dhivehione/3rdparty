@@ -456,7 +456,7 @@
                 if (result.success) {
                     // Auto-login: save token and user data
                     if (result.token) {
-                        Auth.setToken(result.token);
+                        Auth.setToken(result.token, false);
                         Auth.setUser(result.user);
                         window.location.href = '/join-success';
                         return;
@@ -532,7 +532,7 @@
 
                 if (result.success) {
                     if (result.token) {
-                        Auth.setToken(result.token);
+                        Auth.setToken(result.token, false);
                         // Get user data from profile
                         try {
                             const profileRes = await fetch('/api/user/profile', {

@@ -67,13 +67,7 @@ MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
 |---|---|
 | Author/co-author a proposal that **passes** | `200 / number_of_coauthors` |
 
-#### 2.2.3 Bridge-Building (Compromise Bonus)
-| Action | Points |
-|---|---|
-| Amend a failing proposal (<50% support) so it passes | 400 (fixed, one-time) |
-| Stake required to attempt amendment | 20 points (forfeited if amendment fails) |
-
-#### 2.2.4 Peer Endorsements (Community Trust)
+#### 2.2.3 Peer Endorsements (Community Trust)
 | Endorsement # | Points Each |
 |---|---|
 | 1–10 | 2.0 |
@@ -83,7 +77,7 @@ MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
 
 **Constraint:** Maximum 20 unique endorsements allowed per 30-day period (prevents "endorsement rings").
 
-#### 2.2.5 Resource Contribution (Donations)
+#### 2.2.4 Resource Contribution (Donations)
 ```
 Points = 35 * log5(Donation_Value_USD + 1)
 ```
@@ -96,14 +90,14 @@ Points = 35 * log5(Donation_Value_USD + 1)
 
 Steeply diminishing returns — grassroots funding is more point-efficient than large donations.
 
-#### 2.2.6 Bounty System (Skill-Based Contributions)
+#### 2.2.5 Bounty System (Skill-Based Contributions)
 | Tier | Description | Points |
 |---|---|---|
 | Tier 1 | Simple task (translation, basic research) | 20 |
 | Tier 2 | Involved task (data analysis, graphic design) | 75 |
 | Tier 3 | Expert task (legal draft, major report, Leadership Academy graduation) | 250 |
 
-#### 2.2.7 Network Growth (Recruitment) — Two-Tiered
+#### 2.2.6 Network Growth (Recruitment) — Two-Tiered
 | Invite # | Base Reward | Engagement Bonus | Total Potential |
 |---|---|---|---|
 | 1–5 | 2 | 8 | **10** |
@@ -113,7 +107,7 @@ Steeply diminishing returns — grassroots funding is more point-efficient than 
 - **Base Reward** — Awarded immediately when the invited person verifies their account (National ID + SMS).
 - **Engagement Bonus** — Awarded only after the invited person completes their first merit-generating action (e.g., casts their first vote).
 
-#### 2.2.8 Role-Based Stipends (Monthly)
+#### 2.2.7 Role-Based Stipends (Monthly)
 | Role | Points/Month | Condition |
 |---|---|---|
 | Shadow Minister (Governing Council) | 150 | >80% meeting attendance, >90% vote participation |
@@ -154,10 +148,6 @@ Quality_Ratio = (1 + Total_Failed_Proposals) / (1 + Total_Successful_Proposals)
 ```
 - Triggered when a proposal fails with <10% support.
 - Escalates for members with poor track records.
-
-#### Bridge-Building Stake
-- To attempt an amendment to a failing proposal, a member stakes **20 points**.
-- Forfeited if the amendment fails. Refunded + 400 bonus if successful.
 
 #### Violation Penalties (Code of Conduct)
 | Tier | Severity | Sanction |
@@ -282,21 +272,20 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 |---|---|---|---|---|
 | 1 | Voting points | 1.0 / 2.5 | ✅ | Awarded when proposals close via `closeExpiredProposals()` (`server.js:143-152`). Points from configurable settings `merit_vote_pass` / `merit_vote_fail`. |
 | 2 | Proposal authoring | 200/coauthors | ✅ | Awarded when proposal passes via `closeExpiredProposals()` (`server.js:155-161`). Uses setting `merit_proposal_author`. |
-| 3 | Bridge-building bonus | 400 | ✅ | Awarded when an amendment proposal (`amendment_of`) passes (`server.js:133-141`). |
-| 4 | Peer endorsements | 2.0→0.1 | ✅ | FULLY implemented. `peer_endorsements` table. `POST/DELETE /api/endorsements`. Diminishing returns via `calculateEndorsementPoints()` (`server.js:3621`). 20/month cap enforced. Settings: `endorsement_tier1-4_pts`, `endorsement_tier1-3_limit`. |
-| 5 | Donation formula | `35*log5(USD+1)` | ⚠️ | Configurable `donation_formula` setting ('log' or 'flat'). Both signup and enroll routes use this. `donation_log_multiplier`, `donation_divisor_mvr`, `donation_usd_mvr_rate` all configurable. |
-| 6 | Bounty system | 20/75/250 | ✅ | FULLY implemented. 7 endpoints (`server.js:3752-3980`). Tables: `bounties`, `bounty_claims`. Create, list, claim, approve, reject, cancel, user bounties. Merit events logged on completion. |
-| 7 | Leadership Academy | 250 (Tier 3) | ✅ | FULLY implemented. `academy_modules` (5 seeded), `academy_enrollments`, `academy_graduation`. 4 endpoints (`server.js:3982-4094`): modules, enroll, complete, progress. Graduation awards 250 pts. |
-| 8 | Role stipends | 150/75/50 | ✅ | Implemented via `processMonthlyStipends()` hourly cron (`server.js:547-594`). `leadership_stipends` table. Council=150, Committee=75, Advisory=50. |
-| 9 | Dynamic decay | 18mo half-life | ✅ | FULLY implemented. `calculateDecayedScore()` (`server.js:4442`), `getLoyaltyCoefficient()` (`server.js:4400`), `LAMBDA_BASE=0.001267`. `GET /api/merit/score` returns both static and dynamic scores. |
-| 10 | Proposal stakes | `max(10,MS*0.005)` | ✅ | FULLY implemented (`server.js:4250-4313`). `proposal_stakes` table. `POST /api/proposals/:id/stake`. Refund/forfeit processed in `processProposalStakes()`. |
-| 11 | Reputation penalty | stake * ratio | ✅ | Implemented in `processProposalStakes()` (`server.js:4218-4241`). Quality ratio: `(1+failed)/(1+successful)`. Penalty = stake * ratio. |
-| 12 | Knowledge Check bounty | Article quiz | ✅ | FULLY implemented (`server.js:4537-4614`). `article_quizzes`, `quiz_attempts` tables. Create, list, answer endpoints. Correct answers awarded configurable points. |
-| 13 | Informed Comment reward | Community endorsements | ✅ | FULLY implemented (`server.js:4617-4694`). `article_comments`, `comment_endorsements` tables. Post, list, endorse endpoints. Comments earn points when endorsed ≥5 times. |
-| 14 | Amplification bounty | Share trackable links | ✅ | FULLY implemented (`server.js:5095-5175`). `amplification_links`, `amplification_clicks` tables. Generate track codes, redirect with click tracking, stats. |
-| 15 | Violation sanctions | Tier 1-3 penalties | ✅ | FULLY implemented (`server.js:4739-4839`). `violations`, `user_suspensions` tables. Report, list, resolve endpoints. Penalties: T1=-50pts, T2=-200pts+suspension, T3=-500pts+permanent ban. |
-| 16 | Emeritus Council | Advisory body | ✅ | Implemented (`server.js:4872-4939`). `emiritus_council` table. Daily cron checks eligibility. `GET /api/emeritus` lists members. Knowledge Archive not yet built. |
-| 17 | Hub stipend | 50 pts/month | ✅ | Implemented via `processHubStipends()` hourly cron (`server.js:5049-5093`). `hub_stipends` table. Hubs with active members receive monthly stipends. |
+| 3 | Peer endorsements | 2.0→0.1 | ✅ | FULLY implemented. `peer_endorsements` table. `POST/DELETE /api/endorsements`. Diminishing returns via `calculateEndorsementPoints()` (`server.js:3621`). 20/month cap enforced. Settings: `endorsement_tier1-4_pts`, `endorsement_tier1-3_limit`. |
+| 4 | Donation formula | `35*log5(USD+1)` | ⚠️ | Configurable `donation_formula` setting ('log' or 'flat'). Both signup and enroll routes use this. `donation_log_multiplier`, `donation_divisor_mvr`, `donation_usd_mvr_rate` all configurable. |
+| 5 | Bounty system | 20/75/250 | ✅ | FULLY implemented. 7 endpoints (`server.js:3752-3980`). Tables: `bounties`, `bounty_claims`. Create, list, claim, approve, reject, cancel, user bounties. Merit events logged on completion. |
+| 6 | Leadership Academy | 250 (Tier 3) | ✅ | FULLY implemented. `academy_modules` (5 seeded), `academy_enrollments`, `academy_graduation`. 4 endpoints (`server.js:3982-4094`): modules, enroll, complete, progress. Graduation awards 250 pts. |
+| 7 | Role stipends | 150/75/50 | ✅ | Implemented via `processMonthlyStipends()` hourly cron (`server.js:547-594`). `leadership_stipends` table. Council=150, Committee=75, Advisory=50. |
+| 8 | Dynamic decay | 18mo half-life | ✅ | FULLY implemented. `calculateDecayedScore()` (`server.js:4442`), `getLoyaltyCoefficient()` (`server.js:4400`), `LAMBDA_BASE=0.001267`. `GET /api/merit/score` returns both static and dynamic scores. |
+| 9 | Proposal stakes | `max(10,MS*0.005)` | ✅ | FULLY implemented (`server.js:4250-4313`). `proposal_stakes` table. `POST /api/proposals/:id/stake`. Refund/forfeit processed in `processProposalStakes()`. |
+| 10 | Reputation penalty | stake * ratio | ✅ | Implemented in `processProposalStakes()` (`server.js:4218-4241`). Quality ratio: `(1+failed)/(1+successful)`. Penalty = stake * ratio. |
+| 11 | Knowledge Check bounty | Article quiz | ✅ | FULLY implemented (`server.js:4537-4614`). `article_quizzes`, `quiz_attempts` tables. Create, list, answer endpoints. Correct answers awarded configurable points. |
+| 12 | Informed Comment reward | Community endorsements | ✅ | FULLY implemented (`server.js:4617-4694`). `article_comments`, `comment_endorsements` tables. Post, list, endorse endpoints. Comments earn points when endorsed ≥5 times. |
+| 13 | Amplification bounty | Share trackable links | ✅ | FULLY implemented (`server.js:5095-5175`). `amplification_links`, `amplification_clicks` tables. Generate track codes, redirect with click tracking, stats. |
+| 14 | Violation sanctions | Tier 1-3 penalties | ✅ | FULLY implemented (`server.js:4739-4839`). `violations`, `user_suspensions` tables. Report, list, resolve endpoints. Penalties: T1=-50pts, T2=-200pts+suspension, T3=-500pts+permanent ban. |
+| 15 | Emeritus Council | Advisory body | ✅ | Implemented (`server.js:4872-4939`). `emiritus_council` table. Daily cron checks eligibility. `GET /api/emeritus` lists members. Knowledge Archive not yet built. |
+| 16 | Hub stipend | 50 pts/month | ✅ | Implemented via `processHubStipends()` hourly cron (`server.js:5049-5093`). `hub_stipends` table. Hubs with active members receive monthly stipends. |
 
 ### 4.3 Merit Score Storage — Current State
 
@@ -341,7 +330,7 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | Tiered approval thresholds | ✅ | `calculateApprovalThreshold()` for routine/policy/constitutional |
 | Proposal staking | ✅ | `POST /api/proposals/:id/stake` |
 | 8-hour proposal cooldown | ✅ | `proposal_cooldown_hours` setting, enforced for authenticated users |
-| Bridge-building amendment workflow | ✅ | `amendment_of` column on proposals, 400pt bonus on passage |
+| Proposal amendments | ✅ | `amendment_of` column on proposals. Bonus removed — amendments now earn standard co-author points. |
 | Auto-close expired proposals (merit-weighted) | ✅ | `closeExpiredProposals()` runs every 60s |
 | Reputation penalty on frivolous proposals | ✅ | `processProposalStakes()` with quality ratio |
 
@@ -419,7 +408,7 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | **Phase 1** | MVP: Core democracy, first 3,000 members | NID+SMS verification, 1-person-1-vote proposals, Merit Score running in background | ⚠️ Partial (no SMS OTP, but merit engine fully active) |
 | **Phase 2** | Activate weighted influence | Merit-weighted voting, RCV elections, Git-Constitution, Live Treasury | ⚠️ Most features implemented; Git-Constitution missing |
 | **Phase 3** | National presence | Shadow Minister elections, Community Hubs, SMS voting | ⚠️ Leadership structure exists but elections not built; Hubs/Círculos missing |
-| **Phase 4** | Full incentive design | Proposal Staking, Bridge-Building Bonus, Unity Warning System | ⚠️ Staking + Bridge-Building done; Unity Warning missing |
+| **Phase 4** | Full incentive design | Proposal Staking, Unity Warning System | ⚠️ Staking done; Unity Warning missing |
 | **Phase 5** | Full automation | Parametric Governance Engine, AI moderation | ⚠️ Core parameter engine exists; full automation missing |
 | **Phase 6** | Constitutional integration | Ratify into national law via sustained membership + policy adoption | ❌ |
 
@@ -503,7 +492,7 @@ The frontend displays reward information that is not fully backed by server logi
 | Article vote points | `profile.html:212` | "+2.5 pts each" | Law votes still award **zero points** | ❌ Still misleading |
 | Voting earns points | `how.html:100` | "earn points by voting on proposals" | ✅ Now implemented | ✅ Fixed |
 | Bounty board | `how.html:100`, `faq.html:113-117` | References bounty tasks | ✅ Now implemented | ✅ Fixed |
-| Bridge-building bonus | `faq.html:165` | "400-point Merit Bonus" | ✅ Now implemented | ✅ Fixed |
+| Bridge-building bonus | `faq.html:165` | "400-point Merit Bonus" | ❌ Deprecated — bonus removed to prevent gaming | ✅ Fixed |
 | Reputation penalty | `faq.html:153` | Describes penalty system | ✅ Now implemented | ✅ Fixed |
 | Engagement bonus | `profile.html:246`, `enroll.html:40` | "earn points when they take their first action" | `first_action_at` never set | ❌ Still misleading |
 
@@ -756,12 +745,10 @@ All configurable at runtime via `POST /api/system-settings` (admin). Defaults in
 | `merit_vote_pass` | 2.5 | Points for voting on passing proposal |
 | `merit_vote_fail` | 1.0 | Points for voting on failing proposal |
 | `merit_proposal_author` | 200 | Points for authoring passed proposal |
-| `merit_bridge_building` | 400 | Points for bridge-building amendment |
 | `merit_stake_percent` | 0.005 | Stake as fraction of MS |
 | `merit_stake_min` | 10 | Minimum proposal stake |
 | `merit_quality_threshold` | 0.10 | Below this = frivolous (<10%) |
 | `merit_quality_refund` | 0.20 | Above this = stake refunded (≥20%) |
-| `merit_bridge_stake` | 20 | Stake to attempt bridge-building amendment |
 | `merit_decay_lambda` | 0.001267 | Base decay constant |
 
 These merit values are defined in `DEFAULT_SETTINGS` but are NOT in admin UI. They were added preemptively for use by the merit engine but the admin UI (`admin.html`) has not been updated to expose them.
@@ -807,7 +794,7 @@ These merit values are defined in `DEFAULT_SETTINGS` but are NOT in admin UI. Th
 
 The admin settings panel (`admin.html`) currently exposes ~19 fields. The `DEFAULT_SETTINGS` object in server.js defines 60+ keys. The following are defined in `DEFAULT_SETTINGS` but NOT yet exposed in the admin UI:
 
-**Voting & Proposal Merit:** `merit_vote_pass`, `merit_vote_fail`, `merit_proposal_author`, `merit_bridge_building`, `merit_stake_percent`, `merit_stake_min`, `merit_quality_threshold`, `merit_quality_refund`, `merit_bridge_stake`, `merit_decay_lambda`, `approval_threshold_routine`, `approval_threshold_policy`, `approval_threshold_constitutional`, `voting_window_primary_days`, `voting_window_extended_days`, `voting_weight_primary`, `voting_weight_extended`, `proposal_cooldown_hours`
+**Voting & Proposal Merit:** `merit_vote_pass`, `merit_vote_fail`, `merit_proposal_author`, `merit_stake_percent`, `merit_stake_min`, `merit_quality_threshold`, `merit_quality_refund`, `merit_decay_lambda`, `approval_threshold_routine`, `approval_threshold_policy`, `approval_threshold_constitutional`, `voting_window_primary_days`, `voting_window_extended_days`, `voting_weight_primary`, `voting_weight_extended`, `proposal_cooldown_hours`
 
 **Referral:** `referral_tier1_limit`, `referral_tier2_limit`, `referral_base_t1`, `referral_base_t2`, `referral_base_t3`, `referral_engage_t1`, `referral_engage_t2`, `referral_engage_t3`
 
@@ -842,7 +829,7 @@ The admin settings panel (`admin.html`) currently exposes ~19 fields. The `DEFAU
 
 2. **Configuration discipline is well-established.** Nearly all reward-related numeric values are in `DEFAULT_SETTINGS` → `system_settings` → admin UI. However, ~35 config keys exist in `DEFAULT_SETTINGS` that are NOT yet exposed in the admin UI (see §13).
 
-3. **Voting merit is awarded on proposal CLOSE, not at vote time.** `closeExpiredProposals()` (`server.js:102-169`) runs every 60s and handles: vote point awards, proposal authoring points, bridge-building bonus, and stake resolution. This is a batch processing approach rather than real-time.
+3. **Voting merit is awarded on proposal CLOSE, not at vote time.** `closeExpiredProposals()` runs every 60s and handles: vote point awards, proposal authoring points, and stake resolution. This is a batch processing approach rather than real-time.
 
 4. **Three separate vote systems exist, two without merit rewards:**
    - Proposal votes (`votes` table) — merit-weighted, full reward pipeline ✅
@@ -859,7 +846,7 @@ The admin settings panel (`admin.html`) currently exposes ~19 fields. The `DEFAU
 
 9. **Frontend references whitepaper features liberally.** `profile.html` and `enroll.html` still describe engagement bonuses as active when they're not (first_action_at never set). Law voting point claims in `profile.html` are still unfounded.
 
-10. **All core incentive mechanisms coded and active.** Bounties, endorsements, staking, bridge-building, reputation penalties, violation sanctions, academy, stipends, quizzes, comments, amplification — all operational. The remaining work is primarily in: law vote points, engagement bonuses, elections, UI polish, and advanced governance protocols (Signal Horn, Unity Warning, Círculos, Manifesto, Constitution).
+10. **All core incentive mechanisms coded and active.** Bounties, endorsements, staking, reputation penalties, violation sanctions, academy, stipends, quizzes, comments, amplification — all operational. Bridge-building bonus has been deprecated. The remaining work is primarily in: law vote points, engagement bonuses, elections, UI polish, and advanced governance protocols (Signal Horn, Unity Warning, Círculos, Manifesto, Constitution).
 
 ---
 
@@ -908,7 +895,6 @@ These features were built since the last blueprint audit and are now fully opera
 | Advisory reports (submit + approve) | `server.js:4115-4180` | Expert panel reports with point awards |
 | Proposal staking | `server.js:4256-4313` | `max(10, MS*0.005)`, refund/forfeit logic |
 | Reputation penalty engine | `server.js:4198-4248` | Quality ratio = `(1+failed)/(1+successful)` |
-| Bridge-building bonus | `server.js:133-141` | 400 pts when amendment proposal passes |
 | Voting merit (on close) | `server.js:143-161` | Configurable pass/fail points, author points |
 | Knowledge Check quizzes | `server.js:4537-4614` | Create, list, answer — award points for correct answers |
 | Article comments + endorsements | `server.js:4617-4694` | Comment, list, endorse — earn points when endorsed |

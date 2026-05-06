@@ -4,26 +4,26 @@
         let totalPages = 1;
         const PAGE_SIZE = 50;
 
-        if (authToken) {
+        if (Auth.isAdmin()) {
             showDashboard();
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const password = document.getElementById('password').value;
-            
+
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     authToken = result.token;
-                    Auth.setToken(authToken);
+                    Auth.setAdminToken(authToken);
                     showDashboard();
                 } else {
                     document.getElementById('loginError').classList.remove('hidden');

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Members — 3d Party</title>
+    <meta name="description" content="Browse and endorse verified members of the 3d Party movement.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        party: { dark: '#0f0f1a', card: '#1a1a2e', accent: '#FFD700', secondary: '#4A90E2', muted: '#6B7280' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="/js/auth.js"></script>
+    <script src="nav.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0PED1M435Y"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0PED1M435Y');
+    </script>
+</head>
+<body class="bg-party-dark text-white min-h-screen">
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-party-accent mb-2">Member Directory</h1>
+            <p class="text-gray-400 max-w-xl mx-auto">
+                Find verified members and endorse the ones you believe in. Endorsements expire after 30 days and earn merit points.
+            </p>
+        </div>
+
+        <!-- Search -->
+        <div class="bg-party-card rounded-xl p-6 border border-gray-700 mb-6">
+            <div class="flex gap-3">
+                <div class="flex-1 relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name, username, or island..."
+                           class="w-full bg-party-dark border border-gray-600 rounded-lg pl-10 pr-4 py-3 text-white"
+                           onkeypress="if(event.key==='Enter')searchMembers()">
+                </div>
+                <button onclick="searchMembers()" class="bg-party-accent text-black font-bold px-6 py-3 rounded-lg hover:bg-yellow-400">
+                    Search
+                </button>
+            </div>
+            <p class="text-gray-500 text-xs mt-2">
+                <i class="fas fa-info-circle mr-1"></i>Only verified members are shown. You can endorse up to 20 members per 30-day period.
+            </p>
+        </div>
+
+        <!-- Stats -->
+        <div id="statsBar" class="hidden bg-party-card rounded-xl p-4 border border-gray-700 mb-6">
+            <div class="flex justify-around text-center">
+                <div>
+                    <div class="text-2xl font-bold text-party-accent" id="totalMembers">—</div>
+                    <div class="text-gray-500 text-xs">Verified Members</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-green-400" id="givenCount">—</div>
+                    <div class="text-gray-500 text-xs">Your Endorsements</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-blue-400" id="receivedCount">—</div>
+                    <div class="text-gray-500 text-xs">Endorsements You Received</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-purple-400" id="remainingCount">—</div>
+                    <div class="text-gray-500 text-xs">Remaining This Period</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingState" class="text-center py-12">
+            <i class="fas fa-spinner fa-spin text-3xl text-party-accent mb-3"></i>
+            <p class="text-gray-500">Loading members...</p>
+        </div>
+
+        <!-- Empty -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <div class="text-4xl mb-3">🔍</div>
+            <p class="text-gray-400 mb-2">No members found</p>
+            <p class="text-gray-500 text-sm">Try a different search term</p>
+        </div>
+
+        <!-- Not logged in -->
+        <div id="loginPrompt" class="hidden text-center py-12">
+            <div class="text-4xl mb-3">🔒</div>
+            <p class="text-gray-400 mb-4">Sign in to see endorsements and endorse members</p>
+            <button onclick="openQuickLogin()" class="bg-party-accent text-black font-bold px-6 py-3 rounded-lg hover:bg-yellow-400">
+                Sign In
+            </button>
+        </div>
+
+        <!-- Members List -->
+        <div id="membersList" class="space-y-3 hidden"></div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="hidden flex justify-center items-center gap-3 mt-6">
+            <button onclick="prevPage()" id="prevBtn" class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span id="pageInfo" class="text-gray-400 text-sm">Page 1</span>
+            <button onclick="nextPage()" id="nextBtn" class="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        let currentPage = 0;
+        let currentSearch = '';
+        let pageSize = 20;
+        let totalMembers = 0;
+        let givenEndorsements = [];
+        let currentUserId = null;
+        let authToken = Auth.getToken();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMembers();
+            if (authToken) {
+                loadMyEndorsements();
+            }
+        });
+
+        async function loadMembers() {
+            const list = document.getElementById('membersList');
+            const loading = document.getElementById('loadingState');
+            const empty = document.getElementById('emptyState');
+            const pagination = document.getElementById('pagination');
+
+            list.classList.add('hidden');
+            empty.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            try {
+                const url = `/api/members?search=${encodeURIComponent(currentSearch)}&limit=${pageSize}&offset=${currentPage * pageSize}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                loading.classList.add('hidden');
+
+                if (!data.success || !data.members || data.members.length === 0) {
+                    empty.classList.remove('hidden');
+                    pagination.classList.add('hidden');
+                    return;
+                }
+
+                totalMembers = data.total;
+                renderMembers(data.members);
+                renderPagination();
+                list.classList.remove('hidden');
+                pagination.classList.remove('hidden');
+            } catch (e) {
+                console.error('Error loading members:', e);
+                loading.classList.add('hidden');
+                empty.classList.remove('hidden');
+            }
+        }
+
+        async function loadMyEndorsements() {
+            try {
+                const [givenRes, receivedRes, profileRes] = await Promise.all([
+                    fetch('/api/endorsements/given', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/endorsements/received', { headers: Auth.getApiHeaders() }),
+                    fetch('/api/user/profile', { headers: Auth.getApiHeaders() })
+                ]);
+
+                const given = await givenRes.json();
+                const received = await receivedRes.json();
+                const profile = await profileRes.json();
+
+                if (profile.success && profile.user) {
+                    currentUserId = profile.user.id;
+                }
+
+                if (given.success) {
+                    givenEndorsements = given.endorsements;
+                }
+
+                document.getElementById('statsBar').classList.remove('hidden');
+                document.getElementById('totalMembers').textContent = (totalMembers || 0).toLocaleString();
+                document.getElementById('givenCount').textContent = given.success ? given.total_given : 0;
+                document.getElementById('receivedCount').textContent = received.success ? received.total_endorsements : 0;
+
+                // Calculate remaining endorsements this period
+                const settingsRes = await fetch('/api/merit/score', { headers: Auth.getApiHeaders() });
+                // We don't have a direct endpoint for remaining, so we'll estimate from given
+                const maxPerPeriod = 20; // default; backend enforces the real limit
+                const recentGiven = given.success ? given.endorsements.filter(e => {
+                    const age = Date.now() - new Date(e.created_at).getTime();
+                    return age < 30 * 24 * 60 * 60 * 1000;
+                }).length : 0;
+                document.getElementById('remainingCount').textContent = Math.max(0, maxPerPeriod - recentGiven);
+
+                // Re-render to update button states
+                loadMembers();
+            } catch (e) {
+                console.error('Error loading endorsements:', e);
+            }
+        }
+
+        function renderMembers(members) {
+            const list = document.getElementById('membersList');
+            const givenMap = new Map(givenEndorsements.map(e => [e.endorsed_id, e.id]));
+
+            list.innerHTML = members.map(m => {
+                const displayName = m.name || m.username || `Member #${m.id}`;
+                const isSelf = currentUserId === m.id;
+                const alreadyEndorsed = givenMap.has(m.id);
+                const islandText = m.island ? `<span class="text-gray-500 text-xs ml-2"><i class="fas fa-map-marker-alt mr-1"></i>${Utils.escapeHtml(m.island)}</span>` : '';
+
+                let actionBtn;
+                if (isSelf) {
+                    actionBtn = `<span class="text-gray-500 text-xs italic">You</span>`;
+                } else if (alreadyEndorsed) {
+                    actionBtn = `<button onclick="removeEndorsement(${givenMap.get(m.id)}, this)" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg hover:bg-red-500/30 text-sm font-medium transition">
+                        <i class="fas fa-times mr-1"></i>Remove
+                    </button>`;
+                } else {
+                    actionBtn = `<button onclick="endorseMember(${m.id}, this)" class="bg-party-accent/20 text-party-accent border border-party-accent/30 px-3 py-1 rounded-lg hover:bg-party-accent/30 text-sm font-medium transition">
+                        <i class="fas fa-thumbs-up mr-1"></i>Endorse
+                    </button>`;
+                }
+
+                return `
+                    <div class="bg-party-card rounded-xl p-4 border border-gray-700 flex items-center justify-between hover:border-gray-600 transition">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-10 h-10 rounded-full bg-party-secondary/20 flex items-center justify-center text-party-secondary font-bold text-lg">
+                                ${(displayName[0] || '?').toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="font-bold text-white">${Utils.escapeHtml(displayName)}</div>
+                                <div class="flex items-center">
+                                    ${m.username ? `<span class="text-party-secondary text-xs">@${Utils.escapeHtml(m.username)}</span>` : ''}
+                                    ${islandText}
+                                    <span class="text-gray-500 text-xs ml-2"><i class="fas fa-star mr-1"></i>${m.endorsement_count} endorsements</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-gray-500 text-xs hidden sm:inline">Merit: ${Math.round(m.dynamic_score || 0)}</span>
+                            ${actionBtn}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(totalMembers / pageSize);
+            document.getElementById('pageInfo').textContent = `Page ${currentPage + 1} of ${totalPages || 1}`;
+            document.getElementById('prevBtn').disabled = currentPage === 0;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages - 1;
+        }
+
+        function searchMembers() {
+            currentSearch = document.getElementById('searchInput').value.trim();
+            currentPage = 0;
+            loadMembers();
+        }
+
+        function prevPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                loadMembers();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(totalMembers / pageSize);
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                loadMembers();
+            }
+        }
+
+        async function endorseMember(id, btn) {
+            if (!authToken) {
+                openQuickLogin();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>...';
+
+            try {
+                const res = await fetch('/api/endorsements', {
+                    method: 'POST',
+                    headers: Auth.getApiHeaders(),
+                    body: JSON.stringify({ endorsed_id: id })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Refresh to update state
+                    await loadMyEndorsements();
+                } else {
+                    alert(data.error || 'Failed to endorse');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-thumbs-up mr-1"></i>Endorse';
+                }
+            } catch (e) {
+                alert('Error endorsing member');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-thumbs-up mr-1"></i>Endorse';
+            }
+        }
+
+        async function removeEndorsement(endorsementId, btn) {
+            if (!confirm('Remove your endorsement?')) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>...';
+
+            try {
+                const res = await fetch(`/api/endorsements/${endorsementId}`, {
+                    method: 'DELETE',
+                    headers: Auth.getApiHeaders()
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    await loadMyEndorsements();
+                } else {
+                    alert(data.error || 'Failed to remove endorsement');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times mr-1"></i>Remove';
+                }
+            } catch (e) {
+                alert('Error removing endorsement');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times mr-1"></i>Remove';
+            }
+        }
+    </script>
+</body>
+</html>

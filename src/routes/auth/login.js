@@ -10,9 +10,10 @@ module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
     if (password === ADMIN_PASSWORD) {
       const sessionToken = crypto.randomBytes(32).toString('hex');
       adminSessions.set(sessionToken, { createdAt: Date.now() });
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         token: sessionToken,
+        isAdmin: true,
         message: 'Welcome back. The insurance agents are still locked out.'
       });
     } else {

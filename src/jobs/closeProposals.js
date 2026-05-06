@@ -19,14 +19,6 @@ module.exports = function({ queries, getSettings, merit, maybeEngageReferral }) 
 
         queries.proposals.close(proposal.id, passed, weighted_yes, weighted_no, raw_abstain);
 
-        if (passed && proposal.amendment_of) {
-          const original = queries.proposals.getOriginal(proposal.amendment_of);
-          if (original && original.created_by_user_id) {
-            const bridgeBonus = settings.bridge_building_bonus;
-            merit.awardMerit(original.created_by_user_id, 'bridge_building', bridgeBonus, proposal.id, 'proposal', 'Bridge-building bonus: Fixed failing proposal');
-            maybeEngageReferral(original.created_by_user_id);
-          }
-        }
 
         const voters = queries.proposals.getVoters(proposal.id);
         voters.forEach(voter => {

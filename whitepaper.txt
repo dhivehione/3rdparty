@@ -104,12 +104,9 @@ the system against adversarial behavior and ensure fairness.
          ○​ Impactful Participation: Score is weighted based on the outcome of
             participation. Voting on a successful proposal yields more points than on a failed
             one.
-         ○​ Successful Proposals: Authoring or co-authoring policies that are successfully
-            passed by the community.
-         ○​ Bridge-Building: A significant, fixed-point "Compromise Bonus" is awarded for
-            successfully amending a divisive proposal so that it achieves consensus and
-            passes.
-         ○​ Community Trust (Peer Endorsements): Endorsements from fellow members
+          ○​ Successful Proposals: Authoring or co-authoring policies that are successfully
+             passed by the community.
+          ○​ Community Trust (Peer Endorsements): Endorsements from fellow members
             you have interacted with. This system has diminishing returns to prevent
             "endorsement-ring" manipulation.
          ○​ Resource Contribution: Contributing funds or assets to the movement. This has
@@ -158,24 +155,21 @@ Below is the specific breakdown of how each Point_event is determined.
    1.​ Impactful Participation (Voting):
           a.​ Voting on a proposal that fails: 1.0 point
           b.​ Voting on a proposal that succeeds: 2.5 points
-   2.​ Successful Proposals (Authoring):
-       a.​ 200 points / number of co-authors
-3.​ Bridge-Building (Compromise Bonus):
-       a.​ 400 points. This is a fixed, high-value bonus awarded to a user who successfully
-           amends a failing proposal, causing it to pass.
-4.​ Community Trust (Peer Endorsements):
+ 2.​ Successful Proposals (Authoring):
+        a.​ 200 points / number of co-authors
+ 3.​ Community Trust (Peer Endorsements):
        a.​ Endorsements 1–10: 2.0 points each
        b.​ Endorsements 11–50: 1.0 point each
        c.​ Endorsements 51–200: 0.5 points each
        d.​ Endorsements 201+: 0.1 points each
        e.​ Constraint: Max of 20 unique endorsements per 30-day period.
-5.​ Resource Contribution:
-       a.​ 35 * log5(Donation_Value_USD + 1)
-6.​ Skill-Based Contributions (Bounty System):
-       a.​ Tier 1 (Simple Task): 20 points
-       b.​ Tier 2 (Involved Task): 75 points
-       c.​ Tier 3 (Expert Task): 250 points
-7.​ Network Growth (Recruitment)
+ 4.​ Resource Contribution:
+        a.​ 35 * log5(Donation_Value_USD + 1)
+ 5.​ Skill-Based Contributions (Bounty System):
+        a.​ Tier 1 (Simple Task): 20 points
+        b.​ Tier 2 (Involved Task): 75 points
+        c.​ Tier 3 (Expert Task): 250 points
+ 6.​ Network Growth (Recruitment)
        a.​ Purpose: To reward members for contributing to the growth of the movement,
            with a strong emphasis on recruiting active, engaged participants over passive
            signups.
@@ -206,7 +200,7 @@ Below is the specific breakdown of how each Point_event is determined.
            someone to the platform, but reserves the largest reward for those who take the
            extra step to onboard their friends properly and encourage them to become
            contributing members of the community.
-8.​ Governance Participation (Role-Based Rewards):
+ 7.​ Governance Participation (Role-Based Rewards):
        ○​ Purpose: To formally reward the sustained effort and responsibility required to
            run the movement. This functions as a Merit Score "stipend" for holding an
            official, elected, or appointed role.
@@ -231,24 +225,21 @@ Below is the specific breakdown of how each Point_event is determined.
            1,000 points per quarter that it can award, via a public "Decision Statement," to
            committees or individuals who have demonstrated exceptional performance or
            successfully managed a crisis.
-9.​ Dynamic Decay & Loyalty:
+ 8.​ Dynamic Decay & Loyalty:
        a.​ Decay Factor: Base half-life of 18 months.
        b.​ Loyalty Coefficient (Lc):
                 ■​ Founding Members: Lc = 1.5 (Effective half-life of 27 months)
                 ■​ Early Adopters: Lc = 1.2 (Effective half-life of 21.6 months)
                 ■​ Standard Members: Lc = 1.0 (Effective half-life of 18 months)
-10.​The Cost of Frivolity & Risk of Intervention (Stakes & Penalties): This system is
-    designed to discourage spam while rewarding high-stakes, unifying actions.
-       a.​ Proposal Stake Amount: max(10, Current_Merit_Score * 0.005)
-       b.​ Reputation Penalty Trigger: A proposal failing with less than 10% support is
-           deemed frivolous and incurs a penalty.
-       c.​ Penalty Formula: If triggered, the penalty is Base_Stake * Quality_Ratio, where
-           the Quality_Ratio = (1 + Total_Failed_Proposals) / (1 +
-           Total_Successful_Proposals). This directly punishes users with a poor track
-           record.
-           d.​ Bridge-Building Stake: To attempt a "Bridge-Building" intervention, a user must
-               stake a fixed amount of their own points (e.g., 20 points), which are forfeited if
-               their amendment fails. This introduces real risk to a high-reward action.
+ 9.​The Cost of Frivolity & Risk of Intervention (Stakes & Penalties): This system is
+     designed to discourage spam while rewarding high-stakes, unifying actions.
+        a.​ Proposal Stake Amount: max(10, Current_Merit_Score * 0.005)
+        b.​ Reputation Penalty Trigger: A proposal failing with less than 10% support is
+            deemed frivolous and incurs a penalty.
+        c.​ Penalty Formula: If triggered, the penalty is Base_Stake * Quality_Ratio, where
+            the Quality_Ratio = (1 + Total_Failed_Proposals) / (1 +
+            Total_Successful_Proposals). This directly punishes users with a poor track
+            record.
 
 
 Conceptual Example: Aisha, a Founding Member
@@ -286,11 +277,11 @@ simulations:
       meaningful influence from a donation, but with steeply diminishing returns. She cannot
       buy overwhelming power and must participate constructively on the platform to remain a
       top influencer.
-●​ Chandra, the Bridge-Builder: A skilled negotiator who sees a divisive but important
-      proposal failing. She stakes her own points to propose an amendment. When her
-      compromise succeeds and the proposal passes, she earns the massive 400-point
-      Bridge-Building Bonus, demonstrating that the system explicitly rewards the difficult work
-      of creating unity.
+ ●​ Chandra, the Collaborator: A skilled negotiator who sees a divisive but important
+       proposal failing. She works with the original author to refine the proposal into something
+       the community can support. When the revised proposal passes, both earn their share of
+       the 200-point author reward as co-authors, demonstrating that the system rewards
+       collaboration.
 ●​ Bilal, the Late & Active Joiner: A motivated newcomer joining 18 months after launch.
       Due to the 18-month score half-life, the points of early, inactive members have decayed
       significantly. By authoring successful proposals and participating actively, Bilal can
@@ -470,14 +461,7 @@ H. Limits on Leadership Authority
 
 IV. Innovation: Bridging Divides & Preventing Schism
 
-A. Scoring for Bridge-Building
-
-   ●​ Compromise Bonus: When a user proposes an amendment to a failing proposal (<50%
-      support) that subsequently causes it to pass, the system automatically awards the
-      amender a significant, fixed-point Merit Score bonus.
-●​ Purpose: Directly incentivize collaboration over polarization.
-
-B. The Cost of Schism
+A. The Cost of Schism
 
    ●​ Unity Warning System: The Governing Council may flag divisive proposals with a
       "Unity Warning." If such a proposal passes by a narrow margin, a 30-day mandatory
@@ -488,14 +472,14 @@ B. The Cost of Schism
 ●​ Implementation Lock-In: High-cost or high-impact policies require supermajorities
       (80–90%) to repeal, preventing chaotic reversals.
 
-C. The Cost of Frivolity
+B. The Cost of Frivolity
 
    ●​ Proposal Staking: To ensure quality, members must "stake" a small, refundable portion
       of their Merit Score to submit a major policy.
 ●​ Reputation Dynamics: The stake is refunded if the proposal achieves a minimum
       support threshold (e.g., 20%), but forfeited if it is overwhelmingly rejected (e.g., <10%
       support).
-D. Governing Council Powers
+C. Governing Council Powers
 
    ●​ The Governing Council can vote to delay a proposal once for up to 6 months to facilitate
       further public debate. This action requires a simple majority within the Council and a
@@ -837,7 +821,6 @@ Phase 4: Full Incentive Design Activation
       unity.
 ●​ Features:
           ○​ Activation of Proposal Staking.
-          ○​ Activation of the Bridge-Building Bonus.
           ○​ Launch of the Unity Warning System.
 
 Phase 5: Full Automation & Scaling

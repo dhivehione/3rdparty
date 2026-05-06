@@ -40,15 +40,32 @@
       return stored ? stored.token : null;
     },
 
-    setToken: function(token) {
+    setToken: function(token, isAdmin) {
       var stored = _getStored() || {};
       stored.token = token;
+      if (isAdmin) {
+        stored.isAdmin = true;
+      } else {
+        delete stored.isAdmin;
+      }
       _save(stored);
+    },
+
+    setAdminToken: function(token) {
+      Auth.setToken(token, true);
+    },
+
+    isAdmin: function() {
+      var stored = _getStored();
+      return !!(stored && stored.isAdmin);
     },
 
     clearToken: function() {
       var stored = _getStored() || {};
       delete stored.token;
+      delete stored.isAdmin;
+      delete stored.user;
+      delete stored.phone;
       _save(stored);
       try { localStorage.removeItem('authToken'); } catch (e) {}
       try { localStorage.removeItem('token'); } catch (e) {}

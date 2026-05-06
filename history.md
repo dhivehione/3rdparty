@@ -4,6 +4,39 @@ This file documents all significant code changes to the project, including ratio
 
 ---
 
+## 2026-05-06 — Member Endorsement Frontend
+
+### Make peer endorsements usable by members
+- **What:** Added a public member directory (`members.html`) with search and endorse buttons, plus endorsement history sections on the profile page. Created public API endpoints `/api/members` and `/api/members/:id` to list verified members with endorsement counts. Updated `nav.js` to include a Members link.
+- **Why:** The endorsement backend was fully implemented (POST/DELETE/GET endpoints, merit point awards, rate limits, activity logging) but had zero frontend UI. Members could not discover who to endorse or view their own endorsement history.
+- **Who:** Developer
+
+#### Changes made:
+- **Backend (`src/routes/profile.js`):** Added `GET /api/members` (searchable, paginated list of verified members) and `GET /api/members/:id` (public profile with endorsement count). Both compute dynamic merit scores via the existing merit service.
+- **Frontend (`members.html`):** New page with member search by name/username/island, endorse/remove-endorse buttons, stats bar showing your given/received/remaining counts, and pagination.
+- **Frontend (`profile.html`):** Added "Endorsements Received" and "Endorsements Given" cards that load from `/api/endorsements/received` and `/api/endorsements/given`. Includes inline remove buttons for given endorsements.
+- **Navigation (`nav.js`):** Added Members link to top nav and footer.
+
+---
+
+## 2026-05-06 — Deprecate Bridge-Building Bonus
+
+### Remove the 400-point bridge-building bonus and associated stake mechanic
+- **What:** Removed the `bridge_building_bonus` setting (400 pts) from `src/config/settings.js` and the bonus award logic from `src/jobs/closeProposals.js`. Updated `whitepaper.txt`, `blueprint.md`, `faq.html`, `intro.html`, `index.html`, and `policies.html` to remove all references to the 400-point bonus and bridge-building stake. The `amendment_of` column and amendment workflow remain intact — amendments now earn standard co-author points (200 / co-authors) instead of a separate bonus.
+- **Why:** The 400-point bonus was double the reward for authoring a successful proposal from scratch (200 pts), creating a perverse incentive to submit bad proposals and then "fix" them for more points. At our current stage as a startup movement, this mechanic was easily gamed and premature. The amendment infrastructure is kept as a neutral collaboration tool.
+- **Who:** Developer
+
+---
+
+## 2026-05-06 — Separate Admin Authentication from Normal Users
+
+### Make admin a distinct, special user instead of any token holder
+- **What:** Updated the auth token management in `js/auth.js` to track an `isAdmin` flag alongside the token. Modified `/api/login` to return `isAdmin: true`. Changed `admin.html` and `admin.js` to check `Auth.isAdmin()` before auto-showing the dashboard and to store admin tokens via `Auth.setAdminToken()`. Updated all normal user login flows (`nav.js`, `join.html`, `profile.html`) to explicitly clear the admin flag when storing a user token.
+- **Why:** A normal user who was already logged in (with a user token in `localStorage`) could visit `/admin` and the page would immediately show the admin dashboard UI, even though all admin API calls would fail with 401. This created a broken experience and blurred the line between normal members and the admin user. The admin password is already supplied via CapRover env vars, but the frontend treated any valid token as an admin session.
+- **Who:** Developer
+
+---
+
 ## 2026-05-06 — Fix "New Joins Since Last Visit" Notification
 
 ### Make nav notification work consistently for all visitors

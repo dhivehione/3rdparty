@@ -70,7 +70,6 @@ const DEFAULT_SETTINGS = {
   amplification_default_expiry_days: 7,
   quiz_default_reward: 10,
   suspension_duration_days: 7,
-  bridge_building_bonus: 400,
   wall_upvote_milestone_cap: 25,
   comment_endorsement_cap: 50,
   endorsement_max_per_period: 20,
