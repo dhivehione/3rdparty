@@ -9,6 +9,11 @@ For the original governance philosophy and phased rollout plan, see [`whitepaper
 
 ## 2026-05-07 — AI Draft on Proposals Page
 
+### Reframe live TV interviews as future vision across intro, how-it-works, and FAQ pages
+- **What:** Updated all mentions of "live TV interviews" and "nationally televised" leader selection across `intro.html`, `how.html`, and `faq.html` to clearly frame them as a future vision — what happens when 3d Party forms government — rather than a current feature. The intro card now says "When we form government, every high post... will be filled through live televised interviews." The how-it-works step 5 now reads "When we form government, the selection process for high posts will be nationally televised..." The FAQ answers now use "When we form government" and "The vision:" qualifiers instead of presenting live TV as a present reality.
+- **Why:** The live TV interview concept is a vision for when the party reaches power, not something happening today. The previous wording conflated current internal processes (Governing Council selection via video interview) with future government-level processes (televised national selections), which could mislead readers into thinking this is already operational.
+- **Who:** Developer
+
 ### Add craft-a-proposal functionality to proposals page
 - **What:** Added the same AI-powered "Craft a Law" functionality from `laws.html` to `proposals.html`, rebranded as "Got an Idea? Craft a Proposal." Includes the full generate → review → refine → submit flow using the existing `/api/generate-law-draft` and `/api/proposals` endpoints. After submission, the proposals list auto-refreshes. Also added a cross-link from proposals to the Laws page for discoverability.
 - **Why:** Users browsing the proposals page would not discover the AI drafting tool unless they navigated to the Laws page first. Since proposals are the natural place to submit community ideas, the drafting flow should be accessible from there too. The wording was adjusted ("Got an Idea? Craft a Proposal" / "What's your idea?") to match the proposals page tone.

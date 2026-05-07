@@ -1,6 +1,6 @@
 # 3d Party — Technical Blueprint
 
-> **Last updated:** 2026-05-07 (craft-a-proposal on proposals page)
+> **Last updated:** 2026-05-07 (reframe live TV as future vision)
 > **Governance spec:** `whitepaper.txt` (3rd Party v14)
 > **Implementation history:** `history.md`
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
