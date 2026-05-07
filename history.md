@@ -7,6 +7,15 @@ For the original governance philosophy and phased rollout plan, see [`whitepaper
 
 ---
 
+## 2026-05-07 — AI Draft on Proposals Page
+
+### Add craft-a-proposal functionality to proposals page
+- **What:** Added the same AI-powered "Craft a Law" functionality from `laws.html` to `proposals.html`, rebranded as "Got an Idea? Craft a Proposal." Includes the full generate → review → refine → submit flow using the existing `/api/generate-law-draft` and `/api/proposals` endpoints. After submission, the proposals list auto-refreshes. Also added a cross-link from proposals to the Laws page for discoverability.
+- **Why:** Users browsing the proposals page would not discover the AI drafting tool unless they navigated to the Laws page first. Since proposals are the natural place to submit community ideas, the drafting flow should be accessible from there too. The wording was adjusted ("Got an Idea? Craft a Proposal" / "What's your idea?") to match the proposals page tone.
+- **Who:** Developer
+
+---
+
 ## 2026-05-07 — Profile Page Tabs
 
 ### Add tab navigation to profile page
