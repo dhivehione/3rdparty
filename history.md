@@ -7,6 +7,15 @@ For the original governance philosophy and phased rollout plan, see [`whitepaper
 
 ---
 
+## 2026-05-07 — Profile Page Tabs
+
+### Add tab navigation to profile page
+- **What:** Reorganized the profile page from a single vertical scroll of all sections into a tabbed layout. Added 6 tabs (Activity, Voting, Proposals, Enroll, Leadership, Endorsements) with a tab bar between My Scores and the tab content. My Details and My Scores remain always visible above the tabs. Each tab wraps its related sections in a content div with `hidden` class; only the active tab is visible. Added `switchProfileTab()` function using the same pattern as `legislature.html` (`.forEach()` over tab names, `text-party-accent border-b-2` active styling, `text-gray-400` inactive).
+- **Why:** The profile page was growing unbounded as users accumulated more log entries, merit events, votes, proposals, and endorsements. Scrolling through all sections at once was becoming unwieldy. Tabs collapse the scroll-heavy sections into digestible views while keeping identity/score cards (My Details, My Scores) always visible at the top.
+- **Who:** Developer
+
+---
+
 ## 2026-05-07 — Merit Audit Ledger Hardening
 
 ### Standardize all merit changes through awardMerit() and backfill missing events

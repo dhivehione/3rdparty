@@ -1,6 +1,6 @@
 # 3d Party — Technical Blueprint
 
-> **Last updated:** 2026-05-07 (referral anti-abuse limits)
+> **Last updated:** 2026-05-07 (profile page tabs)
 > **Governance spec:** `whitepaper.txt` (3rd Party v14)
 > **Implementation history:** `history.md`
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
@@ -475,7 +475,7 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | Join / Signup | `join.html` | Registration with contribution type selection |
 | Join Success | `join-success.html` | Post-registration invitation |
 | Login | `join.html` (shared) | Username + phone login |
-| Profile | `profile.html` | Scores, proposals, enrollment, leadership application |
+| Profile | `profile.html` | Tabbed layout — Details/Scores (always visible), Activity, Voting, Proposals, Enroll, Leadership, Endorsements |
 | Proposals & Voting | `proposals.html` | Binary + ranked choice create/vote UI |
 | Laws & Legislation | `laws.html` | Browse/search laws, AI-assisted drafting, vote on clauses |
 | Law Stats | `law-stats.html` | Voting statistics |

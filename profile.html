@@ -217,7 +217,89 @@
                 </p>
             </div>
 
-            <!-- My Proposals Section -->
+            <!-- Profile Tabs -->
+            <div class="flex border-b border-gray-700 mb-6 overflow-x-auto">
+                <button onclick="switchProfileTab('activity')" id="profile-tab-activity" class="px-4 py-3 text-party-accent border-b-2 border-party-accent font-bold whitespace-nowrap">
+                    <i class="fas fa-history mr-1"></i>Activity
+                </button>
+                <button onclick="switchProfileTab('voting')" id="profile-tab-voting" class="px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-vote-yea mr-1"></i>Voting
+                </button>
+                <button onclick="switchProfileTab('proposals')" id="profile-tab-proposals" class="px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-file-alt mr-1"></i>Proposals
+                </button>
+                <button onclick="switchProfileTab('enroll')" id="profile-tab-enroll" class="px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-users mr-1"></i>Enroll
+                </button>
+                <button onclick="switchProfileTab('leadership')" id="profile-tab-leadership" class="px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-user-tie mr-1"></i>Leadership
+                </button>
+                <button onclick="switchProfileTab('endorsements')" id="profile-tab-endorsements" class="px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-thumbs-up mr-1"></i>Endorsements
+                </button>
+            </div>
+
+            <!-- ===== Tab: Activity ===== -->
+            <div id="profile-tab-activity-content" class="space-y-6">
+            
+            <!-- Merit Events Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-star mr-2"></i>Merit History
+                </h2>
+                <div id="meritEventsContainer" class="space-y-2">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+                <div id="noMeritEvents" class="hidden text-center py-6 text-gray-500">
+                    <p>No merit events yet.</p>
+                </div>
+            </div>
+
+            <!-- Activity Log Section -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">
+                    <i class="fas fa-history mr-2"></i>Activity Log
+                </h2>
+                <div id="activityLogContainer" class="space-y-2">
+                    <p class="text-gray-500 text-sm">Loading...</p>
+                </div>
+                <div id="noActivityLog" class="hidden text-center py-6 text-gray-500">
+                    <p>No activity yet.</p>
+                </div>
+            </div>
+
+            </div><!-- /profile-tab-activity-content -->
+
+            <!-- ===== Tab: Voting ===== -->
+            <div id="profile-tab-voting-content" class="hidden space-y-6">
+
+            <!-- Law-Level Votes -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">Laws I Voted On</h2>
+                <div id="lawVotesContainer" class="space-y-3">
+                </div>
+                <div id="noLawVotes" class="text-center py-6 text-gray-500 hidden">
+                    <p>You haven't voted on any laws yet.</p>
+                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on laws →</a>
+                </div>
+            </div>
+
+            <!-- Clause-Level Votes -->
+            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
+                <h2 class="text-xl font-bold text-party-accent mb-4">Clauses I Voted On</h2>
+                <div id="clauseVotesContainer" class="space-y-3">
+                </div>
+                <div id="noClauseVotes" class="text-center py-6 text-gray-500 hidden">
+                    <p>You haven't voted on any clauses yet.</p>
+                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on clauses →</a>
+                </div>
+            </div>
+
+            </div><!-- /profile-tab-voting-content -->
+
+            <!-- ===== Tab: Proposals ===== -->
+            <div id="profile-tab-proposals-content" class="hidden space-y-6">
+
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">
                     <i class="fas fa-file-alt mr-2"></i>My Proposals
@@ -231,8 +313,12 @@
                     <a href="/proposals" class="text-party-accent hover:underline text-sm">Create one →</a>
                 </div>
             </div>
-            
-            <!-- Enroll Family & Friends Section -->
+
+            </div><!-- /profile-tab-proposals-content -->
+
+            <!-- ===== Tab: Enroll ===== -->
+            <div id="profile-tab-enroll-content" class="hidden space-y-6">
+
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">
                     <i class="fas fa-users mr-2"></i>Enroll Family & Friends
@@ -389,7 +475,11 @@
                 </div>
             </div>
 
-            <!-- Leadership Application Section -->
+            </div><!-- /profile-tab-enroll-content -->
+
+            <!-- ===== Tab: Leadership ===== -->
+            <div id="profile-tab-leadership-content" class="hidden space-y-6">
+
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold text-party-accent mb-4">
                     <i class="fas fa-user-tie mr-2"></i>Leadership
@@ -440,53 +530,10 @@
                 </div>
             </div>
 
-            <!-- Law-Level Votes -->
-            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-                <h2 class="text-xl font-bold text-party-accent mb-4">Laws I Voted On</h2>
-                <div id="lawVotesContainer" class="space-y-3">
-                </div>
-                <div id="noLawVotes" class="text-center py-6 text-gray-500 hidden">
-                    <p>You haven't voted on any laws yet.</p>
-                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on laws →</a>
-                </div>
-            </div>
+            </div><!-- /profile-tab-leadership-content -->
 
-            <!-- Clause-Level Votes -->
-            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-                <h2 class="text-xl font-bold text-party-accent mb-4">Clauses I Voted On</h2>
-                <div id="clauseVotesContainer" class="space-y-3">
-                </div>
-                <div id="noClauseVotes" class="text-center py-6 text-gray-500 hidden">
-                    <p>You haven't voted on any clauses yet.</p>
-                    <a href="/laws" class="text-party-accent hover:underline text-sm">Vote on clauses →</a>
-                </div>
-            </div>
-
-            <!-- Merit Events Section -->
-            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-                <h2 class="text-xl font-bold text-party-accent mb-4">
-                    <i class="fas fa-star mr-2"></i>Merit History
-                </h2>
-                <div id="meritEventsContainer" class="space-y-2">
-                    <p class="text-gray-500 text-sm">Loading...</p>
-                </div>
-                <div id="noMeritEvents" class="hidden text-center py-6 text-gray-500">
-                    <p>No merit events yet.</p>
-                </div>
-            </div>
-
-            <!-- Activity Log Section -->
-            <div class="bg-party-card rounded-xl p-6 border border-gray-700">
-                <h2 class="text-xl font-bold text-party-accent mb-4">
-                    <i class="fas fa-history mr-2"></i>Activity Log
-                </h2>
-                <div id="activityLogContainer" class="space-y-2">
-                    <p class="text-gray-500 text-sm">Loading...</p>
-                </div>
-                <div id="noActivityLog" class="hidden text-center py-6 text-gray-500">
-                    <p>No activity yet.</p>
-                </div>
-            </div>
+            <!-- ===== Tab: Endorsements ===== -->
+            <div id="profile-tab-endorsements-content" class="hidden space-y-6">
 
             <!-- Endorsements Received -->
             <div class="bg-party-card rounded-xl p-6 border border-gray-700">
@@ -520,6 +567,8 @@
                 </div>
             </div>
 
+            </div><!-- /profile-tab-endorsements-content -->
+
         </div>
 
     </div>
@@ -527,6 +576,23 @@
     <script>
         let authToken = Auth.getToken();
         
+        // Profile tab switching
+        const profileTabs = ['activity', 'voting', 'proposals', 'enroll', 'leadership', 'endorsements'];
+
+        function switchProfileTab(tab) {
+            profileTabs.forEach(t => {
+                const btn = document.getElementById('profile-tab-' + t);
+                const content = document.getElementById('profile-tab-' + t + '-content');
+                if (t === tab) {
+                    btn.className = 'px-4 py-3 text-party-accent border-b-2 border-party-accent font-bold whitespace-nowrap';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-4 py-3 text-gray-400 hover:text-white transition whitespace-nowrap';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
         // Toggle donation amount field
         document.addEventListener('DOMContentLoaded', function() {
             const donationCheckbox = document.getElementById('enrollTypeDonation');
