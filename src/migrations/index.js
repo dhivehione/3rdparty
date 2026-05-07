@@ -53,6 +53,22 @@ function runMigrations(deps) {
     db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(5, new Date().toISOString());
     console.log('✓ Migration 5 applied');
   }
+
+  // Migration 6: referral login merit tracking
+  if (!applied.has(6)) {
+    const m006 = require('./006_referral_login_merit');
+    m006.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(6, new Date().toISOString());
+    console.log('✓ Migration 6 applied');
+  }
+
+  // Migration 7: merit audit backfill (signup_base + missing referral_base events)
+  if (!applied.has(7)) {
+    const m007 = require('./007_merit_backfill');
+    m007.up(db);
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(7, new Date().toISOString());
+    console.log('✓ Migration 7 applied');
+  }
 }
 
 module.exports = { runMigrations };

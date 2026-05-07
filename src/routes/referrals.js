@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit, notificationQueue }) {
+module.exports = function({ db, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit, notificationQueue, getEnrollmentsToday }) {
 
   // POST /api/referral/introduce - Introduce a new member
   router.post('/api/referral/introduce', userAuth, (req, res) => {
@@ -193,6 +193,17 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
       }
     }
 
+    // Check per-user daily enrollment limit
+    const enrollmentsToday = getEnrollmentsToday(referrerId);
+    const settings = getSettings();
+    const maxPerUserPerDay = parseInt(settings.enroll_max_per_user_per_day) || 5;
+    if (enrollmentsToday >= maxPerUserPerDay) {
+      return res.status(429).json({
+        error: `Daily enrollment limit reached (${maxPerUserPerDay} per day). Try again tomorrow.`,
+        success: false
+      });
+    }
+
     // Calculate initial merit estimate
     const enrollSettings = getSettings();
     const meritEstimates = {
@@ -235,20 +246,25 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
        const stmt = db.prepare(
          'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
        );
-       const result = stmt.run(
-         cleanedPhone,
-         nid,
-         name || null,
-         username ? username.trim() : null,
-         email || null,
-         island || null,
-         contributionTypeJson,
-         finalDonation,
-         initialMerit,
-         1,
-         null,
-         timestamp
-       );
+        const result = stmt.run(
+          cleanedPhone,
+          nid,
+          name || null,
+          username ? username.trim() : null,
+          email || null,
+          island || null,
+          contributionTypeJson,
+          finalDonation,
+          initialMerit,
+          1,
+          null,
+          timestamp
+        );
+
+        // Record initial merit in the audit ledger
+        db.prepare(
+          'INSERT INTO merit_events (user_id, event_type, points, description, created_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(result.lastInsertRowid, 'signup_base', initialMerit, 'Initial signup merit', timestamp);
 
       // Count successful invites for this referrer
       const inviteCount = db.prepare(`
@@ -257,21 +273,24 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
       `).get(referrerId).count;
 
       const basePoints = getReferralPoints(inviteCount + 1, false);
+      const upfrontFraction = parseFloat(settings.referral_upfront_fraction) || 0.5;
+      const upfrontPoints = Math.round(basePoints * upfrontFraction * 100) / 100;
 
       // Create referral record (already joined since we just created the user)
       const insertReferral = db.prepare(`
-        INSERT INTO referrals (referrer_id, referred_id, relation, status, base_reward_given, created_at, referred_joined_at)
-        VALUES (?, ?, ?, 'joined', ?, ?, ?)
+        INSERT INTO referrals (referrer_id, referred_id, relation, status, base_reward_given, upfront_merit_awarded, created_at, referred_joined_at)
+        VALUES (?, ?, ?, 'joined', ?, ?, ?, ?)
       `);
-      insertReferral.run(referrerId, result.lastInsertRowid, relation, basePoints, timestamp, timestamp);
+      insertReferral.run(referrerId, result.lastInsertRowid, relation, basePoints, upfrontPoints, timestamp, timestamp);
 
-      // Award points to referrer
-      merit.awardMerit(referrerId, 'referral_base', basePoints, result.lastInsertRowid, 'referral', `Enrolled family/friend (${relation})`);
+      // Award upfront points to referrer
+      merit.awardMerit(referrerId, 'referral_base', upfrontPoints, result.lastInsertRowid, 'referral', `Enrolled family/friend (${relation}) - upfront`);
 
       // Log the activity
       logActivity('family_friend_enrolled', referrerId, result.lastInsertRowid, {
         relation,
         base_points_awarded: basePoints,
+        upfront_points_awarded: upfrontPoints,
         referrer_invite_count: inviteCount + 1,
         enrolled_name: name || 'N/A'
       }, req);
@@ -293,10 +312,12 @@ module.exports = function({ db, getSettings, logActivity, userAuth, getReferralP
         console.log('Could not queue welcome notification:', e.message);
       }
 
-       res.status(201).json({
+        res.status(201).json({
          success: true,
-         message: `Successfully enrolled ${name || 'family member'}! You earned ${basePoints} base points. They need to complete their first action for you to get the engagement bonus.`,
-         points_earned: basePoints,
+         message: `Successfully enrolled ${name || 'family member'}! You earned ${upfrontPoints} upfront points. Earn the remaining ${basePoints - upfrontPoints} when they log in.`,
+         points_earned: upfrontPoints,
+         total_base_points: basePoints,
+         remaining_points: basePoints - upfrontPoints,
          enrolled_user: {
            id: result.lastInsertRowid,
            phone: cleanedPhone,

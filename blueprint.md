@@ -1,16 +1,17 @@
-# 3d Party — Project Blueprint
+# 3d Party — Technical Blueprint
 
-> **Last updated:** 2026-05-04  
-> **Source spec:** `whitepaper.txt` (1018 lines, 3rd Party v14)  
+> **Last updated:** 2026-05-07 (referral anti-abuse limits)
+> **Governance spec:** `whitepaper.txt` (3rd Party v14)
+> **Implementation history:** `history.md`
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
 
 ---
 
 ## 1. Project Overview
 
-**Stack:** Node.js (Express) + better-sqlite3 + vanilla JS frontend (Tailwind CSS)  
-**Entry point:** `server.js` (6335 lines)  
-**Database:** SQLite (`data/signups.db`), external `laws.db` from mvlaws project  
+**Stack:** Node.js (Express) + better-sqlite3 + vanilla JS frontend (Tailwind CSS)
+**Entry point:** `server.js` (~150 lines, wiring only)
+**Database:** SQLite (`data/signups.db`), external `laws.db` from mvlaws project
 **Specification:** 3rd Party v14 whitepaper — a platform merging direct democracy with merit-based incentives, dynamic governance, and anti-schism safeguards.
 
 ### 1.1 Core Principles (from whitepaper §II)
@@ -36,11 +37,48 @@
 
 ---
 
-## 2. The Merit Score System — Full Specification
+## 2. System Architecture
+
+### 2.1 Backend Architecture
+
+The backend follows a modular, dependency-injected architecture. `server.js` is a thin wiring layer that initializes services, mounts route modules, and starts background jobs.
+
+```
+server.js              ← Express app setup, route mounting, graceful shutdown
+src/
+├── config/settings.js ← DEFAULT_SETTINGS, getSettings, updateSettings
+├── db/
+│   ├── index.js       ← initDb (signups.db + laws.db handles)
+│   └── queries/       ← Domain-specific data access layer (18 query modules)
+├── middleware/
+│   ├── auth.js        ← adminAuth, userAuth
+│   ├── cors.js        ← CSP and CORS headers
+│   └── rate-limits.js ← enrollment rate limiting
+├── migrations/        ← 5 numbered migrations + schema_version tracking
+├── services/          ← Business logic (merit, referral, treasury, etc.)
+├── jobs/              ← 6 background intervals (proposals, stipends, notifications, etc.)
+├── routes/            ← Express Router modules (~30 route files)
+└── utils/             ← sanitizeHTML, getClientIp, generateOTP
+```
+
+**Pattern:** Every module exports a factory function receiving dependencies (`{ db, getSettings, ... }`) via dependency injection. This eliminates circular requires and makes testing straightforward.
+
+### 2.2 Frontend Architecture
+
+- **CSS:** Tailwind CSS v3, built locally via PostCSS (`tailwind.config.js`, `styles/tailwind.css`, `tailwind.css`)
+- **Shared JS:** Three global modules loaded on most pages:
+  - `js/utils.js` — `Utils.escapeHtml`, `Utils.formatTime`, `Utils.formatDate`, `Utils.formatCurrency`
+  - `js/auth.js` — `Auth.getToken`, `Auth.setToken`, `Auth.logout`, `Auth.isAdmin`
+  - `js/api.js` — `api.get`, `api.post`, `api.put`, `api.del` with auto-auth injection
+- **Navigation:** `nav.js` injects the navbar into all pages and handles footer links, notification badges, and cold-visitor banners.
+
+---
+
+## 3. The Merit Score System — Full Specification
 
 > **Source:** whitepaper §II.C. These are the canonical values derived from agent-based simulations. They can only be changed by a constitutional vote of the full membership.
 
-### 2.1 Master Formula
+### 3.1 Master Formula
 
 ```
 MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
@@ -50,24 +88,24 @@ MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
 |---|---|
 | `Point_event_i` | Initial point value for a specific action `i` |
 | `λ_base` | Base decay constant = `0.001267` (achieves 18-month half-life at Lc=1.0) |
-| `Lc` | Loyalty Coefficient (see §2.3) |
+| `Lc` | Loyalty Coefficient (see §3.3) |
 | `t_i` | Time in days since action `i` occurred |
 | `e` | Euler's number ~2.71828 |
 
-### 2.2 Point Rewards Per Action
+### 3.2 Point Rewards Per Action
 
-#### 2.2.1 Voting (`Point_event`)
+#### 3.2.1 Voting (`Point_event`)
 | Action | Points |
 |---|---|
 | Vote on proposal that **fails** | 1.0 |
 | Vote on proposal that **succeeds** | 2.5 |
 
-#### 2.2.2 Proposal Authoring
+#### 3.2.2 Proposal Authoring
 | Action | Points |
 |---|---|
 | Author/co-author a proposal that **passes** | `200 / number_of_coauthors` |
 
-#### 2.2.3 Peer Endorsements (Community Trust)
+#### 3.2.3 Peer Endorsements (Community Trust)
 | Endorsement # | Points Each |
 |---|---|
 | 1–10 | 2.0 |
@@ -77,7 +115,7 @@ MS_current = Σ [ Point_event_i * e^(-(λ_base / Lc) * t_i) ]
 
 **Constraint:** Maximum 20 unique endorsements allowed per 30-day period (prevents "endorsement rings").
 
-#### 2.2.4 Resource Contribution (Donations)
+#### 3.2.4 Resource Contribution (Donations)
 ```
 Points = 35 * log5(Donation_Value_USD + 1)
 ```
@@ -90,14 +128,14 @@ Points = 35 * log5(Donation_Value_USD + 1)
 
 Steeply diminishing returns — grassroots funding is more point-efficient than large donations.
 
-#### 2.2.5 Bounty System (Skill-Based Contributions)
+#### 3.2.5 Bounty System (Skill-Based Contributions)
 | Tier | Description | Points |
 |---|---|---|
 | Tier 1 | Simple task (translation, basic research) | 20 |
 | Tier 2 | Involved task (data analysis, graphic design) | 75 |
 | Tier 3 | Expert task (legal draft, major report, Leadership Academy graduation) | 250 |
 
-#### 2.2.6 Network Growth (Recruitment) — Two-Tiered
+#### 3.2.6 Network Growth (Recruitment) — Two-Tiered
 | Invite # | Base Reward | Engagement Bonus | Total Potential |
 |---|---|---|---|
 | 1–5 | 2 | 8 | **10** |
@@ -107,7 +145,7 @@ Steeply diminishing returns — grassroots funding is more point-efficient than 
 - **Base Reward** — Awarded immediately when the invited person verifies their account (National ID + SMS).
 - **Engagement Bonus** — Awarded only after the invited person completes their first merit-generating action (e.g., casts their first vote).
 
-#### 2.2.7 Role-Based Stipends (Monthly)
+#### 3.2.7 Role-Based Stipends (Monthly)
 | Role | Points/Month | Condition |
 |---|---|---|
 | Shadow Minister (Governing Council) | 150 | >80% meeting attendance, >90% vote participation |
@@ -117,7 +155,7 @@ Steeply diminishing returns — grassroots funding is more point-efficient than 
 | Performance Bonus pool | 1,000/quarter | Discretionary, awarded by Council via public Decision Statement |
 | Leadership Academy mentor | Recurring reward | For guiding new cohorts |
 
-### 2.3 Dynamic Decay & Loyalty
+### 3.3 Dynamic Decay & Loyalty
 
 | Member Type | Loyalty Coefficient (Lc) | Effective Half-Life |
 |---|---|---|
@@ -132,7 +170,7 @@ Steeply diminishing returns — grassroots funding is more point-efficient than 
 
 > **Implementation note:** Code currently derives Lc from days since join: `<180 days = 1.0, <365 days = 1.2, >=365 days = 1.5`. This is semantically inverted from the whitepaper (new members get lowest coefficient, not highest). The whitepaper intends Founding Members (earliest joins) to have Lc=1.5, which matches the code's logic for long-tenured members.
 
-### 2.4 Stakes & Penalties
+### 3.4 Stakes & Penalties
 
 #### Proposal Staking
 ```
@@ -158,16 +196,16 @@ Quality_Ratio = (1 + Total_Failed_Proposals) / (1 + Total_Successful_Proposals)
 
 ---
 
-## 3. Governance Architecture (from whitepaper §II.D, §III, §VI)
+## 4. Governance Architecture (from whitepaper §II.D, §III, §VI)
 
-### 3.1 Voting Mechanisms
+### 4.1 Voting Mechanisms
 
 | Mechanism | Use Case | Status |
 |---|---|---|
-| **Weighted Majority** | Binary Yes/No proposals | ✅ Implemented (`server.js:1460`) |
-| **Ranked-Choice Voting (RCV)** | Leadership elections, multi-option choices | ✅ Implemented (`server.js:1607`) |
+| **Weighted Majority** | Binary Yes/No proposals | ✅ Implemented (`src/routes/proposals.js`) |
+| **Ranked-Choice Voting (RCV)** | Leadership elections, multi-option choices | ✅ Implemented (`src/routes/ranked-proposals.js`) |
 
-### 3.2 Tiered Approval Thresholds
+### 4.2 Tiered Approval Thresholds
 
 | Proposal Category | Required Majority |
 |---|---|
@@ -177,24 +215,24 @@ Quality_Ratio = (1 + Total_Failed_Proposals) / (1 + Total_Successful_Proposals)
 
 **Categorization process:** Proposer declares category → Council reviews → Community can challenge with "Categorization Vote."
 
-Status: ✅ Tiered thresholds calculated in `calculateApprovalThreshold()` (`server.js:4432`). Proposal category is set on creation and threshold is stored. Categorization vote workflow not yet implemented.
+Status: ✅ Tiered thresholds calculated in `src/services/merit.js:calculateApprovalThreshold()`. Proposal category is set on creation and threshold is stored. Categorization vote workflow not yet implemented.
 
-### 3.3 Voting Windows (Weight Decay)
+### 4.3 Voting Windows (Weight Decay)
 
 | Window | Vote Weight |
 |---|---|
 | Primary (Days 1–7) | 100% |
 | Extended (Days 8–10) | 50% |
 
-Status: ✅ Implemented via `calculateVoteWeight()` (`server.js:4410`). Configurable via settings.
+Status: ✅ Implemented via `src/services/merit.js:calculateVoteWeight()`. Configurable via settings.
 
-### 3.4 Leadership Structure
+### 4.4 Leadership Structure
 
 #### Shadow Ministers (Governing Council)
 - **Selection:** 4-stage process — Merit threshold eligibility → Public application → Live-streamed panel interview → RCV confirmation vote.
 - **Term:** Maximum 2 years, mandatory annual performance review.
 
-#### Default Leadership Roles (`server.js:892-901`)
+#### Default Leadership Roles (`src/migrations/001_initial_schema.js`)
 | Role | Type | Min Merit |
 |---|---|---|
 | Shadow President | council | 1000 |
@@ -206,43 +244,43 @@ Status: ✅ Implemented via `calculateVoteWeight()` (`server.js:4410`). Configur
 | Verification Committee Chair | committee | 500 |
 | Policy Hub Lead | hub | 700 |
 
-### 3.5 Policy Incubation Hubs
+### 4.5 Policy Incubation Hubs
 - Long-term working groups for complex systemic issues (healthcare reform, energy plans).
 - Approved by Governing Council with a public charter.
 - Output: Detailed "Whitepaper" proposal voted on as a unified package.
 - Members earn recurring monthly stipends for active participation.
 
-Status: ✅ Hubs API implemented (`server.js:4984-5047`), including join, list, and monthly stipend cron (`server.js:5049-5093`).
+Status: ✅ Hubs API implemented (`src/routes/hubs-emeritus.js`), including join, list, and monthly stipend cron (`src/jobs/processHubStipends.js`).
 
-### 3.6 The Living Legal Code
+### 4.6 The Living Legal Code
 - Every national law listed on the platform, subject to continuous public audit.
 - Members cast persistent Approve/Disapprove votes weighted by Merit Score.
 - When approval falls below threshold (e.g., 40%), automatic "Mandatory Review Agenda" triggers Governing Council action.
 
 Status: ⚠️ Law browsing and voting implemented via external `laws.db`. Persistent approve/disapprove tracking and auto-flagging not implemented.
 
-### 3.7 Git-Inspired Constitution
+### 4.7 Git-Inspired Constitution
 - Living document amendable via "Merge Proposal" system.
 - Members fork → modify → submit for constitutional vote.
 - Clear, trackable, stable amendment process.
 
 Status: ❌ Not implemented.
 
-### 3.8 Emeritus Council
+### 4.8 Emeritus Council
 - Advisory body (no governing power) for institutional memory.
 - Auto-invitation for: former Council members OR members in top 1% for 3+ years.
 - Function: Curate Knowledge Archive, provide non-binding Advisory Opinions.
 
-Status: ✅ Emeritus Council eligibility checking and API implemented (`server.js:4872-4939`). Runs daily cron. Knowledge Archive not yet built.
+Status: ✅ Emeritus Council eligibility checking and API implemented (`src/routes/hubs-emeritus.js`). Runs daily cron. Knowledge Archive not yet built.
 
-### 3.9 Signal Horn Protocol (Crisis Response)
+### 4.9 Signal Horn Protocol (Crisis Response)
 - Council activates with 75% supermajority for a named crisis.
 - Official Crisis Statement pinned to all dashboards for 12 hours.
 - Can include Merit Score bounty for members who amplify the unified response.
 
 Status: ❌ Not implemented.
 
-### 3.10 Limits on Leadership Authority
+### 4.10 Limits on Leadership Authority
 - All significant decisions require public "Decision Statement" + weighted majority vote.
 - Minimum quorum: 10% of active members.
 - "Active member" = performed ≥1 merit action in last 30 days.
@@ -252,191 +290,31 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 
 ---
 
-## 4. Current Implementation Status
+## 5. Database Schema
 
-### 4.1 Authentication & Membership
-
-| Feature | Status | Location |
-|---|---|---|
-| Signup (phone + NID) | ✅ | `server.js:2203` — `POST /api/signup` |
-| Login (username + phone) | ✅ | `server.js:2067` — `POST /api/login` |
-| Admin auth (password) | ✅ | `server.js:958-976` |
-| User auth (bearer token) | ✅ | `server.js:3601-3619` |
-| Unregister (admin only) | ✅ | `server.js:2419` |
-| SMS OTP verification | ❌ | Specified in whitepaper §III.A, not implemented |
-| Duplicate phone/NID check | ✅ | `server.js:2266` |
-
-### 4.2 Merit Score — Reward Implementation Status
-
-| # | Feature | Spec Points | Status | Details |
-|---|---|---|---|---|
-| 1 | Voting points | 1.0 / 2.5 | ✅ | Awarded when proposals close via `closeExpiredProposals()` (`server.js:143-152`). Points from configurable settings `merit_vote_pass` / `merit_vote_fail`. |
-| 2 | Proposal authoring | 200/coauthors | ✅ | Awarded when proposal passes via `closeExpiredProposals()` (`server.js:155-161`). Uses setting `merit_proposal_author`. |
-| 3 | Peer endorsements | 2.0→0.1 | ✅ | FULLY implemented. `peer_endorsements` table. `POST/DELETE /api/endorsements`. Diminishing returns via `calculateEndorsementPoints()` (`server.js:3621`). 20/month cap enforced. Settings: `endorsement_tier1-4_pts`, `endorsement_tier1-3_limit`. |
-| 4 | Donation formula | `35*log5(USD+1)` | ⚠️ | Configurable `donation_formula` setting ('log' or 'flat'). Both signup and enroll routes use this. `donation_log_multiplier`, `donation_divisor_mvr`, `donation_usd_mvr_rate` all configurable. |
-| 5 | Bounty system | 20/75/250 | ✅ | FULLY implemented. 7 endpoints (`server.js:3752-3980`). Tables: `bounties`, `bounty_claims`. Create, list, claim, approve, reject, cancel, user bounties. Merit events logged on completion. |
-| 6 | Leadership Academy | 250 (Tier 3) | ✅ | FULLY implemented. `academy_modules` (5 seeded), `academy_enrollments`, `academy_graduation`. 4 endpoints (`server.js:3982-4094`): modules, enroll, complete, progress. Graduation awards 250 pts. |
-| 7 | Role stipends | 150/75/50 | ✅ | Implemented via `processMonthlyStipends()` hourly cron (`server.js:547-594`). `leadership_stipends` table. Council=150, Committee=75, Advisory=50. |
-| 8 | Dynamic decay | 18mo half-life | ✅ | FULLY implemented. `calculateDecayedScore()` (`server.js:4442`), `getLoyaltyCoefficient()` (`server.js:4400`), `LAMBDA_BASE=0.001267`. `GET /api/merit/score` returns both static and dynamic scores. |
-| 9 | Proposal stakes | `max(10,MS*0.005)` | ✅ | FULLY implemented (`server.js:4250-4313`). `proposal_stakes` table. `POST /api/proposals/:id/stake`. Refund/forfeit processed in `processProposalStakes()`. |
-| 10 | Reputation penalty | stake * ratio | ✅ | Implemented in `processProposalStakes()` (`server.js:4218-4241`). Quality ratio: `(1+failed)/(1+successful)`. Penalty = stake * ratio. |
-| 11 | Knowledge Check bounty | Article quiz | ✅ | FULLY implemented (`server.js:4537-4614`). `article_quizzes`, `quiz_attempts` tables. Create, list, answer endpoints. Correct answers awarded configurable points. |
-| 12 | Informed Comment reward | Community endorsements | ✅ | FULLY implemented (`server.js:4617-4694`). `article_comments`, `comment_endorsements` tables. Post, list, endorse endpoints. Comments earn points when endorsed ≥5 times. |
-| 13 | Amplification bounty | Share trackable links | ✅ | FULLY implemented (`server.js:5095-5175`). `amplification_links`, `amplification_clicks` tables. Generate track codes, redirect with click tracking, stats. |
-| 14 | Violation sanctions | Tier 1-3 penalties | ✅ | FULLY implemented (`server.js:4739-4839`). `violations`, `user_suspensions` tables. Report, list, resolve endpoints. Penalties: T1=-50pts, T2=-200pts+suspension, T3=-500pts+permanent ban. |
-| 15 | Emeritus Council | Advisory body | ✅ | Implemented (`server.js:4872-4939`). `emiritus_council` table. Daily cron checks eligibility. `GET /api/emeritus` lists members. Knowledge Archive not yet built. |
-| 16 | Hub stipend | 50 pts/month | ✅ | Implemented via `processHubStipends()` hourly cron (`server.js:5049-5093`). `hub_stipends` table. Hubs with active members receive monthly stipends. |
-
-### 4.3 Merit Score Storage — Current State
-
-| Aspect | Status | Notes |
-|---|---|---|
-| `initial_merit_estimate` in `signups` table | ✅ | Historical baseline set at signup |
-| `merit_events` table | ✅ | Exists (`server.js:638-652`). All point events logged with type, points, timestamp |
-| Static score calculation | ✅ | `calculateStaticScore()` — SUM of all merit_events.points |
-| Dynamic (decayed) score calculation | ✅ | `calculateDecayedScore()` — full whitepaper formula with λ_base and Lc |
-| Loyalty coefficient | ✅ | `getLoyaltyCoefficient()` — based on days since join |
-| Leaderboard API | ✅ | `GET /api/merit/leaderboard` (`server.js:4508`) — top N by score with dynamic score |
-| Merit events API | ✅ | `GET /api/merit/events` (`server.js:4488`) — paginated event history |
-| Merit score API | ✅ | `GET /api/merit/score` (`server.js:4464`) — static + dynamic + loyalty tier |
-
-### 4.4 Referral / Enrollment Status
-
-| Feature | Status | Location |
-|---|---|---|
-| `getReferralPoints()` — correct tiered formula | ✅ | `server.js:2737-2750` |
-| Base reward on signup (pending referral match) | ✅ | `server.js:2328-2362` |
-| Base reward on direct `enroll-family-friend` | ✅ | `server.js:2994-3011` |
-| Base reward for introducing existing user | ✅ | `server.js:2752-2861` |
-| `POST /api/referral/introduce` | ✅ | `server.js:2752` |
-| `POST /api/enroll-family-friend` | ✅ | `server.js:2863` |
-| `GET /api/referrals` (list + summary) | ✅ | `server.js:3049` |
-| `POST /api/referral/remove` (reverses points) | ✅ | `server.js:3099` |
-| Directory search for enrollment | ✅ | `server.js:842` |
-| **Engagement Bonus** (when invitee takes 1st action) | ❌ | `first_action_at` column exists, **never populated**. No trigger logic. |
-
-### 4.5 Voting & Proposals Status
-
-| Feature | Status | Location |
-|---|---|---|
-| Create proposal (8-hour cooldown enforced) | ✅ | `server.js:1388` |
-| Vote on proposal (merit-weighted) | ✅ | `server.js:1460` |
-| Edit proposal | ✅ | `server.js:1540` |
-| Ranked choice voting | ✅ | `server.js:1607` |
-| List active proposals with voting window info | ✅ | `server.js:1010` |
-| Configurable voting duration (default 7 days) | ✅ | `proposal_voting_days` setting |
-| Merit-weighted voting | ✅ | `calculateVoteWeight()` integrates loyalty coefficient and voting window |
-| Voting window weight decay | ✅ | Configurable primary/extended windows + weights |
-| Tiered approval thresholds | ✅ | `calculateApprovalThreshold()` for routine/policy/constitutional |
-| Proposal staking | ✅ | `POST /api/proposals/:id/stake` |
-| 8-hour proposal cooldown | ✅ | `proposal_cooldown_hours` setting, enforced for authenticated users |
-| Proposal amendments | ✅ | `amendment_of` column on proposals. Bonus removed — amendments now earn standard co-author points. |
-| Auto-close expired proposals (merit-weighted) | ✅ | `closeExpiredProposals()` runs every 60s |
-| Reputation penalty on frivolous proposals | ✅ | `processProposalStakes()` with quality ratio |
-
-### 4.6 Laws & Legislation Status
-
-| Feature | Status | Location |
-|---|---|---|
-| List/search laws, articles, clauses | ✅ | `server.js:1452-1746` |
-| Vote on clause (sub-article) | ✅ | `server.js:1793` |
-| Vote on article (requires signup) | ✅ | `server.js:1849` |
-| Vote on entire law | ✅ | `server.js:5408` |
-| Voting stats / recent / top-voted | ✅ | `server.js:1565-1650` |
-| **Merit points for any law voting** | ❌ | No points awarded by law voting endpoints |
-| Living Legal Code (persistent approve/disapprove) | ❌ | Spec §3.6 |
-| Mandatory Review Agenda | ❌ | Auto-flag low-approval laws |
-
-### 4.7 Leadership Status
-
-| Feature | Status | Location |
-|---|---|---|
-| `leadership_positions` (8 default roles) | ✅ | `server.js:876-904` |
-| `leadership_applications` + `leadership_terms` | ✅ | `server.js:907-936` |
-| `leadership_settings` with merit thresholds | ✅ | `server.js:856-873` |
-| Admin API for leadership management | ✅ | `server.js:5501-5748` — 8 endpoints |
-| Public leadership API | ✅ | `server.js:5796-5862` — 4 endpoints |
-| Leadership application UI (profile page) | ✅ | `profile.html` |
-| Role-based monthly stipends (cron) | ✅ | `processMonthlyStipends()` hourly (`server.js:547`) |
-| Leadership Academy (5 modules) | ✅ | `server.js:3982-4094` |
-| Shadow Minister elections (RCV) | ❌ | Application/approval by admin only, no full election workflow |
-| Advisory Expert Panels | ⚠️ | `advisory_reports` table + submit/approve endpoints exist; credential verification not built |
-| Performance appraisals | ✅ | `leadership_appraisals` table + API |
-| Leadership SOPs | ✅ | `leadership_sops` table (5 seeded) + CRUD API |
-| Recall vote mechanism | ❌ | Spec §VI.D |
-| Coalition Governance Protocol | ❌ | Spec §VI.E |
-
-### 4.8 Other Features
-
-| Feature | Status | Location |
-|---|---|---|
-| Public Wall (posts + threads) | ✅ | `server.js:979-1006` |
-| Active visitor heartbeat/analytics | ✅ | `server.js:944-956` |
-| Member count / target progress | ✅ | `server.js:2371` |
-| `activity_log` (audit trail) | ✅ | `server.js:278-289` |
-| Enrollment rate limiting | ✅ | `server.js:709-718` |
-| File upload (multer) | ✅ | `server.js:5881-5890` |
-| External directory search proxy | ✅ | `server.js:842` |
-| Events management (CRUD) | ✅ | `server.js:5950-6055` |
-| Donation submission with slip upload | ✅ | `server.js:5896-5947` |
-| Donation verification (admin) | ✅ | `server.js:6152-6198` |
-| AI law drafting (OpenRouter GPT) | ✅ | `server.js:2314-2534` — `/api/generate-law-draft` |
-| Password change | ✅ | `server.js:5322` — `POST /api/user/change-password` |
-| Admin proposal management | ✅ | `server.js:6059-6133` |
-| Knowledge Quizzes on law articles | ✅ | `server.js:4537-4614` |
-| Article comments with endorsements | ✅ | `server.js:4617-4694` |
-| Amplification tracking links | ✅ | `server.js:5095-5175` |
-| Live Treasury (full public ledger) | ⚠️ | Donations tracked but no public dashboard showing all transactions |
-| SMS OTP verification | ❌ | Spec §III.A |
-| Community Hubs (Círculos Protocol) | ❌ | Spec §V.D — Policy Hubs exist but not geographical Círculos |
-| 3rd Party Media Collective | ⚠️ | Partial — quizzes, comments, amplification implemented; no dedicated media tab or Rapid Response team |
-| Candidate Selection (Primary by Merit) | ❌ | Spec §VI.A Stage 2 |
-| The People's Manifesto | ❌ | Spec §VI.B |
-| Victories Tracker | ❌ | Spec §V.C |
-| Git-Inspired Constitution | ❌ | Spec §III.A |
-| Signal Horn Protocol | ❌ | Spec §IV.E |
-| Unity Warning System | ❌ | Spec §IV.B |
-
----
-
-## 5. Whitepaper Phased Rollout Plan
-
-> Source: whitepaper §VIII. These are the original phases — use as reference for prioritizing development.
-
-| Phase | Goal | Key Features | Status Today |
-|---|---|---|---|
-| **Phase 1** | MVP: Core democracy, first 3,000 members | NID+SMS verification, 1-person-1-vote proposals, Merit Score running in background | ⚠️ Partial (no SMS OTP, but merit engine fully active) |
-| **Phase 2** | Activate weighted influence | Merit-weighted voting, RCV elections, Git-Constitution, Live Treasury | ⚠️ Most features implemented; Git-Constitution missing |
-| **Phase 3** | National presence | Shadow Minister elections, Community Hubs, SMS voting | ⚠️ Leadership structure exists but elections not built; Hubs/Círculos missing |
-| **Phase 4** | Full incentive design | Proposal Staking, Unity Warning System | ⚠️ Staking done; Unity Warning missing |
-| **Phase 5** | Full automation | Parametric Governance Engine, AI moderation | ⚠️ Core parameter engine exists; full automation missing |
-| **Phase 6** | Constitutional integration | Ratify into national law via sustained membership + policy adoption | ❌ |
-
----
-
-## 6. Database Schema
-
-### 6.1 Main Database (`data/signups.db`)
+### 5.1 Main Database (`data/signups.db`)
 
 | Table | Purpose | Key Columns |
 |---|---|---|
-| `signups` | User accounts | `phone`, `nid`, `username`, `initial_merit_estimate`, `contribution_type`, `donation_amount`, `auth_token`, `last_login`, `password_hash` |
+| `signups` | User accounts | `phone`, `nid`, `username`, `initial_merit_estimate`, `contribution_type`, `donation_amount`, `auth_token`, `last_login`, `password_hash`, `otp_code`, `otp_verified` |
 | `referrals` | Referral tracking | `referrer_id`, `referred_id`, `relation`, `status`, `base_reward_given`, `engagement_bonus_given`, `first_action_at` |
 | `activity_log` | Audit trail | `action_type`, `user_id`, `target_id`, `details`, `ip_address`, `timestamp` |
 | `wall_posts` | Public wall | `nickname`, `message`, `thread_id`, `is_approved` |
+| `wall_votes` | Wall post votes | `post_id`, `voter_ip`, `vote_type` |
+| `wall_flags` | Wall post flags | `post_id`, `reporter_ip`, `reason` |
 | `proposals` | Policy proposals | `title`, `description`, `category`, `status`, `yes_votes`, `no_votes`, `abstain_votes`, `created_by_user_id`, `approval_threshold`, `is_closed`, `passed`, `amendment_of` |
 | `votes` | Proposal votes (merit-weighted) | `proposal_id`, `choice`, `voter_ip`, `user_id`, `vote_weight`, `loyalty_coefficient`, `days_since_created` |
 | `ranked_proposals` | RCV elections | `title`, `description`, `category`, `options` (JSON) |
 | `ranked_votes` | RCV ballots | `proposal_id`, `ranking` (JSON), `voter_ip` |
 | `system_settings` | Runtime config (JSON blob) | `settings_json`, `updated_at` |
 | `merit_events` | Every point-earning action | `user_id`, `event_type`, `points`, `reference_id`, `reference_type`, `description`, `created_at` |
-| `peer_endorsements` | Peer-to-peer endorsements | `endorser_id`, `endorsed_id`, `created_at`, `expires_at` |
+| `peer_endorsements` | Peer-to-peer endorsements | `endorser_id`, `endorsed_id`, `application_id`, `created_at`, `expires_at` |
 | `bounties` | Bounty board tasks | `title`, `description`, `tier` (1/2/3), `reward_points`, `posted_by_user_id`, `assigned_to_user_id`, `status` |
 | `bounty_claims` | Bounty claim submissions | `bounty_id`, `user_id`, `proof`, `status`, `reviewed_by_user_id`, `reviewed_at` |
 | `academy_modules` | Leadership Academy curriculum | `title`, `description`, `order_index`, `is_active` |
 | `academy_enrollments` | Academy enrollment tracking | `user_id`, `module_id`, `status` (enrolled/in_progress/completed), `enrolled_at`, `completed_at` |
 | `academy_graduation` | Academy graduates | `user_id`, `graduated_at`, `merit_awarded`, `mentor_id` |
-| `donations` | Donation tracking (two tables — see below) | `user_id`, `phone`, `nid`, `amount`, `slip_filename`, `remarks`, `status`, `verified_by`, `verified_at` |
+| `donations` | Donation tracking | `user_id`, `phone`, `nid`, `amount`, `slip_filename`, `remarks`, `status`, `verified_by`, `verified_at` |
 | `violations` | Disciplinary cases | `reporter_user_id`, `accused_user_id`, `violation_type`, `tier` (1/2/3), `description`, `evidence`, `status`, `resolution` |
 | `user_suspensions` | Suspension records | `user_id`, `violation_id`, `suspension_type` (warning/temporary/permanent), `reason`, `starts_at`, `ends_at`, `is_active` |
 | `leadership_positions` | Role definitions | `title`, `description`, `position_type` (council/committee/hub/advisory/emeritus), `min_merit_required`, `is_active` |
@@ -460,10 +338,11 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | `laws` | Platform laws | `title`, `description`, `category`, `source_proposal_id`, `status` |
 | `proposal_stakes` | Staking records | `proposal_id`, `user_id`, `stake_amount`, `status` (locked/refunded/forfeited) |
 | `events` | Movement events | `title`, `description`, `event_date`, `location` |
+| `notification_queue` | Batched wall notifications | `type`, `payload` (JSON), `scheduled_at`, `processed_at` |
+| `treasury_ledger` | Live Treasury entries | `type`, `amount`, `description`, `reference_id`, `created_at` |
+| `schema_version` | Migration tracking | `version`, `applied_at` |
 
-> **Note:** There are two `donations` tables in code. The first (line ~410) tracks merit points from donations (`amount_usd`, `amount_mvr`, `merit_points_awarded`). The second (line ~777) tracks verified donation submissions (`amount`, `slip_filename`, `status`, `verified_by`). These serve different purposes but share a name, which is a potential source of confusion.
-
-### 6.2 External Database (`laws.db` from mvlaws)
+### 5.2 External Database (`laws.db` from mvlaws)
 
 | Table | Purpose |
 |---|---|
@@ -474,223 +353,267 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | `law_votes` (in main DB) | Article-level votes (linked via `user_phone`) |
 | `law_level_votes` (in laws DB) | Law-level votes |
 
-### 6.3 Needed Tables (Not Yet Created)
+---
 
-| Table | Purpose | Blocked by |
-|---|---|---|
-| *(no tables documented in 4.3 Implementation Status Audit remain uncreated — all tables listed in prior blueprint versions now exist)* |
+## 6. File Structure
+
+```
+3rdparty/
+├── server.js                          ← ~150 lines, wiring only
+├── package.json
+├── tailwind.config.js
+├── build.sh
+├── Dockerfile
+├── caprover.json
+│
+├── src/
+│   ├── config/
+│   │   └── settings.js                ← DEFAULT_SETTINGS (60+ keys), getSettings, updateSettings
+│   ├── db/
+│   │   ├── index.js                   ← initDb for signups.db + laws.db
+│   │   └── queries/
+│   │       ├── index.js               ← Aggregates all query modules
+│   │       ├── signups.js             ← User CRUD, auth lookup
+│   │       ├── proposals.js           ← Proposal CRUD, vote tallying
+│   │       ├── wall.js                ← Post CRUD, votes, flags
+│   │       ├── merit.js               ← merit_events CRUD, score queries
+│   │       ├── referrals.js           ← Referral CRUD, engagement tracking
+│   │       ├── donations.js           ← Donation CRUD
+│   │       ├── treasury.js            ← Ledger entries, balance queries
+│   │       ├── endorsements.js        ← Endorsement CRUD
+│   │       ├── bounties.js            ← Bounty CRUD, claims
+│   │       ├── laws.js                ← Law/vote queries (uses lawsDb)
+│   │       ├── leadership.js          ← Positions, terms, applications
+│   │       ├── hubs.js                ← Policy hubs, membership
+│   │       ├── events.js              ← Events CRUD
+│   │       └── activity-log.js        ← Audit log entries
+│   ├── middleware/
+│   │   ├── auth.js                    ← adminAuth, userAuth, adminSessions Map
+│   │   ├── cors.js                    ← CSP + CORS headers
+│   │   └── rate-limits.js             ← Enrollment rate limiting
+│   ├── migrations/
+│   │   ├── index.js                   ← runMigrations orchestrator
+│   │   ├── 001_initial_schema.js      ← Core tables + seeds
+│   │   ├── 002_final_columns.js       ← Late schema additions
+│   │   ├── 003_merit_audit.js         ← Merit events + decay engine tables
+│   │   ├── 004_notification_queue.js  ← Notification queue table
+│   │   └── 005_endorsement_application.js ← Application-scoped endorsements
+│   ├── services/
+│   │   ├── activity-log.js            ← logActivity
+│   │   ├── analytics.js               ← activeVisitors Map, heartbeat
+│   │   ├── merit.js                   ← calculateDecayedScore, calculateVoteWeight, processStipends, etc.
+│   │   ├── referral.js                ← getReferralPoints, maybeEngageReferral
+│   │   ├── sms.js                     ← generateOTP, sendSMS
+│   │   ├── treasury.js                ← addTreasuryEntry, getTreasuryBalance
+│   │   ├── wall-moderation.js         ← moderateWallContent
+│   │   └── notification-queue.js      ← queueNotification, processQueue
+│   ├── jobs/
+│   │   ├── index.js                   ← start/stop all intervals
+│   │   ├── cleanupVisitors.js         ← Purge expired active visitors
+│   │   ├── closeProposals.js          ← Award merit, resolve stakes, close expired
+│   │   ├── processStipends.js         ← Monthly leadership stipends
+│   │   ├── processHubStipends.js      ← Monthly hub member stipends
+│   │   ├── checkEmeritus.js           ← Daily Emeritus eligibility check
+│   │   └── processNotifications.js    ← Batched wall notification queue
+│   ├── routes/
+│   │   ├── auth/
+│   │   │   ├── register.js            ← POST /api/signup
+│   │   │   ├── login.js               ← POST /api/login
+│   │   │   ├── admin.js               ← Admin auth endpoints
+│   │   │   └── stats.js               ← Public stats (member count, etc.)
+│   │   ├── legislation/
+│   │   │   ├── browse.js              ← GET /api/mvlaws/*
+│   │   │   ├── voting.js              ← POST /api/mvlaws/vote*
+│   │   │   └── ai-draft.js            ← POST /api/generate-law-draft
+│   │   ├── social/
+│   │   │   ├── merit.js               ← GET /api/merit/*
+│   │   │   ├── interactions.js        ← Endorsements, comments, quizzes
+│   │   │   ├── violations.js          ← Report/resolve violations
+│   │   │   └── amplification.js       ← Trackable share links
+│   │   ├── admin-merit.js             ← Admin merit management
+│   │   ├── admin-proposals-donations.js ← Admin proposal/donation controls
+│   │   ├── admin-wall.js              ← Admin wall moderation
+│   │   ├── analytics.js               ← GET /api/analytics/*
+│   │   ├── bounty-academy.js          ← Bounties + Leadership Academy
+│   │   ├── donations-public.js        ← Public donation submission
+│   │   ├── enrollment.js              ← POST /api/enroll-family-friend
+│   │   ├── events.js                  ← GET/POST /api/events, /api/admin/events
+│   │   ├── hubs-emeritus.js           ← Hubs + Emeritus Council
+│   │   ├── leadership.js              ← Leadership management + public APIs
+│   │   ├── profile.js                 ← User profile, member directory
+│   │   ├── proposals.js               ← Proposals + binary voting + stakes
+│   │   ├── ranked-proposals.js        ← RCV elections
+│   │   ├── referrals.js               ← Referral introduce/remove/list
+│   │   ├── static-pages.js            ← All HTML page routes
+│   │   ├── treasury.js                ← Treasury ledger APIs
+│   │   └── wall.js                    ← Wall posts, votes, flags
+│   └── utils/
+│       └── index.js                   ← sanitizeHTML, getClientIp, generateOTP
+│
+├── js/
+│   ├── utils.js                       ← escapeHtml, formatTime, formatDate, formatCurrency
+│   ├── auth.js                        ← Token management, isAdmin
+│   └── api.js                         ← Fetch wrappers with auto-auth
+│
+├── styles/
+│   └── tailwind.css                   ← PostCSS input
+│
+├── data/
+│   └── signups.db                     ← Main SQLite database
+│
+└── tests/
+    └── (smoke and integration tests)
+```
 
 ---
 
-## 7. Misleading Frontend Elements (Needs Fixing)
-
-The frontend displays reward information that is not fully backed by server logic. Status updated from prior audit:
-
-| Element | Location | What It Says | Reality | Status |
-|---|---|---|---|---|
-| Clause vote points | `profile.html:207` | "+2.5 pts each" | Law votes still award **zero points** | ❌ Still misleading |
-| Article vote points | `profile.html:212` | "+2.5 pts each" | Law votes still award **zero points** | ❌ Still misleading |
-| Voting earns points | `how.html:100` | "earn points by voting on proposals" | ✅ Now implemented | ✅ Fixed |
-| Bounty board | `how.html:100`, `faq.html:113-117` | References bounty tasks | ✅ Now implemented | ✅ Fixed |
-| Bridge-building bonus | `faq.html:165` | "400-point Merit Bonus" | ❌ Deprecated — bonus removed to prevent gaming | ✅ Fixed |
-| Reputation penalty | `faq.html:153` | Describes penalty system | ✅ Now implemented | ✅ Fixed |
-| Engagement bonus | `profile.html:246`, `enroll.html:40` | "earn points when they take their first action" | `first_action_at` never set | ❌ Still misleading |
-
----
-
-## 8. Development Roadmap (Updated)
-
-### Phase 1 — Already Complete ✅
-
-1. ✅ De-hardcoded all reward values into `DEFAULT_SETTINGS` → `system_settings` → admin UI
-2. ✅ Wired up voting merit points in `closeExpiredProposals()`
-3. ✅ Configurable settings for all referral, endorsement, voting, decay, staking values
-4. ✅ `merit_events` table for dynamic score tracking
-5. ✅ Dynamic decay score engine (`calculateDecayedScore()`)
-6. ✅ Loyalty coefficient (`getLoyaltyCoefficient()`)
-7. ✅ Proposal authoring points on passage
-8. ✅ Leaderboard API
-9. ✅ Merit events API
-10. ✅ Merit score API (static + dynamic)
-
-### Phase 1 (Remaining) — Fix What's Broken
-
-1. ~~**Wire up law voting merit points**~~ ✅ Done (2026-05-04)
-2. ~~**Remove or update misleading frontend copy**~~ ✅ Done (2026-05-04)
-3. ~~**Implement engagement bonus**~~ ✅ Done (2026-05-04)
-
-### Phase 2 — Governance Deepening
-
-4. Implement Shadow Minister elections via RCV — **DEFERRED** (will do later)
-5. Implement Decision Statement workflow for leadership actions — **DEFERRED**
-6. Implement Living Legal Code — persistent approve/disapprove tracking with auto-flag threshold — **DEFERRED**
-7. Implement Mandatory Review Agenda for low-approval laws — **DEFERRED** (will do later)
-8. Implement Unity Warning System
-9. Build full Círculos Protocol (geographical Community Hubs) — **DEFERRED** (will do later)
-10. Implement Git-Inspired Constitution — **DEFERRED** (will do later)
-
-### Phase 3 — Advanced Features
-
-11. SMS OTP verification — **IN PROGRESS** (2026-05-04)
-12. Live Treasury public dashboard — **DEFERRED** (will do later)
-13. Candidate Selection (Primary by Merit)
-14. The People's Manifesto — **DEFERRED** (will do later)
-15. Signal Horn Protocol for crisis response — **DEFERRED** (will do later)
-16. Recall Vote mechanism
-17. Coalition Governance Protocol — **DEFERRED** (will do later)
-18. 3rd Party Media Collective (dedicated Media tab, Rapid Response, Policy Explainers) — **DEFERRED** (will do later)
-
-### Phase 4 — Real-World Integration
-
-19. AI-assisted moderation and automated dispute resolution (Parametric Governance Engine v2)
-20. Victories Tracker
-21. Council of Mediators
-22. Felony Clause integration
-
----
-
-## 9. Frontend Pages
+## 7. Frontend Pages
 
 | Page | File | Description |
 |---|---|---|
-| Home / Landing | `index.html` | Explains movement, shows merit score demo calculator |
-| Join / Signup | `join.html` | Registration form with contribution type selection |
-| Join Success | `join-success.html` | Post-registration page, promotes enrollment |
+| Home / Landing | `index.html` | Movement narrative, merit score demo calculator |
+| Join / Signup | `join.html` | Registration with contribution type selection |
+| Join Success | `join-success.html` | Post-registration invitation |
 | Login | `join.html` (shared) | Username + phone login |
-| Profile | `profile.html` | Scores card, proposals, enrollment UI, leadership application |
-| Proposals & Voting | `proposals.html` | Binary + ranked choice proposal create/vote UI |
-| Laws & Legislation | `laws.html` | Browse/search Maldivian laws, vote on clauses/articles |
+| Profile | `profile.html` | Scores, proposals, enrollment, leadership application |
+| Proposals & Voting | `proposals.html` | Binary + ranked choice create/vote UI |
+| Laws & Legislation | `laws.html` | Browse/search laws, AI-assisted drafting, vote on clauses |
 | Law Stats | `law-stats.html` | Voting statistics |
-| Generate Law | `generate-law.html` | AI-assisted law drafting |
-| Enroll | `enroll.html` | Standalone enrollment page for family/friends |
+| Enroll | `enroll.html` | Standalone enrollment for family/friends |
 | Wall | `wall.html` | Public message board |
 | Events | `events.html` | Movement events listing |
 | FAQ | `faq.html` | Frequently asked questions |
-| How It Works | `how.html` | Explains how the platform functions |
+| How It Works | `how.html` | Movement journey narrative |
+| Intro / Our Story | `index.html` | What makes us different |
 | Legislature | `legislature.html` | Legislative information |
 | Leadership | `leadership.html` | Leadership roster and roles |
 | Policies | `policies.html` | Policy platform |
 | Donate | `donate.html` | Donation page with bank details |
-| Admin Dashboard | `admin.html` | System settings, user management, leadership management, donations, proposals |
+| Treasury | `treasury.html` | Live Treasury public ledger |
+| Admin Dashboard | `admin.html` | Settings, users, leadership, donations, proposals |
 | Whitepaper | `whitepaper.html` | Rendered whitepaper viewer |
-| Navigation (shared) | `nav.js` | Inject navbar into all pages |
+| Navigation (shared) | `nav.js` | Injected navbar across all pages |
 
 ---
 
-## 10. Key API Endpoints
+## 8. Key API Endpoints
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/api/signup` | None | Register new user, calc merit, match pending referrals |
-| `POST` | `/api/login` | None | Login with username + phone |
-| `GET` | `/api/user/profile` | User | Get profile + vote counts |
-| `PUT` | `/api/user/profile` | User | Update username/name/email/island |
-| `POST` | `/api/user/change-password` | User | Change password |
-| `GET` | `/api/user/activity-log` | User | User's activity audit trail |
-| `GET` | `/api/user/proposals` | User | User's proposals/drafts |
-| `GET` | `/api/user/bounties` | User | User's posted/claimed bounties |
-| `POST` | `/api/referral/introduce` | User | Create pending/active referral for new or existing person |
-| `POST` | `/api/enroll-family-friend` | User | Directly enroll someone + award base points |
-| `GET` | `/api/referrals` | User | List referrals + base/engagement/total point summary |
-| `POST` | `/api/referral/remove` | User | Remove referral, reverse awarded points |
-| `POST` | `/api/enroll/lookup` | User | Search external directory for people to enroll |
-| `GET` | `/api/proposals` | None | List active proposals with voting window info |
-| `POST` | `/api/proposals` | Optional | Create proposal (8h cooldown for auth users) |
-| `POST` | `/api/proposals/:id/stake` | User | Stake points on proposal |
-| `GET` | `/api/proposals/:id/stake` | None | View stakes on proposal |
-| `POST` | `/api/vote` | None | Vote on proposal (merit-weighted) |
-| `POST` | `/api/ranked-vote` | User | Submit ranked-choice ballot |
-| `PATCH` | `/api/proposals/:id` | None | Edit proposal title/description |
-| `GET` | `/api/proposal-stats` | None | Proposal engagement stats |
-| `GET` | `/api/mvlaws` | None | List all laws with categories |
-| `GET` | `/api/mvlaws/search` | None | Search laws, articles, clauses |
-| `GET` | `/api/mvlaws/stats` | None | Voting statistics |
-| `GET` | `/api/mvlaws/:id` | None | Law detail with articles |
-| `GET` | `/api/mvlaws/:id/articles/:articleId` | None | Article detail with sub-articles |
-| `POST` | `/api/mvlaws/vote-subarticle` | None | Vote on a clause |
-| `POST` | `/api/mvlaws/vote` | User | Vote on an article |
-| `POST` | `/api/mvlaws/vote-law` | User | Vote on entire law |
-| `GET` | `/api/wall` | None | Get wall posts |
-| `POST` | `/api/wall` | None | Create wall post |
-| `GET` | `/api/wall-stats` | None | Wall statistics |
-| `POST` | `/api/unregister` | Admin | Remove user from platform |
-| `GET` | `/api/system-settings` | Admin | Get current system settings |
-| `POST` | `/api/system-settings` | Admin | Update system settings (merit values, limits, etc.) |
-| `GET` | `/api/public-settings` | None | Public settings (member count, targets) |
-| `GET` | `/api/merit/score` | User | Dynamic + static merit score + loyalty tier |
-| `GET` | `/api/merit/events` | User | Paginated merit event history |
-| `GET` | `/api/merit/leaderboard` | None | Top N members by score |
-| `POST` | `/api/endorsements` | User | Endorse another member (diminishing returns, 20/mo cap) |
-| `DELETE` | `/api/endorsements/:id` | User | Remove endorsement |
-| `GET` | `/api/endorsements/received` | User | List endorsements received |
-| `POST` | `/api/bounties` | User | Create bounty (Tier 1/2/3) |
-| `GET` | `/api/bounties` | None | List bounties (filterable) |
-| `GET` | `/api/bounties/:id` | None | Bounty detail + claims |
-| `POST` | `/api/bounties/:id/claim` | User | Claim a bounty |
-| `POST` | `/api/bounties/:id/approve` | User | Approve claim (awards points) |
-| `POST` | `/api/bounties/:id/reject` | User | Reject claim |
-| `POST` | `/api/bounties/:id/cancel` | User | Cancel own bounty |
-| `GET` | `/api/academy/modules` | None | List academy modules |
-| `POST` | `/api/academy/enroll` | User | Enroll in module |
-| `POST` | `/api/academy/complete` | User | Complete module (graduation check) |
-| `GET` | `/api/academy/progress` | User | Academy progress |
-| `GET` | `/api/stipends` | User | List leadership stipends received |
-| `POST` | `/api/advisory-reports` | User | Submit advisory report |
-| `GET` | `/api/advisory-reports` | User | List own reports |
-| `POST` | `/api/advisory-reports/:id/approve` | User | Approve report (awards points) |
-| `POST` | `/api/quizzes` | User | Create knowledge check quiz |
-| `GET` | `/api/quizzes/:articleId` | None | Get quizzes for article |
-| `POST` | `/api/quizzes/:id/answer` | User | Answer quiz (awards points if correct) |
-| `POST` | `/api/comments` | User | Post article comment |
-| `GET` | `/api/comments/:articleId` | None | Get comments for article |
-| `POST` | `/api/comments/:id/endorse` | User | Endorse comment (awards commenter points) |
-| `POST` | `/api/violations/report` | User | Report violation |
-| `GET` | `/api/violations` | User | List violations (own or all if admin) |
-| `POST` | `/api/violations/:id/resolve` | User | Resolve violation (apply penalties) |
-| `GET` | `/api/suspensions/active` | None | List active suspensions |
-| `GET` | `/api/emeritus` | None | List Emeritus Council members |
-| `POST` | `/api/hubs` | User | Create Policy Incubation Hub |
-| `GET` | `/api/hubs` | None | List active hubs |
-| `POST` | `/api/hubs/:id/join` | User | Join a hub |
-| `POST` | `/api/amplify` | User | Create amplifiable tracking link |
-| `GET` | `/api/amplify/track/:code` | None | Track click + redirect |
-| `GET` | `/api/amplify/stats/:code` | User | View link click stats |
-| `GET` | `/api/donation-info` | None | Get bank details |
-| `POST` | `/api/donate` | None | Submit donation with slip upload |
-| `GET` | `/api/events` | None | List upcoming events |
-| `GET` | `/api/admin/events` | Admin | List all events |
-| `POST` | `/api/admin/events` | Admin | Create event |
-| `PUT` | `/api/admin/events/:id` | Admin | Update event |
-| `DELETE` | `/api/admin/events/:id` | Admin | Delete event |
-| `GET` | `/api/admin/proposals` | Admin | List all proposals |
-| `POST` | `/api/admin/proposals/:id/status` | Admin | Update proposal status |
-| `PUT` | `/api/admin/proposals/:id` | Admin | Edit proposal |
-| `GET` | `/api/admin/donations/pending` | Admin | List pending donations |
-| `POST` | `/api/admin/donations/:id/verify` | Admin | Verify donation |
-| `POST` | `/api/admin/donations/:id/reject` | Admin | Reject donation |
-| `GET` | `/api/leadership/settings` | Admin | Get leadership settings |
-| `POST` | `/api/leadership/settings` | Admin | Update leadership settings |
-| `GET` | `/api/leadership/positions` | Admin | List positions |
-| `POST` | `/api/leadership/positions` | Admin | Create position |
-| `GET` | `/api/leadership/applications` | Admin | List applications |
-| `POST` | `/api/leadership/applications/:id/status` | Admin | Update application status |
-| `GET` | `/api/leadership/terms` | Admin | List active terms |
-| `POST` | `/api/leadership/terms/:id/end` | Admin | End term |
-| `GET` | `/api/leadership/sops` | Admin | List SOPs |
-| `POST` | `/api/leadership/sops` | Admin | Create/update SOP |
-| `POST` | `/api/leadership/appraisals` | Admin | Add appraisal |
-| `POST` | `/api/leadership/apply` | User | Apply for leadership position |
-| `GET` | `/api/leadership/status` | None | Public leadership availability |
-| `GET` | `/api/leadership/public` | None | Public leadership status |
-| `GET` | `/api/leadership/positions-public` | None | Public positions list |
-| `GET` | `/api/leadership/terms-public` | None | Public current leaders |
-| `GET` | `/api/leadership/sops-public` | None | Public SOPs |
-| `GET` | `/api/analytics/active` | None | Active visitor count |
-| `POST` | `/api/analytics/heartbeat` | None | Heartbeat to track visitor |
+| Method | Path | Auth | Module | Description |
+|---|---|---|---|---|
+| `POST` | `/api/signup` | None | `auth/register.js` | Register new user, calc merit, match pending referrals |
+| `POST` | `/api/login` | None | `auth/login.js` | Login with username + phone |
+| `GET` | `/api/user/profile` | User | `profile.js` | Get profile + vote counts |
+| `PUT` | `/api/user/profile` | User | `profile.js` | Update username/name/email/island |
+| `POST` | `/api/user/change-password` | User | `profile.js` | Change password |
+| `GET` | `/api/user/activity-log` | User | `profile.js` | User's activity audit trail |
+| `GET` | `/api/user/proposals` | User | `profile.js` | User's proposals/drafts |
+| `GET` | `/api/user/bounties` | User | `profile.js` | User's posted/claimed bounties |
+| `POST` | `/api/referral/introduce` | User | `referrals.js` | Create pending/active referral |
+| `POST` | `/api/enroll-family-friend` | User | `enrollment.js` | Directly enroll someone + award base points |
+| `GET` | `/api/referrals` | User | `referrals.js` | List referrals + point summary |
+| `POST` | `/api/referral/remove` | User | `referrals.js` | Remove referral, reverse awarded points |
+| `POST` | `/api/enroll/lookup` | User | `enrollment.js` | Search external directory |
+| `GET` | `/api/proposals` | None | `proposals.js` | List active proposals with voting window info |
+| `POST` | `/api/proposals` | Optional | `proposals.js` | Create proposal (8h cooldown for auth users) |
+| `POST` | `/api/proposals/:id/stake` | User | `proposals.js` | Stake points on proposal |
+| `GET` | `/api/proposals/:id/stake` | None | `proposals.js` | View stakes on proposal |
+| `POST` | `/api/vote` | None | `proposals.js` | Vote on proposal (merit-weighted) |
+| `POST` | `/api/ranked-vote` | User | `ranked-proposals.js` | Submit ranked-choice ballot |
+| `PATCH` | `/api/proposals/:id` | None | `proposals.js` | Edit proposal title/description |
+| `GET` | `/api/proposal-stats` | None | `proposals.js` | Proposal engagement stats |
+| `GET` | `/api/mvlaws` | None | `legislation/browse.js` | List all laws with categories |
+| `GET` | `/api/mvlaws/search` | None | `legislation/browse.js` | Search laws, articles, clauses |
+| `GET` | `/api/mvlaws/stats` | None | `legislation/browse.js` | Voting statistics |
+| `GET` | `/api/mvlaws/:id` | None | `legislation/browse.js` | Law detail with articles |
+| `GET` | `/api/mvlaws/:id/articles/:articleId` | None | `legislation/browse.js` | Article detail with sub-articles |
+| `POST` | `/api/mvlaws/vote-subarticle` | None | `legislation/voting.js` | Vote on a clause |
+| `POST` | `/api/mvlaws/vote` | User | `legislation/voting.js` | Vote on an article |
+| `POST` | `/api/mvlaws/vote-law` | User | `legislation/voting.js` | Vote on entire law |
+| `GET` | `/api/wall` | None | `wall.js` | Get wall posts |
+| `POST` | `/api/wall` | None | `wall.js` | Create wall post |
+| `GET` | `/api/wall-stats` | None | `wall.js` | Wall statistics |
+| `POST` | `/api/unregister` | Admin | `auth/admin.js` | Remove user from platform |
+| `GET` | `/api/system-settings` | Admin | `leadership.js` | Get current system settings |
+| `POST` | `/api/system-settings` | Admin | `leadership.js` | Update system settings |
+| `GET` | `/api/public-settings` | None | `auth/stats.js` | Public settings (member count, targets) |
+| `GET` | `/api/merit/score` | User | `social/merit.js` | Dynamic + static merit score + loyalty tier |
+| `GET` | `/api/merit/events` | User | `social/merit.js` | Paginated merit event history |
+| `GET` | `/api/merit/leaderboard` | None | `social/merit.js` | Top N members by score |
+| `POST` | `/api/endorsements` | User | `social/interactions.js` | Endorse an applicant |
+| `DELETE` | `/api/endorsements/:id` | User | `social/interactions.js` | Remove endorsement |
+| `GET` | `/api/endorsements/received` | User | `social/interactions.js` | List endorsements received |
+| `POST` | `/api/bounties` | User | `bounty-academy.js` | Create bounty (Tier 1/2/3) |
+| `GET` | `/api/bounties` | None | `bounty-academy.js` | List bounties (filterable) |
+| `GET` | `/api/bounties/:id` | None | `bounty-academy.js` | Bounty detail + claims |
+| `POST` | `/api/bounties/:id/claim` | User | `bounty-academy.js` | Claim a bounty |
+| `POST` | `/api/bounties/:id/approve` | User | `bounty-academy.js` | Approve claim (awards points) |
+| `POST` | `/api/bounties/:id/reject` | User | `bounty-academy.js` | Reject claim |
+| `POST` | `/api/bounties/:id/cancel` | User | `bounty-academy.js` | Cancel own bounty |
+| `GET` | `/api/academy/modules` | None | `bounty-academy.js` | List academy modules |
+| `POST` | `/api/academy/enroll` | User | `bounty-academy.js` | Enroll in module |
+| `POST` | `/api/academy/complete` | User | `bounty-academy.js` | Complete module (graduation check) |
+| `GET` | `/api/academy/progress` | User | `bounty-academy.js` | Academy progress |
+| `GET` | `/api/stipends` | User | `bounty-academy.js` | List leadership stipends received |
+| `POST` | `/api/advisory-reports` | User | `bounty-academy.js` | Submit advisory report |
+| `GET` | `/api/advisory-reports` | User | `bounty-academy.js` | List own reports |
+| `POST` | `/api/advisory-reports/:id/approve` | User | `bounty-academy.js` | Approve report (awards points) |
+| `POST` | `/api/quizzes` | User | `social/interactions.js` | Create knowledge check quiz |
+| `GET` | `/api/quizzes/:articleId` | None | `social/interactions.js` | Get quizzes for article |
+| `POST` | `/api/quizzes/:id/answer` | User | `social/interactions.js` | Answer quiz (awards points if correct) |
+| `POST` | `/api/comments` | User | `social/interactions.js` | Post article comment |
+| `GET` | `/api/comments/:articleId` | None | `social/interactions.js` | Get comments for article |
+| `POST` | `/api/comments/:id/endorse` | User | `social/interactions.js` | Endorse comment (awards commenter points) |
+| `POST` | `/api/violations/report` | User | `social/violations.js` | Report violation |
+| `GET` | `/api/violations` | User | `social/violations.js` | List violations (own or all if admin) |
+| `POST` | `/api/violations/:id/resolve` | User | `social/violations.js` | Resolve violation (apply penalties) |
+| `GET` | `/api/suspensions/active` | None | `social/violations.js` | List active suspensions |
+| `GET` | `/api/emeritus` | None | `hubs-emeritus.js` | List Emeritus Council members |
+| `POST` | `/api/hubs` | User | `hubs-emeritus.js` | Create Policy Incubation Hub |
+| `GET` | `/api/hubs` | None | `hubs-emeritus.js` | List active hubs |
+| `POST` | `/api/hubs/:id/join` | User | `hubs-emeritus.js` | Join a hub |
+| `POST` | `/api/amplify` | User | `social/amplification.js` | Create amplifiable tracking link |
+| `GET` | `/api/amplify/track/:code` | None | `social/amplification.js` | Track click + redirect |
+| `GET` | `/api/amplify/stats/:code` | User | `social/amplification.js` | View link click stats |
+| `GET` | `/api/donation-info` | None | `donations-public.js` | Get bank details |
+| `POST` | `/api/donate` | None | `donations-public.js` | Submit donation with slip upload |
+| `GET` | `/api/events` | None | `events.js` | List upcoming events |
+| `GET` | `/api/admin/events` | Admin | `events.js` | List all events |
+| `POST` | `/api/admin/events` | Admin | `events.js` | Create event |
+| `PUT` | `/api/admin/events/:id` | Admin | `events.js` | Update event |
+| `DELETE` | `/api/admin/events/:id` | Admin | `events.js` | Delete event |
+| `GET` | `/api/admin/proposals` | Admin | `admin-proposals-donations.js` | List all proposals |
+| `POST` | `/api/admin/proposals/:id/status` | Admin | `admin-proposals-donations.js` | Update proposal status |
+| `PUT` | `/api/admin/proposals/:id` | Admin | `admin-proposals-donations.js` | Edit proposal |
+| `GET` | `/api/admin/donations/pending` | Admin | `admin-proposals-donations.js` | List pending donations |
+| `POST` | `/api/admin/donations/:id/verify` | Admin | `admin-proposals-donations.js` | Verify donation |
+| `POST` | `/api/admin/donations/:id/reject` | Admin | `admin-proposals-donations.js` | Reject donation |
+| `GET` | `/api/leadership/settings` | Admin | `leadership.js` | Get leadership settings |
+| `POST` | `/api/leadership/settings` | Admin | `leadership.js` | Update leadership settings |
+| `GET` | `/api/leadership/positions` | Admin | `leadership.js` | List positions |
+| `POST` | `/api/leadership/positions` | Admin | `leadership.js` | Create position |
+| `POST` | `/api/leadership/positions/:id/toggle` | Admin | `leadership.js` | Toggle position active state |
+| `DELETE` | `/api/leadership/positions/:id` | Admin | `leadership.js` | Delete position |
+| `GET` | `/api/leadership/applications` | Admin | `leadership.js` | List applications |
+| `POST` | `/api/leadership/applications/:id/status` | Admin | `leadership.js` | Update application status |
+| `GET` | `/api/leadership/terms` | Admin | `leadership.js` | List active terms |
+| `POST` | `/api/leadership/terms/:id/end` | Admin | `leadership.js` | End term |
+| `GET` | `/api/leadership/sops` | Admin | `leadership.js` | List SOPs |
+| `POST` | `/api/leadership/sops` | Admin | `leadership.js` | Create/update SOP |
+| `GET` | `/api/leadership/appraisals` | Admin | `leadership.js` | List appraisals |
+| `POST` | `/api/leadership/appraisals` | Admin | `leadership.js` | Add appraisal |
+| `POST` | `/api/leadership/apply` | User | `leadership.js` | Apply for leadership position |
+| `GET` | `/api/leadership/status` | None | `leadership.js` | Public leadership availability |
+| `GET` | `/api/leadership/public` | None | `leadership.js` | Public leadership status |
+| `GET` | `/api/leadership/positions-public` | None | `leadership.js` | Public positions list |
+| `GET` | `/api/leadership/terms-public` | None | `leadership.js` | Public current leaders |
+| `GET` | `/api/leadership/sops-public` | None | `leadership.js` | Public SOPs |
+| `GET` | `/api/analytics/active` | None | `analytics.js` | Active visitor count |
+| `POST` | `/api/analytics/heartbeat` | None | `analytics.js` | Heartbeat to track visitor |
+| `POST` | `/api/generate-law-draft` | User | `legislation/ai-draft.js` | AI-assisted law drafting |
 
 ---
 
-## 11. Configuration Principle
+## 9. Configuration Principle
 
 > **CRITICAL: No reward, points, or merit value shall ever be hardcoded.**
 > Every tunable parameter must live in `DEFAULT_SETTINGS` → `system_settings` table → admin UI.
@@ -700,11 +623,13 @@ The `system_settings` table stores all config as a JSON blob (`settings_json` co
 `getSettings()` merges DB values over `DEFAULT_SETTINGS`.
 `POST /api/system-settings` (admin only) accepts any key and persists it.
 
+The admin settings panel (`admin.html`) exposes all 60+ config keys as a single unified config editor (`key = value` pairs in a textarea), replacing the previous ~50 individual input fields.
+
 ---
 
-## 12. Current Server Settings (Admin-Configurable)
+## 10. Current Server Settings (Admin-Configurable)
 
-All configurable at runtime via `POST /api/system-settings` (admin). Defaults in `server.js:13-62`:
+All configurable at runtime via `POST /api/system-settings` (admin). Defaults in `src/config/settings.js`:
 
 ### Core Settings
 | Setting | Default | Description |
@@ -744,14 +669,15 @@ All configurable at runtime via `POST /api/system-settings` (admin). Defaults in
 |---|---|---|
 | `merit_vote_pass` | 2.5 | Points for voting on passing proposal |
 | `merit_vote_fail` | 1.0 | Points for voting on failing proposal |
+| `merit_vote_participation` | 0.5 | Points for law vote participation |
 | `merit_proposal_author` | 200 | Points for authoring passed proposal |
+| `merit_proposal_created` | 10 | Points for creating a proposal |
 | `merit_stake_percent` | 0.005 | Stake as fraction of MS |
 | `merit_stake_min` | 10 | Minimum proposal stake |
 | `merit_quality_threshold` | 0.10 | Below this = frivolous (<10%) |
 | `merit_quality_refund` | 0.20 | Above this = stake refunded (≥20%) |
 | `merit_decay_lambda` | 0.001267 | Base decay constant |
-
-These merit values are defined in `DEFAULT_SETTINGS` but are NOT in admin UI. They were added preemptively for use by the merit engine but the admin UI (`admin.html`) has not been updated to expose them.
+| `merit_half_life_days` | 547.5 | Half-life in days |
 
 ### Referral Settings
 | Setting | Default | Description |
@@ -775,6 +701,8 @@ These merit values are defined in `DEFAULT_SETTINGS` but are NOT in admin UI. Th
 | `endorsement_tier2_pts` | 1.0 | Points per endorsement (11-50) |
 | `endorsement_tier3_pts` | 0.5 | Points per endorsement (51-200) |
 | `endorsement_tier4_pts` | 0.1 | Points per endorsement (201+) |
+| `endorsement_max_per_period` | 20 | Max endorsements per 30-day period |
+| `endorsement_period_days` | 30 | Endorsement rate-limit window |
 
 ### Operational Settings
 | Setting | Default | Description |
@@ -787,26 +715,16 @@ These merit values are defined in `DEFAULT_SETTINGS` but are NOT in admin UI. Th
 | `enroll_rate_limit_ms` | 60000 | Enrollment rate limit window |
 | `enroll_max_per_day` | 50 | Max enrollments per IP per day |
 | `max_upload_bytes` | 5242880 | Max file upload size (5 MB) |
+| `notification_enabled` | 1 | Notification queue enabled |
+| `notification_batch_interval_ms` | 300000 | Notification batch interval (5 min) |
+| `notification_max_per_batch` | 3 | Max notifications per batch |
+| `sms_otp_required` | 0 | Require SMS OTP for signup |
+| `sms_otp_length` | 6 | OTP length |
+| `sms_otp_expiry_minutes` | 10 | OTP expiry time |
 
 ---
 
-## 13. Admin UI Gaps
-
-The admin settings panel (`admin.html`) currently exposes ~19 fields. The `DEFAULT_SETTINGS` object in server.js defines 60+ keys. The following are defined in `DEFAULT_SETTINGS` but NOT yet exposed in the admin UI:
-
-**Voting & Proposal Merit:** `merit_vote_pass`, `merit_vote_fail`, `merit_proposal_author`, `merit_stake_percent`, `merit_stake_min`, `merit_quality_threshold`, `merit_quality_refund`, `merit_decay_lambda`, `approval_threshold_routine`, `approval_threshold_policy`, `approval_threshold_constitutional`, `voting_window_primary_days`, `voting_window_extended_days`, `voting_weight_primary`, `voting_weight_extended`, `proposal_cooldown_hours`
-
-**Referral:** `referral_tier1_limit`, `referral_tier2_limit`, `referral_base_t1`, `referral_base_t2`, `referral_base_t3`, `referral_engage_t1`, `referral_engage_t2`, `referral_engage_t3`
-
-**Signup/Donation:** `signup_random_bonus_max`, `donation_divisor_mvr`, `donation_log_multiplier`, `donation_usd_mvr_rate`, `donation_formula`
-
-**Endorsement:** `endorsement_tier1_limit`, `endorsement_tier2_limit`, `endorsement_tier3_limit`, `endorsement_tier1_pts`, `endorsement_tier2_pts`, `endorsement_tier3_pts`, `endorsement_tier4_pts`
-
-**Meta:** `wall_posts_limit`, `recent_votes_limit`
-
----
-
-## 14. Environment Variables
+## 11. Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
@@ -823,92 +741,40 @@ The admin settings panel (`admin.html`) currently exposes ~19 fields. The `DEFAU
 
 ---
 
-## 15. Key Architectural Notes
+## 12. Key Architectural Notes
 
-1. **Merit score is fully dynamic.** The `merit_events` table logs every point event. `calculateDecayedScore()` (`server.js:4442`) computes the full decay-weighted formula `Σ [ points * e^(-(λ_base / Lc) * days_since) ]`. `initial_merit_estimate` still serves as a historical baseline.
+1. **server.js is a thin wiring layer.** After refactoring, `server.js` (~150 lines) only sets up Express, initializes services, mounts routes, and handles graceful shutdown. All business logic lives in `src/`.
 
-2. **Configuration discipline is well-established.** Nearly all reward-related numeric values are in `DEFAULT_SETTINGS` → `system_settings` → admin UI. However, ~35 config keys exist in `DEFAULT_SETTINGS` that are NOT yet exposed in the admin UI (see §13).
+2. **Dependency injection eliminates circular requires.** Every module under `src/` exports a factory function that receives its dependencies as an object. This pattern is used consistently for routes, services, jobs, and queries.
 
-3. **Voting merit is awarded on proposal CLOSE, not at vote time.** `closeExpiredProposals()` runs every 60s and handles: vote point awards, proposal authoring points, and stake resolution. This is a batch processing approach rather than real-time.
+3. **Merit score is fully dynamic.** The `merit_events` table logs every point event. `calculateDecayedScore()` (`src/services/merit.js`) computes the full decay-weighted formula `Σ [ points * e^(-(λ_base / Lc) * days_since) ]`. `initial_merit_estimate` still serves as a historical baseline.
 
-4. **Three separate vote systems exist, two without merit rewards:**
+4. **Configuration discipline is well-established.** Nearly all reward-related numeric values are in `DEFAULT_SETTINGS` → `system_settings` → admin UI. The admin panel uses a unified textarea editor for all 60+ keys.
+
+5. **Voting merit is awarded on proposal CLOSE, not at vote time.** `closeExpiredProposals()` runs every 60s and handles: vote point awards, proposal authoring points, and stake resolution. This is a batch processing approach rather than real-time.
+
+6. **Three separate vote systems exist:**
    - Proposal votes (`votes` table) — merit-weighted, full reward pipeline ✅
-   - Law article votes (`law_votes` in main DB, `sub_article_votes` in laws DB) — no merit ❌
-   - Law-level votes (`law_level_votes` in laws DB) — no merit ❌
+   - Law article votes (`law_votes` in main DB, `sub_article_votes` in laws DB) — merit points awarded via `merit_vote_participation` setting ✅
+   - Law-level votes (`law_level_votes` in laws DB) — merit points awarded ✅
 
-5. **The referral system's engagement bonus is "almost there."** The DB schema has `first_action_at` and `engagement_bonus_given` columns. The `getReferralPoints()` function handles engagement bonus tiers. The only missing piece: no code sets `first_action_at` when a referred user performs any action.
+7. **The referral system's engagement bonus is now live.** The DB schema has `first_action_at` and `engagement_bonus_given` columns. `maybeEngageReferral()` triggers on merit-generating actions and awards the engagement bonus tier defined in settings.
 
-6. **Two `donations` tables exist in code.** The first (line ~410) is for merit-point tracking (`amount_usd`, `merit_points_awarded`). The second (line ~777) is for donation submission verification (`amount`, `slip_filename`, `status`, `verified_by`). These share a table name and could cause confusion.
+8. **Notification queue replaces instant wall posts.** Rather than flooding the public wall, significant events (new signups, new proposals) are queued in `notification_queue` and processed in batches by `src/jobs/processNotifications.js`.
 
-7. **Loyalty coefficient derivation is inverted from spec but functionally equivalent.** Whitepaper says Founding=1.5, Early=1.2, Standard=1.0. Code implements: `<180 days = 1.0 (standard), <365 days = 1.2 (early), >=365 days = 1.5 (founding)`. Since "founding members" joined earliest, the code correctly assigns higher Lc to longer-tenured members. However, this means all members eventually graduate to Lc=1.5 after 1 year, not just the first 3,000.
+9. **Proposal cooldown only enforced for authenticated users.** Anonymous proposals bypass the 8-hour cooldown check. This is a known gap: spam proposals from unauthenticated users have no rate limit beyond the general vote cooldown.
 
-8. **Proposal cooldown only enforced for authenticated users.** Anonymous proposals bypass the 8-hour cooldown check. This is a gap: spam proposals from unauthenticated users have no rate limit beyond the general vote cooldown.
-
-9. **Frontend references whitepaper features liberally.** `profile.html` and `enroll.html` still describe engagement bonuses as active when they're not (first_action_at never set). Law voting point claims in `profile.html` are still unfounded.
-
-10. **All core incentive mechanisms coded and active.** Bounties, endorsements, staking, reputation penalties, violation sanctions, academy, stipends, quizzes, comments, amplification — all operational. Bridge-building bonus has been deprecated. The remaining work is primarily in: law vote points, engagement bonuses, elections, UI polish, and advanced governance protocols (Signal Horn, Unity Warning, Círculos, Manifesto, Constitution).
+10. **All core incentive mechanisms are coded and active.** Bounties, endorsements, staking, reputation penalties, violation sanctions, academy, stipends, quizzes, comments, amplification — all operational. The remaining work is primarily in: elections, UI polish, and advanced governance protocols (Signal Horn, Unity Warning, Círculos, Manifesto, Constitution).
 
 ---
 
-## 16. What Was Planned But Not Implemented (True Gaps)
+## 13. Cross-Reference Map
 
-| Whitepaper Feature | § | Priority |
-|---|---|---|
-| SMS OTP verification | III.A | High |
-| Law voting merit points (all 3 levels) | II.C.1 | High |
-| Engagement bonus for referrals | II.C.7.b | High |
-| Shadow Minister elections via RCV | III.C | Medium |
-| Git-Inspired Constitution | III.A | Medium |
-| Living Legal Code (persistent approve/disapprove + Mandatory Review) | III.D | Medium |
-| Live Treasury public dashboard | V.B | Medium |
-| Signal Horn Protocol | IV.E | Medium |
-| Unity Warning System (flag divisive proposals) | IV.B | Medium |
-| Community Hubs (Círculos Protocol) | V.D | Medium |
-| Candidate Selection (Primary by Merit) | VI.A Stage 2 | Low |
-| The People's Manifesto | VI.B | Low |
-| Recall Vote mechanism | VI.D | Low |
-| Coalition Governance Protocol | VI.E | Low |
-| Council of Mediators | IX.G | Low |
-| Felony Clause | IX.E | Low |
-| Victories Tracker | V.C | Low |
-| 3rd Party Media Collective (full) | V.E | Low |
-| Full Parametric Governance Engine (AI moderation) | III.F / Phase 5 | Low |
-
----
-
-## 17. What Is Implemented But Not Documented In Prior Blueprint
-
-These features were built since the last blueprint audit and are now fully operational:
-
-| Feature | Location | Notes |
-|---|---|---|
-| merit_events table + full event logging | `server.js:638-652` | Every point action logged with type, points, timestamp |
-| Dynamic decay score engine | `server.js:4442-4457` | `calculateDecayedScore()` — full whitepaper formula |
-| Loyalty coefficient | `server.js:4400-4408` | `getLoyaltyCoefficient()` — join-date-based tiers |
-| Merit score API (static + dynamic) | `server.js:4464-4486` | `GET /api/merit/score` |
-| Merit leaderboard | `server.js:4508-4534` | `GET /api/merit/leaderboard` — top N with dynamic scores |
-| Merit events API | `server.js:4488-4506` | `GET /api/merit/events` — paginated event history |
-| Peer endorsements (full CRUD) | `server.js:3630-3760` | Diminishing returns, 20/month cap, settings-driven |
-| Bounty system (7 endpoints) | `server.js:3752-3980` | Create, list, claim, approve, reject, cancel, user list |
-| Leadership Academy (5 modules) | `server.js:3982-4094` | Enroll, complete, progress, graduation = 250 pts |
-| Role-based monthly stipends | `server.js:547-594` | `processMonthlyStipends()` hourly cron |
-| Advisory reports (submit + approve) | `server.js:4115-4180` | Expert panel reports with point awards |
-| Proposal staking | `server.js:4256-4313` | `max(10, MS*0.005)`, refund/forfeit logic |
-| Reputation penalty engine | `server.js:4198-4248` | Quality ratio = `(1+failed)/(1+successful)` |
-| Voting merit (on close) | `server.js:143-161` | Configurable pass/fail points, author points |
-| Knowledge Check quizzes | `server.js:4537-4614` | Create, list, answer — award points for correct answers |
-| Article comments + endorsements | `server.js:4617-4694` | Comment, list, endorse — earn points when endorsed |
-| Amplification tracking links | `server.js:5095-5175` | Generate track codes, click tracking, stats |
-| Violation reporting + sanctions | `server.js:4739-4839` | Report, list, resolve with tiered penalties + suspensions |
-| Emeritus Council eligibility | `server.js:4872-4939` | Daily cron, auto-invite, API |
-| Policy Incubation Hubs | `server.js:4984-5047` | Create, join, list hubs |
-| Hub stipends (monthly cron) | `server.js:5049-5093` | 50 pts/month per hub member |
-| Events management (CRUD) | `server.js:5950-6055` | Create, update, delete events (admin) |
-| Donation submission + verification | `server.js:5896-6198` | Slip upload, admin verify/reject |
-| Password change | `server.js:5322-5359` | `POST /api/user/change-password` |
-| Admin proposal management | `server.js:6059-6133` | Status changes, full edit |
-| Leadership SOPs (5 seeded) | `server.js:954-981` | Daily Management, Meeting Protocol, Financial Oversight, etc. |
-| Leadership appraisals | `server.js:939-952` | 1-5 rating, strengths, improvements, feedback |
-| activity_log audit trail | `server.js:374-386` | All significant actions logged with IP, user agent |
-| Configurable donation formula | `server.js:38` | `donation_formula: 'log'` — switchable log vs flat |
-| 8-hour proposal cooldown | `server.js:1401-1418` | `proposal_cooldown_hours` setting |
+| Document | Purpose |
+|---|---|
+| `whitepaper.txt` | Governance philosophy, phased rollout strategy, and constitutional design. The "why." |
+| `blueprint.md` | Technical architecture, API reference, database schema, and system configuration. The "how." |
+| `history.md` | Dated implementation log with rationale for every major change. The "when and who." |
+| `REFACTORING.md` | Backend modularization plan and risk matrix. |
+| `FRONTEND_REFACTOR_PLAN.md` | Frontend JS extraction plan. |
+| `AGENTS.md` | Conventions for AI coding assistants working on this repo. |

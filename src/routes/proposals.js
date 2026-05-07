@@ -160,12 +160,7 @@ router.post('/api/proposals', (req, res) => {
       logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
       // Award merit for creating a proposal
       const createdMerit = settings.merit_proposal_created;
-      db.prepare(`
-        INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-        VALUES (?, 'proposal_created', ?, ?, 'proposal', 'Created a new proposal', ?)
-      `).run(userId, createdMerit, result.lastInsertRowid, createdAt);
-      db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-        .run(createdMerit, userId);
+      merit.awardMerit(userId, 'proposal_created', createdMerit, result.lastInsertRowid, 'proposal', 'Created a new proposal');
       maybeEngageReferral(userId);
     } else {
       logActivity('proposal_created', null, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);

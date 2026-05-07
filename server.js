@@ -25,8 +25,8 @@ runMigrations({ db, DEFAULT_SETTINGS, getSettings, addTreasuryEntry });
 // ==================== UTILITIES ====================
 const { sanitizeHTML, generateOTP } = require('./src/utils');
 const { logActivity } = require('./src/services/activity-log')({ db });
-const { getReferralPoints, maybeEngageReferral } = require('./src/services/referral')({ db, getSettings, logActivity });
 const merit = require('./src/services/merit')({ db, getSettings, logActivity });
+const { getReferralPoints, maybeEngageReferral, awardReferralLoginMerit, getEnrollmentsToday } = require('./src/services/referral')({ db, getSettings, logActivity, merit });
 
 // ==================== DATA ACCESS LAYER ====================
 const queries = require('./src/db/queries')({ db, lawsDb });
@@ -67,13 +67,13 @@ app.use(require('./src/routes/legislation/voting')({ db, lawsDb, getSettings, lo
 app.use(require('./src/routes/legislation/ai-draft')({ db, lawsDb, getSettings }));
 app.use(require('./src/routes/treasury')({ db, queries, adminAuth, logActivity, addTreasuryEntry, getTreasuryBalance, getSettings }));
 app.use(require('./src/routes/auth/register')({ db, getSettings, logActivity, sanitizeHTML, generateOTP, getReferralPoints, addTreasuryEntry, getTreasuryBalance, merit, notificationQueue }));
-app.use(require('./src/routes/auth/login')({ db, logActivity, adminSessions, ADMIN_PASSWORD }));
+app.use(require('./src/routes/auth/login')({ db, logActivity, adminSessions, ADMIN_PASSWORD, awardReferralLoginMerit }));
 app.use(require('./src/routes/auth/admin')({ db, adminAuth, getTreasuryBalance }));
 app.use(require('./src/routes/auth/stats')({ db }));
 app.use(require('./src/routes/referrals')({ db, queries, getSettings, logActivity, userAuth, getReferralPoints, sanitizeHTML, addTreasuryEntry, merit, notificationQueue }));
 app.use(require('./src/routes/bounty-academy')({ db, queries, getSettings, userAuth, logActivity, merit }));
 app.use(require('./src/routes/social/merit')({ db, userAuth, merit }));
-app.use(require('./src/routes/social/interactions')({ db, logActivity, adminAuth, userAuth, getSettings }));
+app.use(require('./src/routes/social/interactions')({ db, logActivity, adminAuth, userAuth, getSettings, merit }));
 app.use(require('./src/routes/social/violations')({ db, logActivity, userAuth, getSettings, merit }));
 app.use(require('./src/routes/social/amplification')({ db, userAuth, getSettings, merit }));
 app.use(require('./src/routes/hubs-emeritus')({ db, queries, userAuth }));

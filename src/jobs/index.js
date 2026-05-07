@@ -2,7 +2,7 @@ module.exports = function({ queries, db, getSettings, merit, maybeEngageReferral
   const intervals = [];
 
   const closeExpiredProposals = require('./closeProposals')({ queries, getSettings, merit, maybeEngageReferral });
-  const processHubStipends = require('./processHubStipends')({ queries, getSettings });
+  const processHubStipends = require('./processHubStipends')({ queries, getSettings, merit });
   const processStipends = require('./processStipends')({ merit });
   const checkEmeritus = require('./checkEmeritus')({ db });
   const cleanupExpiredVisitors = require('./cleanupVisitors')({ activeVisitors, getSettings });

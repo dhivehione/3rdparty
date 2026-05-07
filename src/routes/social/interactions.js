@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function({ db, logActivity, adminAuth, userAuth, getSettings }) {
+module.exports = function({ db, logActivity, adminAuth, userAuth, getSettings, merit }) {
 
   // ==================== TABLES ====================
   db.exec(`
@@ -168,10 +168,7 @@ module.exports = function({ db, logActivity, adminAuth, userAuth, getSettings })
         .run(userId, id, answer, correct ? 1 : 0, now);
 
       if (correct) {
-        db.prepare(`
-          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-          VALUES (?, 'knowledge_check', ?, ?, 'quiz', ?, ?)
-        `).run(userId, quiz.points_reward, id, `Knowledge check passed: ${quiz.article_title || quiz.article_id}`, now);
+        merit.awardMerit(userId, 'knowledge_check', quiz.points_reward, id, 'quiz', `Knowledge check passed: ${quiz.article_title || quiz.article_id}`);
       }
 
       res.json({ success: true, correct, points_earned: correct ? quiz.points_reward : 0 });
@@ -249,10 +246,7 @@ module.exports = function({ db, logActivity, adminAuth, userAuth, getSettings })
       if (endorsementCount >= 5) {
         const settings = getSettings();
         const commentPoints = Math.min(endorsementCount * 2, settings.comment_endorsement_cap);
-        db.prepare(`
-          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-          VALUES (?, 'comment_endorsement', ?, ?, 'comment', ?, ?)
-        `).run(comment.user_id, commentPoints, id, `Comment endorsed (${endorsementCount} endorsements)`, now);
+        merit.awardMerit(comment.user_id, 'comment_endorsement', commentPoints, id, 'comment', `Comment endorsed (${endorsementCount} endorsements)`);
       }
 
       res.json({ success: true, endorsements: endorsementCount });

@@ -69,21 +69,12 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
             const newUpvotes = db.prepare('SELECT upvotes FROM wall_posts WHERE id = ?').get(postId).upvotes;
             if (newUpvotes > 0 && newUpvotes % 5 === 0) {
               const voteMerit = Math.min(newUpvotes, getSettings().wall_upvote_milestone_cap);
-              db.prepare(`
-                INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-                VALUES (?, 'wall_upvoted', ?, ?, 'wall', ?, ?)
-              `).run(post.user_id, voteMerit, postId, `Post reached ${newUpvotes} upvotes`, now);
-              db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-                .run(voteMerit, post.user_id);
+              merit.awardMerit(post.user_id, 'wall_upvoted', voteMerit, postId, 'wall', `Post reached ${newUpvotes} upvotes`);
             }
           }
           if (voterId) {
             const upvoteMerit = getSettings().wall_upvote_merit;
-            db.prepare(`
-              INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-              VALUES (?, 'wall_vote', ?, ?, 'wall', 'Upvoted a wall post', ?)
-            `).run(voterId, upvoteMerit, postId, now);
-            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?').run(upvoteMerit, voterId);
+            merit.awardMerit(voterId, 'wall_vote', upvoteMerit, postId, 'wall', 'Upvoted a wall post');
             maybeEngageReferral(voterId);
           }
         } else {
@@ -322,12 +313,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
 
       if (userId) {
         const wallMerit = parentId ? 5 : 15;
-        db.prepare(`
-          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-          VALUES (?, 'wall_post', ?, ?, 'wall', ?, ?)
-        `).run(userId, wallMerit, newPostId, (parentId ? 'Replied' : 'Posted') + ' to The Wall', timestamp);
-        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-          .run(wallMerit, userId);
+        merit.awardMerit(userId, 'wall_post', wallMerit, newPostId, 'wall', (parentId ? 'Replied' : 'Posted') + ' to The Wall');
         logActivity('wall_post', userId, newPostId, { parent_id: parentId, moderated: needsReview }, req);
         maybeEngageReferral(userId);
       } else {

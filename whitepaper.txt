@@ -6,13 +6,22 @@ Executive Summary
 The 3rd Party redefines governance for the digital age by merging direct
 democracy with advanced incentive design, dynamic governance, and robust safeguards
 against division. This updated whitepaper integrates innovative mechanisms—such as
-bridge-building incentives, schism penalties, and a multi-faceted Merit Score—to create a
+schism penalties, proposal staking, and a multi-faceted Merit Score—to create a
 resilient, self-sustaining system where community unity and effective decision-making are
 prioritized. The system values diverse contributions, from intellectual capital to resource support,
 all under a model of diminishing returns to ensure power remains with the people.
 Acknowledging political realities and technical challenges, the movement will adopt a phased
 rollout, starting with core democratic functions and progressively layering in advanced features
 to ensure stability, inclusivity, and long-term success.
+
+
+Technical Implementation Note
+
+This document describes the governance philosophy, constitutional design, and long-term
+roadmap of the 3rd Party platform. For the living technical specification — including current
+API endpoints, database schema, modular system architecture, and configuration reference —
+see `blueprint.md` in the project repository. `blueprint.md` is the default technical spec file
+and is updated continuously as the codebase evolves.
 
 
 I. Vision: A Digital Republic for the Maldives
@@ -789,52 +798,64 @@ Phase 1: MVP Launch - Core Democracy & Merit Score Foundation
 
    ●​ Goal: Launch a stable web and mobile app and recruit the first 3,000 "Founding
       Members."
+   ●​ Status: ⚠️ Partially complete. Platform is live; SMS OTP not yet implemented.
    ●​ Features:
-         ○​ Secure user verification (National ID + SMS OTP).
-         ○​ Direct democracy: One person, one vote system for proposals.
-         ○​ Basic proposal submission and voting system.
-         ○​ Merit Score Foundation: The full Merit Score formula (including decay and
-             loyalty) will be running in the background from day one to collect data and ensure
-             continuity. However, for initial simplicity, votes will not be weighted by score.
+         ○​ Secure user verification (National ID + phone). SMS OTP pending.
+         ○​ Direct democracy: Merit-weighted voting active for proposals.
+         ○​ Full proposal submission, staking, and voting system.
+         ○​ Merit Score Foundation: Decay, loyalty coefficient, and dynamic scoring fully
+             operational from day one.
 ●​ Metric: Number of verified members joined.
 
 Phase 2: Activating Weighted Influence
 
    ●​ Goal: Introduce weighted voting and enhance governance tools.
-●​ Features:
-           ○​ Activation of Merit-Weighted Voting: The Merit Scores accumulated in Phase 1
-              now begin to influence voting power.
-           ○​ Implementation of Ranked-Choice Voting for elections.
-           ○​ Launch of the Git-Inspired Constitution feature and Live Treasury prototype.
+   ●​ Status: ⚠️ Mostly complete. Merit-weighted voting, RCV, and Live Treasury active.
+      Git-Inspired Constitution pending.
+   ●​ Features:
+           ○​ Activation of Merit-Weighted Voting: ✅ Implemented.
+           ○​ Implementation of Ranked-Choice Voting for elections: ✅ Implemented.
+           ○​ Launch of the Git-Inspired Constitution feature and Live Treasury prototype:
+               Treasury operational; Constitution not yet built.
 
 Phase 3: Building a National Presence
 
    ●​ Goal: Bridge the digital divide and establish a physical footprint.
-●​ Features:
-         ○​ First Shadow Minister elections and formation of the Governing Council.
-         ○​ Launch of the first offline Community Hubs.
-         ○​ Integration of SMS-based voting for non-smartphone users.
+   ●​ Status: ⚠️ Leadership structure exists but full elections not yet built. Community Hubs
+      (Círculos) not yet implemented.
+   ●​ Features:
+         ○​ First Shadow Minister elections and formation of the Governing Council:
+             Application and approval system live; RCV confirmation election pending.
+         ○​ Launch of the first offline Community Hubs: Pending.
+         ○​ Integration of SMS-based voting for non-smartphone users: Pending.
 
 Phase 4: Full Incentive Design Activation
 
    ●​ Goal: Roll out the full suite of game-theoretic mechanisms to encourage quality and
       unity.
-●​ Features:
-          ○​ Activation of Proposal Staking.
-          ○​ Launch of the Unity Warning System.
+   ●​ Status: ⚠️ Proposal staking, reputation penalties, and violation sanctions are fully
+      operational. Unity Warning System pending.
+   ●​ Features:
+          ○​ Activation of Proposal Staking: ✅ Implemented.
+          ○​ Launch of the Unity Warning System: Pending.
 
 Phase 5: Full Automation & Scaling
 
    ●​ Goal: Achieve a fully autonomous and intelligent governance platform.
-●​ Features:
-         ○​ Full rollout of the Parametric Governance Engine.
-         ○​ Introduction of AI-assisted moderation and automated dispute resolution tools.
+   ●​ Status: ⚠️ Core parameter engine exists via `system_settings`. Full automation and
+      AI moderation pending.
+   ●​ Features:
+         ○​ Full rollout of the Parametric Governance Engine: Partial — settings are fully
+             configurable at runtime.
+         ○​ Introduction of AI-assisted moderation and automated dispute resolution tools:
+             Pending.
 
 Phase 6: Constitutional Integration
 
    ●​ Goal: Achieve formal political influence and ratify the movement's innovations into
       national law. This phase is triggered by meeting sustained KPIs related to membership
       and policy adoption.
+   ●​ Status: ❌ Not started.
 
 
 IX. Upholding Integrity: Code of Conduct and Disciplinary Framework

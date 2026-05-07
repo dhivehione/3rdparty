@@ -129,12 +129,7 @@ module.exports = function({ db, getSettings, logActivity, merit, maybeEngageRefe
       if (userId) {
         logActivity('proposal_created', userId, result.lastInsertRowid, { title: title.trim().substring(0, 100) }, req);
         const createdMerit = settings.merit_proposal_created;
-        db.prepare(`
-          INSERT INTO merit_events (user_id, event_type, points, reference_id, reference_type, description, created_at)
-          VALUES (?, 'proposal_created', ?, ?, 'ranked_proposal', 'Created a ranked choice proposal', ?)
-        `).run(userId, createdMerit, result.lastInsertRowid, createdAt);
-        db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-          .run(createdMerit, userId);
+        merit.awardMerit(userId, 'proposal_created', createdMerit, result.lastInsertRowid, 'ranked_proposal', 'Created a ranked choice proposal');
         maybeEngageReferral(userId);
       }
 

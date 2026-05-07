@@ -2,6 +2,59 @@
 
 This file documents all significant code changes to the project, including rationale (why) and implementation details (how).
 
+For the current system architecture and technical specifications, see [`blueprint.md`](blueprint.md).  
+For the original governance philosophy and phased rollout plan, see [`whitepaper.txt`](whitepaper.txt).
+
+---
+
+## 2026-05-07 — Merit Audit Ledger Hardening
+
+### Standardize all merit changes through awardMerit() and backfill missing events
+- **What:** Refactored 9 code locations that bypassed `awardMerit()` by doing manual INSERT into `merit_events` + UPDATE of `initial_merit_estimate`. Added `signup_base` merit event logging for new signups (previously missing entirely). Fixed the non-OTP referral path which silently skipped the merit audit log. Created migration 007 to backfill missing `signup_base` and `referral_base` events for existing users.
+- **Why:** Multiple code paths manipulated the merit score outside the centralized `awardMerit()` function, causing permanent audit gaps: (a) new signups had no initial-score log entry, (b) the non-OTP registration path awarded referral bonuses without recording them in `merit_events`, (c) hub stipends and knowledge checks wrote events without updating the running total. This made `SUM(merit_events.points)` diverge from `signups.initial_merit_estimate`, undermining trust in the entire merit system.
+- **Who:** Developer
+
+#### Changes made:
+- **`src/routes/wall.js`:** Replaced 3 manual INSERT+UPDATE sites (wall_upvoted, wall_vote, wall_post) with `merit.awardMerit()` calls.
+- **`src/routes/proposals.js`:** Replaced manual proposal_created event with `merit.awardMerit()`.
+- **`src/routes/ranked-proposals.js`:** Same fix for ranked proposal creation.
+- **`src/services/referral.js`:** `maybeEngageReferral` now accepts `merit` dependency and uses `awardMerit()` for engagement bonuses.
+- **`src/routes/social/interactions.js`:** Quiz knowledge_check and comment_endorsement now use `merit.awardMerit()` (previously never updated `initial_merit_estimate`).
+- **`src/jobs/processHubStipends.js`:** Hub stipend events now use `merit.awardMerit()` — previously used raw `insertEvent` without updating the running total.
+- **`src/routes/auth/register.js`:** Non-OTP referral bonus now uses `merit.awardMerit()`. Initial signup merit now logged as `signup_base` event in the audit ledger.
+- **`src/routes/referrals.js`:** Initial signup merit now logged as `signup_base` event.
+- **`server.js`:** Swapped instantiation order so `merit` service is created before `services/referral`; passes `merit` to both `services/referral` and `social/interactions`.
+- **`src/jobs/index.js`:** Passes `merit` to `processHubStipends`.
+- **Migration 007 (`src/migrations/007_merit_backfill.js`):** Backfills missing `signup_base` events where `initial_merit_estimate` exceeds `SUM(merit_events.points)`, and missing `referral_base` events from `referrals` table with no corresponding audit entry.
+
+### Add daily enrollment limits and split referral merit into upfront + login-based rewards
+- **What:** Added per-user daily enrollment limits, split referral base points into upfront and login-based portions, and added configurable settings for all new parameters. Created migration 006 to add `first_login_at` and `upfront_merit_awarded` columns to the `referrals` table. Added 4 new admin settings: `enroll_max_per_user_per_day`, `referral_upfront_fraction`, `referral_login_delay_days`, `referral_delayed_reduction_fraction`.
+- **Why:** The family/friend enroll feature could be used to inflate merit scores by enrolling fake accounts. Adding a daily limit prevents bulk enrollment. Splitting points (default: half upfront, half on login) ensures referrers only get full credit when the enrolled person actually authenticates. The delay window (default: 7 days) with reduced points for late logins adds urgency and prevents gaming.
+- **Who:** Developer
+
+#### Changes made:
+- **Database (Migration 006):** Added `first_login_at TEXT` and `upfront_merit_awarded REAL DEFAULT 0` to `referrals` table.
+- **Settings (`src/config/settings.js`):** Added `enroll_max_per_user_per_day` (5), `referral_upfront_fraction` (0.5), `referral_login_delay_days` (7), `referral_delayed_reduction_fraction` (0.5).
+- **Admin (`admin.html`):** Added new settings to SETTINGS_META and Referral Points section.
+- **Service (`src/services/referral.js`):** Added `awardReferralLoginMerit(userId)` — checks if user was referred and hasn't logged in yet, calculates remaining points based on days since enrollment, awards reduced points if past delay window. Added `getEnrollmentsToday(userId)` — counts enrollments by a user today.
+- **Route (`src/routes/referrals.js`):** `POST /api/enroll-family-friend` now checks per-user daily limit before creating user. Awards only upfront fraction of base points immediately. Response includes `points_earned` (upfront), `total_base_points`, and `remaining_points`.
+- **Route (`src/routes/auth/login.js`):** `POST /api/user/login` now calls `awardReferralLoginMerit()` after successful login. Response includes `referral_login_bonus` if points were awarded.
+- **Server (`server.js`):** Wired `awardReferralLoginMerit` and `getEnrollmentsToday` into route dependencies.
+
+---
+
+## 2026-05-07 — Blueprint Reorganization
+
+### Reorganize blueprint.md as dedicated technical specification
+- **What:** Restructured `blueprint.md` from a mixed audit-history/spec document into a clean, authoritative technical specification. Removed all historical implementation audits, dated roadmaps, stale `server.js` line-number references, and bug trackers. Added a System Architecture section documenting the modular `src/` layout, updated the Database Schema to reflect current migrations, updated the API Reference to use module paths, and refreshed the Frontend Pages list.
+- **Why:** As the codebase grew, `blueprint.md` had accumulated dated audit logs, roadmap items, and hundreds of stale line-number references to the old 7,663-line `server.js` monolith. This made it unreliable as a technical reference. Splitting history into `history.md` and keeping `blueprint.md` strictly architectural ensures both documents remain accurate and useful.
+- **Who:** Developer
+
+### Update whitepaper to reference blueprint.md
+- **What:** Added a note to `whitepaper.txt` and `whitepaper.html` directing readers to `blueprint.md` for the living technical specification. Removed the deprecated "bridge-building incentives" phrase from the Executive Summary.
+- **Why:** The whitepaper is the governance philosophy document; the blueprint is the technical spec. Cross-linking prevents them from diverging silently and helps new contributors find the right source of truth.
+- **Who:** Developer
+
 ---
 
 ## 2026-05-06 — Remove dedicated members page
@@ -177,6 +230,29 @@ This file documents all significant code changes to the project, including ratio
 ---
 
 ## 2026-05-05 — Rapid iteration on develop branch
+
+### Multiple incremental updates (May 5, 07:58 – 17:52)
+- **What:** 14 consecutive commits throughout the day.
+- **Why:** Active development and bugfixing cycle on the develop branch.
+- **How:** Timestamp-based commit messages (`Update 2026-05-05 HH:MM:SS`).
+
+---
+
+## 2026-05-04 — Implementation Status Audit
+
+### Comprehensive audit of features vs whitepaper spec
+- **What:** Conducted a full audit of every whitepaper feature against the codebase. Documented 16 fully implemented merit mechanisms, identified true gaps (SMS OTP, engagement bonus, law vote points, elections, Git-Constitution, etc.), and catalogued misleading frontend copy. Fixed law voting merit points, misleading frontend copy, and engagement bonus population in the same pass.
+- **Why:** After months of rapid feature development, there was no single source of truth for what was built vs what was spec'd. This audit created the first comprehensive implementation map and exposed several frontend bugs where copy claimed features existed that didn't.
+- **Who:** Developer
+
+#### Findings at time of audit:
+- **Fully implemented:** Merit events table, dynamic decay, loyalty coefficient, leaderboard, endorsements, bounties, academy, stipends, advisory reports, proposal staking, reputation penalty, knowledge quizzes, article comments, amplification links, violation sanctions, Emeritus Council, Policy Hubs, events, donation verification, password change, admin proposal management, leadership SOPs/appraisals, notification queue.
+- **True gaps:** SMS OTP, Shadow Minister elections, Git-Inspired Constitution, Living Legal Code persistent tracking, Live Treasury public dashboard, Signal Horn Protocol, Unity Warning System, Community Hubs (Círculos), Candidate Selection, People's Manifesto, Recall Vote, Coalition Governance Protocol.
+- **Fixed during audit:** Law voting points, misleading "+2.5 pts" copy on law votes, engagement bonus `first_action_at` trigger.
+
+---
+
+## 2026-05-04 — Backend Refactoring: server.js Monolith Decomposition
 
 ### Multiple incremental updates (May 5, 07:58 – 17:52)
 - **What:** 14 consecutive commits throughout the day.

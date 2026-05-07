@@ -1,4 +1,4 @@
-module.exports = function({ queries, getSettings }) {
+module.exports = function({ queries, getSettings, merit }) {
   return function processHubStipends() {
     try {
       const now = new Date();
@@ -14,11 +14,7 @@ module.exports = function({ queries, getSettings }) {
             const awardedAt = now.toISOString();
             queries.hubs.insertHubStipend(hub.id, member.user_id, year, month, HUB_STIPEND, awardedAt);
             queries.hubs.updateHubMemberStipend(hub.id, member.user_id, HUB_STIPEND);
-            queries.merit.insertEvent({
-              user_id: member.user_id, event_type: 'hub_stipend', points: HUB_STIPEND,
-              reference_id: hub.id, reference_type: 'hub',
-              description: `Policy Hub stipend: ${hub.name}`, created_at: awardedAt
-            });
+            merit.awardMerit(member.user_id, 'hub_stipend', HUB_STIPEND, hub.id, 'hub', `Policy Hub stipend: ${hub.name}`);
           }
         });
       });

@@ -276,23 +276,28 @@ module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generate
        const stmt = db.prepare(
          'INSERT INTO signups (phone, nid, name, username, email, island, contribution_type, donation_amount, initial_merit_estimate, is_verified, otp_code, otp_expires_at, otp_verified, auth_token, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
        );
-       const result = stmt.run(
-         cleanedPhone, 
-         nid, 
-         name || null,
-         username ? username.trim() : null, 
-         email || null, 
-         island || null, 
-         contributionTypeJson, 
-         finalDonation,
-         initialMerit,
-         initialVerifyState,
-         otpCode,
-         otpExpiry,
-         requireOTP ? 0 : 1,
-         initialAuthToken,
-         timestamp
-       );
+        const result = stmt.run(
+          cleanedPhone, 
+          nid, 
+          name || null,
+          username ? username.trim() : null, 
+          email || null, 
+          island || null, 
+          contributionTypeJson, 
+          finalDonation,
+          initialMerit,
+          initialVerifyState,
+          otpCode,
+          otpExpiry,
+          requireOTP ? 0 : 1,
+          initialAuthToken,
+          timestamp
+        );
+
+        // Record initial merit in the audit ledger
+        db.prepare(
+          'INSERT INTO merit_events (user_id, event_type, points, description, created_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(result.lastInsertRowid, 'signup_base', initialMerit, 'Initial signup merit', timestamp);
       
       // Send SMS OTP
       let smsResult = null;
@@ -352,8 +357,7 @@ module.exports = function({ db, getSettings, logActivity, sanitizeHTML, generate
               WHERE id = ?
             `).run(result.lastInsertRowid, basePoints, timestamp, pendingReferral.id);
             
-            db.prepare('UPDATE signups SET initial_merit_estimate = initial_merit_estimate + ? WHERE id = ?')
-              .run(basePoints, pendingReferral.referrer_id);
+            merit.awardMerit(pendingReferral.referrer_id, 'referral_base', basePoints, result.lastInsertRowid, 'referral', `Referred member joined (${details.relation || 'member'})`);
             
             logActivity('referral_completed', pendingReferral.referrer_id, result.lastInsertRowid, {
               base_points_awarded: basePoints,

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 
-module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
+module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD, awardReferralLoginMerit }) {
 
   // POST /api/login
   router.post('/api/login', (req, res) => {
@@ -110,6 +110,12 @@ module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
       db.prepare('UPDATE signups SET auth_token = ?, last_login = ? WHERE id = ?').run(authToken, lastLogin, user.id);
 
       logActivity('user_login', user.id, null, { method: loginMethod || 'phone_nid' }, req);
+
+      // Award remaining referral merit if this user was referred
+      let referralBonus = null;
+      if (awardReferralLoginMerit) {
+        referralBonus = awardReferralLoginMerit(user.id);
+      }
       
       res.json({ 
         success: true, 
@@ -129,7 +135,8 @@ module.exports = function({ db, logActivity, adminSessions, ADMIN_PASSWORD }) {
           donation_amount: user.donation_amount,
           initial_merit_estimate: user.initial_merit_estimate,
           timestamp: user.timestamp
-        }
+        },
+        referral_login_bonus: referralBonus
       });
     } catch (error) {
       console.error('User login error:', error);
