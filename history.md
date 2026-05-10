@@ -7,6 +7,15 @@ For the original governance philosophy and phased rollout plan, see [`whitepaper
 
 ---
 
+## 2026-05-10 — Fix Clause Vote Error
+
+### Fix sub-article clause voting to use correct database for user lookup
+- **What:** Enhanced the sub-article vote handler (`POST /api/mvlaws/vote-subarticle`) to accept an optional `phone` parameter, look up the user via `db.signups` (not `lawsDb`), store `user_phone` in the vote record, and award merit points/log activity/engage referral when a registered user votes. Fixed a bug in the deployed version where `lawsDb.prepare()` was incorrectly used to access the `signups` table — `signups` lives in `db` (signups.db), not `lawsDb` (laws.db).
+- **Why:** The deployed version crashed with `SqliteError: no such table: main.signups` whenever a user voted on a clause. The `signups` table belongs to the main `signups.db` database; querying it through `lawsDb` (which only has law-related tables) causes SQLITE_ERROR. The fix ensures all `signups` access goes through `db.prepare()` while vote operations continue to use `lawsDb.prepare()`.
+- **Who:** Developer
+
+---
+
 ## 2026-05-07 — AI Draft on Proposals Page
 
 ### Reframe live TV interviews as future vision across intro, how-it-works, and FAQ pages

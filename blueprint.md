@@ -1,6 +1,6 @@
 # 3d Party — Technical Blueprint
 
-> **Last updated:** 2026-05-07 (reframe live TV as future vision)
+> **Last updated:** 2026-05-10 (fix clause vote database reference)
 > **Governance spec:** `whitepaper.txt` (3rd Party v14)
 > **Implementation history:** `history.md`
 > **Status key:** ✅ Implemented | ⚠️ Partial | ❌ Not Implemented | 🔮 Future Phase
@@ -526,7 +526,7 @@ Status: ⚠️ Leadership SOPs define these rules (seeded in DB), but automated 
 | `GET` | `/api/mvlaws/stats` | None | `legislation/browse.js` | Voting statistics |
 | `GET` | `/api/mvlaws/:id` | None | `legislation/browse.js` | Law detail with articles |
 | `GET` | `/api/mvlaws/:id/articles/:articleId` | None | `legislation/browse.js` | Article detail with sub-articles |
-| `POST` | `/api/mvlaws/vote-subarticle` | None | `legislation/voting.js` | Vote on a clause |
+| `POST` | `/api/mvlaws/vote-subarticle` | Optional | `legislation/voting.js` | Vote on a clause (optional phone for merit) |
 | `POST` | `/api/mvlaws/vote` | User | `legislation/voting.js` | Vote on an article |
 | `POST` | `/api/mvlaws/vote-law` | User | `legislation/voting.js` | Vote on entire law |
 | `GET` | `/api/wall` | None | `wall.js` | Get wall posts |
@@ -755,8 +755,9 @@ All configurable at runtime via `POST /api/system-settings` (admin). Defaults in
 
 6. **Three separate vote systems exist:**
    - Proposal votes (`votes` table) — merit-weighted, full reward pipeline ✅
-   - Law article votes (`law_votes` in main DB, `sub_article_votes` in laws DB) — merit points awarded via `merit_vote_participation` setting ✅
-   - Law-level votes (`law_level_votes` in laws DB) — merit points awarded ✅
+   - Law article votes (`votes` in laws DB) — merit points for signed-in users ✅
+   - Law clause votes (`sub_article_votes` in laws DB) — merit points for signed-in users ✅
+   - Law-level votes (`law_level_votes` in laws DB) — merit points for signed-in users ✅
 
 7. **The referral system's engagement bonus is now live.** The DB schema has `first_action_at` and `engagement_bonus_given` columns. `maybeEngageReferral()` triggers on merit-generating actions and awards the engagement bonus tier defined in settings.
 

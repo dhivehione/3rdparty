@@ -190,7 +190,7 @@ router.post('/api/mvlaws/vote-subarticle', (req, res) => {
     return res.status(503).json({ error: 'Laws database not available', success: false });
   }
   
-  const { sub_article_id, vote, reasoning } = req.body;
+  const { sub_article_id, vote, reasoning, phone } = req.body;
   
   if (!sub_article_id) {
     return res.status(400).json({ error: 'Sub-article ID required', success: false });
@@ -200,14 +200,20 @@ router.post('/api/mvlaws/vote-subarticle', (req, res) => {
     return res.status(400).json({ error: 'Invalid vote. Must be: support, oppose, or abstain', success: false });
   }
 
+  let userId = null;
+  if (phone) {
+    const user = db.prepare('SELECT id FROM signups WHERE phone = ?').get(phone);
+    if (user) userId = user.id;
+  }
+
   const userIP = req.ip || req.connection.remoteAddress || 'unknown';
   const cooldownAgo = new Date(Date.now() - getSettings().vote_cooldown_ms).toISOString();
   
   const recentVote = lawsDb.prepare(`
     SELECT id FROM sub_article_votes 
-    WHERE sub_article_id = ? AND user_ip = ? AND voted_at > ?
+    WHERE sub_article_id = ? AND (user_ip = ? OR user_phone = ?) AND voted_at > ?
     LIMIT 1
-  `).get(sub_article_id, userIP, cooldownAgo);
+  `).get(sub_article_id, userIP, phone || '', cooldownAgo);
   
   if (recentVote) {
     return res.status(429).json({ error: 'Please wait before voting again', success: false });
@@ -218,19 +224,25 @@ router.post('/api/mvlaws/vote-subarticle', (req, res) => {
     
     const existing = lawsDb.prepare(`
       SELECT id FROM sub_article_votes 
-      WHERE sub_article_id = ? AND user_ip = ?
-    `).get(sub_article_id, userIP);
+      WHERE sub_article_id = ? AND (user_ip = ? OR user_phone = ?)
+    `).get(sub_article_id, userIP, phone || '');
     
     if (existing) {
       lawsDb.prepare(`
-        UPDATE sub_article_votes SET vote = ?, reasoning = ?, voted_at = ? 
+        UPDATE sub_article_votes SET vote = ?, reasoning = ?, voted_at = ?, user_phone = COALESCE(?, user_phone) 
         WHERE id = ?
-      `).run(vote, reasoning || null, votedAt, existing.id);
+      `).run(vote, reasoning || null, votedAt, phone || null, existing.id);
     } else {
       lawsDb.prepare(`
-        INSERT INTO sub_article_votes (sub_article_id, vote, reasoning, voted_at, user_ip)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(sub_article_id, vote, reasoning || null, votedAt, userIP);
+        INSERT INTO sub_article_votes (sub_article_id, vote, reasoning, voted_at, user_ip, user_phone)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(sub_article_id, vote, reasoning || null, votedAt, userIP, phone || null);
+      if (userId) {
+        const s = getSettings();
+        merit.awardMerit(userId, 'clause_vote', s.merit_vote_participation, sub_article_id, 'sub_article', 'Voted on a law clause');
+        logActivity('clause_vote', userId, sub_article_id, { vote, type: 'clause' }, req);
+        maybeEngageReferral(userId);
+      }
     }
     
     res.json({ message: 'Vote recorded!', success: true });
